@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naples · Pompeii · Positano — Trip Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #16232E;
+    --ink-2: #1c2c38;
+    --majolica: #2C6E8E;
+    --lemon: #F2B705;
+    --plaster: #FCFAF4;
+    --terracotta: #B5502F;
+    --crossed: #C6564B;
+    --line: rgba(252,250,244,0.10);
+    --line-strong: rgba(44,110,142,0.45);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(120% 140% at 50% -10%, #1b2c39 0%, var(--ink) 45%, #101a22 100%);
+    color: var(--plaster);
+    font-family: 'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app{ max-width:460px; margin:0 auto; padding:28px 16px 64px; }
+
+  /* focus states */
+  button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+    outline: 2px solid var(--lemon);
+    outline-offset: 2px;
+  }
+  button{ font-family:'Inter',sans-serif; cursor:pointer; }
+
+  /* ---------- header ---------- */
+  .hero{ text-align:center; margin-bottom:22px; }
+  .hero .eyebrow{
+    margin:0 0 6px; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase;
+    color: var(--majolica); font-weight:600;
+  }
+  .hero h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:1.9rem; margin:0;
+    letter-spacing:0.01em;
+  }
+  .hero .route{
+    margin:6px 0 0; font-size:0.85rem; color: rgba(252,250,244,0.55);
+  }
+
+  /* ---------- shared card ---------- */
+  .card{
+    background: linear-gradient(180deg, rgba(44,110,142,0.14), rgba(44,110,142,0.06));
+    border:1px solid var(--line-strong);
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:18px;
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.6);
+  }
+  .card-title{
+    font-family:'Fraunces', serif; font-size:1.05rem; font-weight:600; margin:0 0 4px;
+  }
+
+  /* ---------- status card ---------- */
+  .status-label{
+    font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase;
+    color: var(--lemon); font-weight:700; margin-bottom:8px;
+  }
+  .status-main{
+    font-family:'Fraunces', serif; font-size:1.25rem; line-height:1.35; font-weight:500;
+  }
+  .status-sub{
+    margin-top:8px; font-size:0.82rem; color: rgba(252,250,244,0.55);
+  }
+  .countdown-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px;
+  }
+  .countdown-grid .cd-cell{ text-align:center; }
+  .countdown-grid .num{
+    display:block; font-family:'Fraunces', serif; font-size:2rem; font-weight:600; color: var(--plaster);
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown-grid .unit{
+    display:block; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color: rgba(252,250,244,0.5);
+    margin-top:2px;
+  }
+
+  /* ---------- coastline signature ---------- */
+  .coastline-card{ text-align:center; }
+  .coastline-caption{
+    font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color: var(--terracotta);
+    font-weight:700; margin:0 0 10px;
+  }
+  #coastlineSvg{ width:100%; height:auto; display:block; }
+  .stop-label{
+    font-size:9px; fill: rgba(252,250,244,0.6); font-family:'Inter',sans-serif; letter-spacing:0.02em;
+  }
+
+  /* ---------- ledger ---------- */
+  .ledger-header{
+    display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px;
+  }
+  .ledger-total{
+    font-family:'Fraunces', serif; font-size:0.95rem; color: var(--lemon); font-weight:600;
+  }
+  .paid-row{
+    border-top:1px solid var(--line); padding:10px 0;
+  }
+  .paid-row:first-of-type{ border-top:none; padding-top:2px; }
+  .paid-row-header{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+  }
+  .paid-row.is-paid .paid-label, .paid-row.is-paid .paid-amount{
+    opacity:0.45;
+  }
+  .chk{ display:flex; align-items:center; flex-shrink:0; }
+  .chk input[type="checkbox"]{ width:18px; height:18px; accent-color: var(--lemon); cursor:pointer; }
+  .paid-info{ flex:1; min-width:0; }
+  .paid-label{ font-size:0.9rem; font-weight:600; }
+  .paid-summary{
+    font-size:0.75rem; color: rgba(252,250,244,0.45); margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .paid-amount{ font-size:0.85rem; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .pill{
+    font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700;
+    padding:3px 9px; border-radius:99px; white-space:nowrap;
+  }
+  .pill-pending{ background: rgba(181,80,47,0.25); color: #f0b79f; }
+  .pill-paid{ background: rgba(242,183,5,0.22); color: var(--lemon); }
+  .paid-details{
+    margin-top:12px; display:flex; flex-direction:column; gap:10px;
+    padding-left:28px;
+  }
+  .paid-details label{
+    display:flex; flex-direction:column; gap:4px; font-size:0.72rem;
+    color: rgba(252,250,244,0.55); letter-spacing:0.03em; text-transform:uppercase; font-weight:600;
+  }
+  .pd-field{
+    font-family:'Inter',sans-serif; background: rgba(16,26,34,0.65); border:1px solid var(--line-strong);
+    border-radius:8px; color: var(--plaster); padding:8px 10px; font-size:0.88rem;
+    text-transform:none; letter-spacing:normal; font-weight:400;
+  }
+  textarea.pd-field{ resize:vertical; min-height:44px; }
+
+  /* ---------- days ---------- */
+  .day-card{
+    border:1px solid var(--line-strong); border-radius:18px; margin-bottom:14px; overflow:hidden;
+    background: linear-gradient(180deg, rgba(44,110,142,0.10), rgba(44,110,142,0.03));
+  }
+  .day-card.is-today{ border-color: var(--lemon); box-shadow: 0 0 0 1px rgba(242,183,5,0.35); }
+  .day-header{
+    display:flex; align-items:center; gap:12px; padding:16px 18px; cursor:pointer;
+  }
+  .day-date{
+    text-align:center; flex-shrink:0; width:44px;
+  }
+  .day-date .dow{
+    display:block; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; color: rgba(252,250,244,0.5);
+  }
+  .day-date .dnum{
+    display:block; font-family:'Fraunces', serif; font-size:1.15rem; font-weight:600;
+  }
+  .day-title-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .day-title{ font-family:'Fraunces', serif; font-size:1.02rem; font-weight:600; margin:0; }
+  .today-pill{
+    background: var(--lemon); color: var(--ink); font-size:0.6rem; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase; padding:2px 9px; border-radius:99px;
+  }
+  .chevron{ font-size:1.1rem; color: rgba(252,250,244,0.5); transition: transform 0.2s ease; flex-shrink:0; }
+  .chevron.open{ transform: rotate(180deg); }
+  .day-body{ padding:0 18px 18px; }
+
+  .item-row{ border-top:1px solid var(--line); padding:10px 0; }
+  .item-row-main{ display:flex; align-items:flex-start; gap:10px; }
+  .item-row .chk{ margin-top:2px; }
+  .item-main{ flex:1; min-width:0; }
+  .item-time{
+    display:block; font-size:0.72rem; color: var(--majolica); font-weight:600; letter-spacing:0.02em;
+  }
+  .item-text{ display:block; font-size:0.9rem; line-height:1.4; margin-top:2px; }
+  .item-row.is-done .item-text, .item-row.is-done .item-time{
+    opacity:0.4; text-decoration: line-through; text-decoration-color: rgba(252,250,244,0.5);
+  }
+  .item-row.is-skipped .item-text, .item-row.is-skipped .item-time{
+    opacity:0.55; text-decoration: line-through; text-decoration-color: var(--crossed); color: var(--crossed);
+  }
+  .item-controls{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .item-controls button{
+    background:transparent; border:none; color: rgba(252,250,244,0.55); font-size:0.85rem;
+    width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  }
+  .item-controls button:hover{ background: rgba(252,250,244,0.08); color: var(--plaster); }
+  .item-controls button.note-btn.has-note{ color: var(--lemon); }
+  .note-wrap{ padding:8px 0 0 28px; }
+  .note-textarea{
+    width:100%; font-family:'Inter',sans-serif; background: rgba(16,26,34,0.65);
+    border:1px solid var(--line-strong); border-radius:8px; color: var(--plaster);
+    padding:8px 10px; font-size:0.85rem; resize:vertical; min-height:44px;
+  }
+
+  .add-stop-toggle{
+    margin-top:12px; background:transparent; border:1px dashed var(--line-strong);
+    color: rgba(252,250,244,0.6); font-size:0.82rem; padding:8px 12px; border-radius:10px; width:100%;
+  }
+  .add-stop-toggle:hover{ border-color: var(--lemon); color: var(--lemon); }
+  .add-form{
+    margin-top:10px; display:flex; flex-direction:column; gap:8px;
+    background: rgba(16,26,34,0.5); border-radius:10px; padding:12px;
+  }
+  .add-form input[type="time"], .add-form input[type="text"]{
+    font-family:'Inter',sans-serif; background: rgba(16,26,34,0.7); border:1px solid var(--line-strong);
+    border-radius:8px; color: var(--plaster); padding:8px 10px; font-size:0.85rem; width:100%;
+  }
+  .add-form-actions{ display:flex; gap:8px; }
+  .add-form-actions button{
+    flex:1; border-radius:8px; padding:8px 0; font-size:0.82rem; font-weight:600; border:none;
+  }
+  .add-form-actions .btn-add{ background: var(--lemon); color: var(--ink); }
+  .add-form-actions .btn-cancel{ background: transparent; color: rgba(252,250,244,0.55); border:1px solid var(--line-strong); }
+
+  /* ---------- footer ---------- */
+  .footnote{ text-align:center; padding:8px 10px 0; }
+  .footnote p{ font-size:0.76rem; font-style:italic; color: rgba(252,250,244,0.4); line-height:1.5; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hero">
+    <p class="eyebrow">8 – 11 September 2026</p>
+    <h1>Naples · Pompeii · Positano</h1>
+    <p class="route">easyJet EZY2125 out · Ryanair FR6834 back</p>
+  </header>
+
+  <section class="card" id="statusCard" aria-live="polite"></section>
+
+  <section class="card coastline-card">
+    <p class="coastline-caption">Naples → Pompeii → Positano → Naples</p>
+    <svg id="coastlineSvg" viewBox="0 0 420 130" xmlns="http://www.w3.org/2000/svg">
+      <path id="coastlinePath" d="M30,90 C70,50 110,40 150,45 C190,50 230,120 270,105 C310,92 350,45 390,55"
+            fill="none" stroke="var(--majolica)" stroke-width="2" stroke-dasharray="5 7" stroke-linecap="round"/>
+      <circle id="dot0" cx="30" cy="90" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot1" cx="150" cy="45" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot2" cx="270" cy="105" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot3" cx="390" cy="55" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <text class="stop-label" x="30" y="112" text-anchor="middle">Naples</text>
+      <text class="stop-label" x="150" y="30" text-anchor="middle">Pompeii</text>
+      <text class="stop-label" x="270" y="126" text-anchor="middle">Positano</text>
+      <text class="stop-label" x="390" y="40" text-anchor="middle">Naples</text>
+      <text id="boatMarker" x="30" y="78" font-size="18" text-anchor="middle">⛵</text>
+    </svg>
+  </section>
+
+  <section class="card" id="ledgerCard"></section>
+
+  <section id="daysContainer"></section>
+
+  <footer class="footnote">
+    <p><em>Ferry times are seasonal and published weekly — reconfirm with NLG or Positano Jet a few days before travel; high-speed ferries can be suspended in rough seas.</em></p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = 'naples-trip-dashboard-v1';
+
+  const TRIP = {
+    startUTC: Date.UTC(2026,8,8,5,15,0),   // 06:15 UK (BST, UTC+1) departure
+    endUTC:   Date.UTC(2026,8,11,17,15,0), // 18:15 UK (BST, UTC+1) arrival
+    days: [
+      {
+        key:'day1', date:'2026-09-08', dow:'Tue', label:'8 Sep', title:'Arrival & 2:00 PM Ragù',
+        items:[
+          {id:'d1-1', start:'10:25', end:'10:35', time:'10:25', text:'Land at Naples Airport (NAP) — easyJet EZY2125 from Manchester'},
+          {id:'d1-2', start:'10:25', end:'11:15', time:'10:25–11:15', text:'Clear passport control, collect bags, exit the terminal'},
+          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Flat-rate taxi (€20–25) straight to the Airbnb near Piazza Dante'},
+          {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags, freshen up, walk through Spaccanapoli / Via dei Tribunali'},
+          {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'Lunch at Tandem Ristorante (Piazzetta Nilo)'},
+          {id:'d1-6', start:'15:30', end:'23:59', time:'15:30 – late', text:'Explore the Historic Centre — drinks in Piazza Bellini, street food'}
+        ]
+      },
+      {
+        key:'day2', date:'2026-09-09', dow:'Wed', label:'9 Sep', title:'Pompeii & Volcanic Winery',
+        items:[
+          {id:'d2-1', start:'08:30', end:'09:10', time:'08:30–09:10', text:'Airbnb → Dante Metro → Line 1 to Garibaldi → Circumvesuviana to Pompei Scavi'},
+          {id:'d2-2', start:'09:30', end:'12:30', time:'09:30–12:30', text:'Pompeii Archaeological Park — 3-hour highlights tour'},
+          {id:'d2-3', start:'12:30', end:'12:50', time:'12:30–12:50', text:'Taxi from Pompei Scavi to Cantina del Vesuvio'},
+          {id:'d2-4', start:'13:00', end:'15:30', time:'13:00–15:30', text:'Wine tasting & 4-course organic lunch at Cantina del Vesuvio'},
+          {id:'d2-5', start:'15:30', end:'16:30', time:'15:30–16:30', text:'Taxi + Circumvesuviana + Metro back to Dante'}
+        ]
+      },
+      {
+        key:'day3', date:'2026-09-10', dow:'Thu', label:'10 Sep', title:'Positano Direct Ferry Day Trip',
+        items:[
+          {id:'d3-1', start:'09:15', end:'09:35', time:'09:15', text:'Walk to Dante Metro → Line 1 to Municipio → Molo Beverello Port'},
+          {id:'d3-2', start:'10:00', end:'11:30', time:'10:00', text:'Outbound direct ferry: Naples → Positano (1h10–1h30)'},
+          {id:'d3-3', start:'11:30', end:'16:15', time:'11:30–16:15', text:'Explore Positano — beach drinks, cliffside lunch'},
+          {id:'d3-4', start:'16:25', end:'18:00', time:'16:25', text:'Return direct ferry: Positano → Naples (Molo Beverello)'},
+          {id:'d3-5', start:'18:00', end:'23:59', time:'18:00 – late', text:'Arrive back in Naples port for late-afternoon drinks / dinner'}
+        ]
+      },
+      {
+        key:'day4', date:'2026-09-11', dow:'Fri', label:'11 Sep', title:'Final Stroll & Flight Home',
+        items:[
+          {id:'d4-1', start:'09:00', end:'12:00', time:'09:00–12:00', text:'Check out, store bags, coffee & sfogliatella in Piazza Dante'},
+          {id:'d4-2', start:'12:00', end:'13:30', time:'12:00–13:30', text:'Early light lunch near Dante / Toledo'},
+          {id:'d4-3', start:'13:40', end:'14:15', time:'13:40', text:'Taxi from Piazza Dante to Naples Airport (~20 min)'},
+          {id:'d4-4', start:'14:15', end:'16:15', time:'14:15', text:'Arrive at Naples Airport (NAP) for security & boarding'},
+          {id:'d4-5', start:'16:15', end:'18:15', time:'16:15', text:'Flight departs for Manchester — Ryanair FR6834 (arrives MAN 18:15)'}
+        ]
+      }
+    ]
+  };
+
+  const PAID_ITEMS = [
+    {id:'ferry',      label:'Naples ↔ Positano Ferry'},
+    {id:'winetour',   label:'Cantina del Vesuvio Wine Tour'},
+    {id:'airbnb',     label:'Piazza Dante Airbnb'},
+    {id:'flight-out', label:'Outbound Flight — EZY2125'},
+    {id:'flight-in',  label:'Return Flight — FR6834'}
+  ];
+
+  // ---------------- state ----------------
+  function defaultState(){
+    return {
+      order: {
+        day1:['d1-1','d1-2','d1-3','d1-4','d1-5','d1-6'],
+        day2:['d2-1','d2-2','d2-3','d2-4','d2-5'],
+        day3:['d3-1','d3-2','d3-3','d3-4','d3-5'],
+        day4:['d4-1','d4-2','d4-3','d4-4','d4-5']
+      },
+      done:{}, skipped:{},
+      customItems:{ day1:[], day2:[], day3:[], day4:[] },
+      notes:{}, paid:{}, paidDetails:{}
+    };
+  }
+  let state = defaultState();
+  const uiState = { expandedDay: null, openNotes:new Set(), openAddForm:new Set(), expandedPaid:new Set() };
+
+  function loadState(){
+    try{
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if(stored){
+        const loaded = JSON.parse(stored);
+        const base = defaultState();
+        state = {
+          order: Object.assign(base.order, loaded.order||{}),
+          done: loaded.done||{},
+          skipped: loaded.skipped||{},
+          customItems: Object.assign(base.customItems, loaded.customItems||{}),
+          notes: loaded.notes||{},
+          paid: loaded.paid||{},
+          paidDetails: loaded.paidDetails||{}
+        };
+      }
+    }catch(e){
+      console.warn('Trip dashboard: storage unavailable, using in-memory state only.', e);
+    }
+  }
+
+  let saveTimer = null;
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.warn('Trip dashboard: save failed.', e);
+    }
+  }
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 400);
+  }
+
+  // ---------------- helpers ----------------
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function timeToMinutes(t){
+    const parts = t.split(':');
+    return (+parts[0])*60 + (+parts[1]);
+  }
+  function addMinutesStr(t, add){
+    const total = timeToMinutes(t) + add;
+    const h = Math.floor((total%1440)/60), m = total%60;
+    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  function getRomeNow(){
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone:'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+    });
+    const parts = {};
+    fmt.formatToParts(now).forEach(function(p){ parts[p.type]=p.value; });
+    const dateStr = parts.year+'-'+parts.month+'-'+parts.day;
+    const minutes = (+parts.hour)*60 + (+parts.minute) + (+parts.second)/60;
+    return { dateStr:dateStr, minutes:minutes };
+  }
+  function getPhase(){
+    const now = Date.now();
+    if(now < TRIP.startUTC) return 'before';
+    if(now > TRIP.endUTC) return 'after';
+    return 'during';
+  }
+
+  function findItem(dayKey, id){
+    const day = TRIP.days.find(function(d){ return d.key===dayKey; });
+    const builtin = day.items.find(function(i){ return i.id===id; });
+    if(builtin) return Object.assign({custom:false}, builtin);
+    const custom = state.customItems[dayKey].find(function(i){ return i.id===id; });
+    if(custom){
+      return { id:custom.id, start:custom.time, end:addMinutesStr(custom.time,30), time:custom.time, text:custom.text, custom:true };
+    }
+    return null;
+  }
+
+  function getDayItemsInTimeOrder(dayKey){
+    const day = TRIP.days.find(function(d){ return d.key===dayKey; });
+    let items = day.items.map(function(i){ return Object.assign({custom:false}, i); });
+    items = items.concat(state.customItems[dayKey].map(function(c){
+      return { id:c.id, start:c.time, end:addMinutesStr(c.time,30), time:c.time, text:c.text, custom:true };
+    }));
+    items = items.filter(function(i){ return !state.skipped[i.id]; });
+    items.sort(function(a,b){ return timeToMinutes(a.start)-timeToMinutes(b.start); });
+    return items;
+  }
+
+  function getCurrentActivity(){
+    const rn = getRomeNow();
+    const day = TRIP.days.find(function(d){ return d.date===rn.dateStr; });
+    if(!day) return null;
+    const items = getDayItemsInTimeOrder(day.key);
+    for(let i=0;i<items.length;i++){
+      const it = items[i];
+      if(rn.minutes >= timeToMinutes(it.start) && rn.minutes < timeToMinutes(it.end)){
+        return { status:'current', item:it, day:day };
+      }
+    }
+    const next = items.find(function(it){ return timeToMinutes(it.start) > rn.minutes; });
+    if(next) return { status:'next', item:next, day:day };
+    return { status:'wrapped', day:day };
+  }
+
+  function getBoatProgress(){
+    const phase = getPhase();
+    if(phase==='before') return 0;
+    if(phase==='after') return 1;
+    const rn = getRomeNow();
+    let dayIdx = TRIP.days.findIndex(function(d){ return d.date===rn.dateStr; });
+    if(dayIdx===-1){
+      dayIdx = rn.dateStr < TRIP.days[0].date ? 0 : 3;
+    }
+    if(dayIdx===3) return 1;
+    const day = TRIP.days[dayIdx];
+    const items = getDayItemsInTimeOrder(day.key);
+    let frac = 0;
+    if(items.length){
+      const dayStart = timeToMinutes(items[0].start);
+      const dayEnd = timeToMinutes(items[items.length-1].end);
+      frac = dayEnd>dayStart ? clamp((rn.minutes-dayStart)/(dayEnd-dayStart),0,1) : 0;
+    }
+    return (dayIdx + frac)/3;
+  }
+
+  function computeDefaultExpandedDay(){
+    const phase = getPhase();
+    if(phase==='before') return 'day1';
+    if(phase==='after') return 'day4';
+    const rn = getRomeNow();
+    const day = TRIP.days.find(function(d){ return d.date===rn.dateStr; });
+    return day ? day.key : 'day1';
+  }
+
+  // ---------------- status card ----------------
+  function renderStatusCard(){
+    const el = document.getElementById('statusCard');
+    const phase = getPhase();
+    let html = '';
+    if(phase==='before'){
+      const diff = TRIP.startUTC - Date.now();
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/3600000);
+      const m = Math.floor((diff%3600000)/60000);
+      const s = Math.floor((diff%60000)/1000);
+      html += '<div class="status-label">Countdown to departure</div>';
+      html += '<div class="countdown-grid">';
+      html += '<div class="cd-cell"><span class="num">'+d+'</span><span class="unit">days</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+h+'</span><span class="unit">hrs</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+m+'</span><span class="unit">min</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+s+'</span><span class="unit">sec</span></div>';
+      html += '</div>';
+      html += '<div class="status-sub">EZY2125 departs Manchester 06:15, Tue 8 Sep</div>';
+    } else if(phase==='after'){
+      html += '<div class="status-label">Trip complete</div>';
+      html += '<div class="status-main">Naples, Pompeii &amp; Positano — in the books. Buon ritorno. ✈️</div>';
+    } else {
+      const activity = getCurrentActivity();
+      if(!activity){
+        html += '<div class="status-label">In transit</div>';
+        html += '<div class="status-main">Somewhere between stops — check back shortly.</div>';
+      } else if(activity.status==='current'){
+        html += '<div class="status-label">Right now</div>';
+        html += '<div class="status-main">'+activity.item.time+' — '+escapeHtml(activity.item.text)+'</div>';
+      } else if(activity.status==='next'){
+        html += '<div class="status-label">Up next</div>';
+        html += '<div class="status-main">'+activity.item.time+' — '+escapeHtml(activity.item.text)+'</div>';
+      } else {
+        html += '<div class="status-label">Day wrapped</div>';
+        html += '<div class="status-main">Buona notte — next stop tomorrow.</div>';
+      }
+      html += '<div class="status-sub">'+activity.day.dow+' '+activity.day.label+' — '+escapeHtml(activity.day.title)+'</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  // ---------------- coastline ----------------
+  let coastPath, coastLen;
+  function initCoastline(){
+    coastPath = document.getElementById('coastlinePath');
+    coastLen = coastPath.getTotalLength();
+    updateBoatAndDots();
+  }
+  function updateBoatAndDots(){
+    if(!coastPath) return;
+    const progress = getBoatProgress();
+    const pt = coastPath.getPointAtLength(progress*coastLen);
+    const boat = document.getElementById('boatMarker');
+    boat.setAttribute('x', pt.x);
+    boat.setAttribute('y', pt.y - 12);
+    for(let i=0;i<4;i++){
+      const dot = document.getElementById('dot'+i);
+      const reached = progress >= (i/3) - 0.001;
+      dot.setAttribute('fill', reached ? 'var(--lemon)' : 'none');
+      dot.setAttribute('stroke', reached ? 'var(--lemon)' : 'var(--plaster)');
+    }
+  }
+
+  // ---------------- ledger ----------------
+  function computeLedgerTotals(){
+    let total=0, settled=0, anyAmount=false;
+    PAID_ITEMS.forEach(function(p){
+      const d = state.paidDetails[p.id] || {};
+      const amt = parseFloat(d.amount);
+      if(!isNaN(amt) && d.amount!==undefined && d.amount!==''){
+        anyAmount = true; total += amt;
+        if(state.paid[p.id]) settled += amt;
+      }
+    });
+    const paidCount = PAID_ITEMS.filter(function(p){ return state.paid[p.id]; }).length;
+    return { anyAmount:anyAmount, total:total, settled:settled, paidCount:paidCount };
+  }
+  function formatDateShort(iso){
+    if(!iso) return '';
+    const parts = iso.split('-');
+    if(parts.length!==3) return iso;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return parts[2]+' '+months[(+parts[1])-1];
+  }
+  function buildPaidSummary(p){
+    const d = state.paidDetails[p.id] || {};
+    const parts = [];
+    if(d.provider) parts.push(escapeHtml(d.provider));
+    if(d.ref) parts.push(escapeHtml(d.ref));
+    if(d.date) parts.push(formatDateShort(d.date));
+    if(d.notes && d.notes.trim()) parts.push('📝 note');
+    return parts.length ? parts.join(' · ') : 'No details yet';
+  }
+  function renderLedger(){
+    const el = document.getElementById('ledgerCard');
+    const totals = computeLedgerTotals();
+    let html = '<div class="ledger-header"><h2 class="card-title">Paid in advance</h2>';
+    html += '<span class="ledger-total">'+(totals.anyAmount ? ('£'+totals.settled.toFixed(2)+' / £'+totals.total.toFixed(2)) : (totals.paidCount+'/'+PAID_ITEMS.length+' paid'))+'</span></div>';
+    PAID_ITEMS.forEach(function(p){
+      const d = state.paidDetails[p.id] || {};
+      const isPaid = !!state.paid[p.id];
+      const expanded = uiState.expandedPaid.has(p.id);
+      const amountDisplay = (d.amount!==undefined && d.amount!=='') ? ('£'+parseFloat(d.amount).toFixed(2)) : '—';
+      html += '<div class="paid-row '+(isPaid?'is-paid':'')+'">';
+      html += '  <div class="paid-row-header" data-action="toggle-paid-expand" data-id="'+p.id+'">';
+      html += '    <label class="chk"><input type="checkbox" aria-label="Mark paid" data-action="toggle-paid" data-id="'+p.id+'" '+(isPaid?'checked':'')+'></label>';
+      html += '    <div class="paid-info"><div class="paid-label">'+p.label+'</div><div class="paid-summary">'+buildPaidSummary(p)+'</div></div>';
+      html += '    <div class="paid-amount">'+amountDisplay+'</div>';
+      html += '    <span class="pill '+(isPaid?'pill-paid':'pill-pending')+'">'+(isPaid?'Paid':'Pending')+'</span>';
+      html += '  </div>';
+      if(expanded){
+        html += '  <div class="paid-details">';
+        html += '    <label>Amount (£)<input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount" value="'+escapeHtml(d.amount||'')+'"></label>';
+        html += '    <label>'+(isPaid?'Date paid':'Due date')+'<input class="pd-field" type="date" data-id="'+p.id+'" data-field="date" value="'+escapeHtml(d.date||'')+'"></label>';
+        html += '    <label>Provider<input class="pd-field" type="text" data-id="'+p.id+'" data-field="provider" value="'+escapeHtml(d.provider||'')+'"></label>';
+        html += '    <label>Booking ref<input class="pd-field" type="text" data-id="'+p.id+'" data-field="ref" value="'+escapeHtml(d.ref||'')+'"></label>';
+        html += '    <label>Notes<textarea class="pd-field" data-id="'+p.id+'" data-field="notes">'+escapeHtml(d.notes||'')+'</textarea></label>';
+        html += '  </div>';
+      }
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function handleLedgerClick(e){
+    const target = e.target.closest('[data-action]');
+    if(!target) return;
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+    if(action==='toggle-paid'){
+      state.paid[id] = !state.paid[id];
+      saveState(); renderLedger();
+    } else if(action==='toggle-paid-expand'){
+      if(uiState.expandedPaid.has(id)) uiState.expandedPaid.delete(id); else uiState.expandedPaid.add(id);
+      renderLedger();
+    }
+  }
+  function handleLedgerFieldInput(e){
+    const field = e.target.closest('.pd-field');
+    if(!field) return;
+    const id = field.dataset.id, key = field.dataset.field;
+    if(!state.paidDetails[id]) state.paidDetails[id] = {};
+    state.paidDetails[id][key] = field.value;
+    scheduleSave();
+  }
+  function handleLedgerFieldBlur(e){
+    const field = e.target.closest('.pd-field');
+    if(!field) return;
+    renderLedger();
+  }
+
+  // ---------------- days ----------------
+  function renderDays(){
+    const container = document.getElementById('daysContainer');
+    const rn = getRomeNow();
+    let html = '';
+    TRIP.days.forEach(function(day){
+      const isToday = day.date === rn.dateStr;
+      const expanded = uiState.expandedDay === day.key;
+      html += '<div class="day-card '+(isToday?'is-today':'')+'">';
+      html += '  <div class="day-header" data-action="toggle-day" data-day="'+day.key+'">';
+      html += '    <div class="day-date"><span class="dow">'+day.dow+'</span><span class="dnum">'+day.label+'</span></div>';
+      html += '    <div class="day-title-wrap"><h3 class="day-title">'+day.title+'</h3>'+(isToday?'<span class="today-pill">Today</span>':'')+'</div>';
+      html += '    <span class="chevron '+(expanded?'open':'')+'">⌄</span>';
+      html += '  </div>';
+      if(expanded){
+        html += '  <div class="day-body">';
+        const order = state.order[day.key];
+        order.forEach(function(id){
+          const item = findItem(day.key, id);
+          if(!item) return;
+          const isDone = !!state.done[id];
+          const isSkipped = !!state.skipped[id];
+          const noteOpen = uiState.openNotes.has(id);
+          const hasNote = !!(state.notes[id] && state.notes[id].trim());
+          html += '<div class="item-row '+(isDone?'is-done':'')+' '+(isSkipped?'is-skipped':'')+'">';
+          html += '  <div class="item-row-main">';
+          html += '    <label class="chk"><input type="checkbox" aria-label="Mark done" data-action="toggle-done" data-id="'+id+'" '+(isDone?'checked':'')+'></label>';
+          html += '    <div class="item-main"><span class="item-time">'+item.time+'</span><span class="item-text">'+(item.custom?escapeHtml(item.text):item.text)+'</span></div>';
+          html += '    <div class="item-controls">';
+          html += '      <button data-action="move-up" data-day="'+day.key+'" data-id="'+id+'" aria-label="Move up">▲</button>';
+          html += '      <button data-action="move-down" data-day="'+day.key+'" data-id="'+id+'" aria-label="Move down">▼</button>';
+          html += '      <button class="note-btn '+(hasNote?'has-note':'')+'" data-action="toggle-note" data-id="'+id+'" aria-label="Note">📝</button>';
+          html += '      <button data-action="toggle-skip" data-id="'+id+'" aria-label="Cross off">✕</button>';
+          if(item.custom){
+            html += '    <button data-action="delete-custom" data-day="'+day.key+'" data-id="'+id+'" aria-label="Delete">🗑</button>';
+          }
+          html += '    </div>';
+          html += '  </div>';
+          if(noteOpen){
+            html += '  <div class="note-wrap"><textarea class="note-textarea" data-id="'+id+'" placeholder="Add a note…">'+escapeHtml(state.notes[id]||'')+'</textarea></div>';
+          }
+          html += '</div>';
+        });
+        const formOpen = uiState.openAddForm.has(day.key);
+        html += '<button class="add-stop-toggle" data-action="toggle-add-form" data-day="'+day.key+'">'+(formOpen?'Cancel':'+ Add a stop')+'</button>';
+        if(formOpen){
+          html += '<div class="add-form" data-day="'+day.key+'">';
+          html += '  <input type="time" class="add-time" value="12:00">';
+          html += '  <input type="text" class="add-text" placeholder="What is the plan?">';
+          html += '  <div class="add-form-actions">';
+          html += '    <button class="btn-add" data-action="submit-add" data-day="'+day.key+'">Add</button>';
+          html += '    <button class="btn-cancel" data-action="cancel-add" data-day="'+day.key+'">Cancel</button>';
+          html += '  </div>';
+          html += '</div>';
+        }
+        html += '  </div>';
+      }
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function moveItem(dayKey, id, dir){
+    const arr = state.order[dayKey];
+    const idx = arr.indexOf(id);
+    if(idx===-1) return;
+    const newIdx = idx+dir;
+    if(newIdx<0 || newIdx>=arr.length) return;
+    const tmp = arr[idx]; arr[idx]=arr[newIdx]; arr[newIdx]=tmp;
+    saveState(); renderDays();
+  }
+  function deleteCustom(dayKey, id){
+    state.customItems[dayKey] = state.customItems[dayKey].filter(function(i){ return i.id!==id; });
+    state.order[dayKey] = state.order[dayKey].filter(function(x){ return x!==id; });
+    delete state.done[id]; delete state.skipped[id]; delete state.notes[id];
+    saveState(); renderDays();
+  }
+  function submitAdd(dayKey, btn){
+    const form = btn.closest('.add-form');
+    const timeVal = form.querySelector('.add-time').value || '12:00';
+    const textVal = form.querySelector('.add-text').value.trim();
+    if(!textVal) return;
+    const id = 'custom-'+dayKey+'-'+Date.now();
+    state.customItems[dayKey].push({ id:id, time:timeVal, text:textVal });
+    state.order[dayKey].push(id);
+    uiState.openAddForm.delete(dayKey);
+    saveState(); renderDays();
+  }
+
+  function handleDaysClick(e){
+    const target = e.target.closest('[data-action]');
+    if(!target) return;
+    const action = target.dataset.action;
+    const dayKey = target.dataset.day;
+    const id = target.dataset.id;
+    if(action==='toggle-day'){
+      uiState.expandedDay = (uiState.expandedDay===dayKey) ? null : dayKey;
+      renderDays();
+    } else if(action==='toggle-done'){
+      state.done[id] = !state.done[id];
+      saveState(); renderDays(); renderStatusCard();
+    } else if(action==='toggle-skip'){
+      state.skipped[id] = !state.skipped[id];
+      saveState(); renderDays(); renderStatusCard(); updateBoatAndDots();
+    } else if(action==='move-up'){
+      moveItem(dayKey, id, -1);
+    } else if(action==='move-down'){
+      moveItem(dayKey, id, 1);
+    } else if(action==='toggle-note'){
+      if(uiState.openNotes.has(id)) uiState.openNotes.delete(id); else uiState.openNotes.add(id);
+      renderDays();
+    } else if(action==='delete-custom'){
+      deleteCustom(dayKey, id);
+    } else if(action==='toggle-add-form'){
+      if(uiState.openAddForm.has(dayKey)) uiState.openAddForm.delete(dayKey); else uiState.openAddForm.add(dayKey);
+      renderDays();
+    } else if(action==='submit-add'){
+      submitAdd(dayKey, target);
+    } else if(action==='cancel-add'){
+      uiState.openAddForm.delete(dayKey);
+      renderDays();
+    }
+  }
+  function handleDaysNoteInput(e){
+    const ta = e.target.closest('.note-textarea');
+    if(!ta) return;
+    state.notes[ta.dataset.id] = ta.value;
+    scheduleSave();
+  }
+  function handleDaysNoteBlur(e){
+    const ta = e.target.closest('.note-textarea');
+    if(!ta) return;
+    renderDays();
+  }
+
+  // ---------------- init ----------------
+  let lastDateStr = null, lastPhase = null;
+  function tick(){
+    renderStatusCard();
+    updateBoatAndDots();
+    const rn = getRomeNow();
+    const phase = getPhase();
+    if(rn.dateStr!==lastDateStr || phase!==lastPhase){
+      if(lastDateStr!==null){
+        uiState.expandedDay = computeDefaultExpandedDay();
+      }
+      lastDateStr = rn.dateStr; lastPhase = phase;
+      renderDays();
+    }
+  }
+
+  function init(){
+    loadState();
+    uiState.expandedDay = computeDefaultExpandedDay();
+    document.getElementById('ledgerCard').addEventListener('click', handleLedgerClick);
+    document.getElementById('ledgerCard').addEventListener('input', handleLedgerFieldInput);
+    document.getElementById('ledgerCard').addEventListener('focusout', handleLedgerFieldBlur);
+    document.getElementById('daysContainer').addEventListener('click', handleDaysClick);
+    document.getElementById('daysContainer').addEventListener('input', handleDaysNoteInput);
+    document.getElementById('daysContainer').addEventListener('focusout', handleDaysNoteBlur);
+
+    renderStatusCard();
+    initCoastline();
+    renderLedger();
+    renderDays();
+
+    const rn = getRomeNow();
+    lastDateStr = rn.dateStr; lastPhase = getPhase();
+    setInterval(tick, 1000);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
