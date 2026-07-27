@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naples · Pompeii · Positano — Trip Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #16232E;
+    --ink-2: #1c2c38;
+    --majolica: #2C6E8E;
+    --lemon: #F2B705;
+    --plaster: #FCFAF4;
+    --terracotta: #B5502F;
+    --crossed: #C6564B;
+    --line: rgba(252,250,244,0.10);
+    --line-strong: rgba(44,110,142,0.45);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(120% 140% at 50% -10%, #1b2c39 0%, var(--ink) 45%, #101a22 100%);
+    color: var(--plaster);
+    font-family: 'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app{ max-width:460px; margin:0 auto; padding:28px 16px 64px; }
+
+  /* focus states */
+  button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+    outline: 2px solid var(--lemon);
+    outline-offset: 2px;
+  }
+  button{ font-family:'Inter',sans-serif; cursor:pointer; }
+
+  /* ---------- header ---------- */
+  .hero{ text-align:center; margin-bottom:22px; }
+  .hero .eyebrow{
+    margin:0 0 6px; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase;
+    color: var(--majolica); font-weight:600;
+  }
+  .hero h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:1.9rem; margin:0;
+    letter-spacing:0.01em;
+  }
+  .hero .route{
+    margin:6px 0 0; font-size:0.85rem; color: rgba(252,250,244,0.55);
+  }
+
+  /* ---------- shared card ---------- */
+  .card{
+    background: linear-gradient(180deg, rgba(44,110,142,0.14), rgba(44,110,142,0.06));
+    border:1px solid var(--line-strong);
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:18px;
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.6);
+  }
+  .card-title{
+    font-family:'Fraunces', serif; font-size:1.05rem; font-weight:600; margin:0 0 4px;
+  }
+
+  /* ---------- status card ---------- */
+  .status-label{
+    font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase;
+    color: var(--lemon); font-weight:700; margin-bottom:8px;
+  }
+  .status-main{
+    font-family:'Fraunces', serif; font-size:1.25rem; line-height:1.35; font-weight:500;
+  }
+  .status-sub{
+    margin-top:8px; font-size:0.82rem; color: rgba(252,250,244,0.55);
+  }
+  .countdown-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px;
+  }
+  .countdown-grid .cd-cell{ text-align:center; }
+  .countdown-grid .num{
+    display:block; font-family:'Fraunces', serif; font-size:2rem; font-weight:600; color: var(--plaster);
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown-grid .unit{
+    display:block; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color: rgba(252,250,244,0.5);
+    margin-top:2px;
+  }
+
+  /* ---------- coastline signature ---------- */
+  .coastline-card{ text-align:center; }
+  .coastline-caption{
+    font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color: var(--terracotta);
+    font-weight:700; margin:0 0 10px;
+  }
+  #coastlineSvg{ width:100%; height:auto; display:block; }
+  .stop-label{
+    font-size:9px; fill: rgba(252,250,244,0.6); font-family:'Inter',sans-serif; letter-spacing:0.02em;
+  }
+
+  /* ---------- ledger ---------- */
+  .ledger-header{
+    display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px;
+  }
+  .ledger-total{
+    font-family:'Fraunces', serif; font-size:0.95rem; color: var(--lemon); font-weight:600;
+  }
+  .paid-row{
+    border-top:1px solid var(--line); padding:10px 0;
+  }
+  .paid-row:first-of-type{ border-top:none; padding-top:2px; }
+  .paid-row-header{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+  }
+  .paid-row.is-paid .paid-label, .paid-row.is-paid .paid-amount{
+    opacity:0.45;
+  }
+  .chk{ display:flex; align-items:center; flex-shrink:0; }
+  .chk input[type="checkbox"]{ width:18px; height:18px; accent-color: var(--lemon); cursor:pointer; }
+  .paid-info{ flex:1; min-width:0; }
+  .paid-label{ font-size:0.9rem; font-weight:600; }
+  .paid-summary{
+    font-size:0.75rem; color: rgba(252,250,244,0.45); margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .paid-amount{ font-size:0.85rem; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .pill{
+    font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700;
+    padding:3px 9px; border-radius:99px; white-space:nowrap;
+  }
+  .pill-pending{ background: rgba(181,80,47,0.25); color: #f0b79f; }
+  .pill-paid{ background: rgba(242,183,5,0.22); color: var(--lemon); }
+  .paid-details{
+    margin-top:12px; display:flex; flex-direction:column; gap:10px;
+    padding-left:28px;
+  }
+  .paid-details label{
+    display:flex; flex-direction:column; gap:4px; font-size:0.72rem;
+    color: rgba(252,250,244,0.55); letter-spacing:0.03em; text-transform:uppercase; font-weight:600;
+  }
+  .pd-field{
+    font-family:'Inter',sans-serif; background: rgba(16,26,34,0.65); border:1px solid var(--line-strong);
+    border-radius:8px; color: var(--plaster); padding:8px 10px; font-size:0.88rem;
+    text-transform:none; letter-spacing:normal; font-weight:400;
+  }
+  textarea.pd-field{ resize:vertical; min-height:44px; }
+
+  /* ---------- days ---------- */
+  .day-card{
+    border:1px solid var(--line-strong); border-radius:18px; margin-bottom:14px; overflow:hidden;
+    background: linear-gradient(180deg, rgba(44,110,142,0.10), rgba(44,110,142,0.03));
+  }
+  .day-card.is-today{ border-color: var(--lemon); box-shadow: 0 0 0 1px rgba(242,183,5,0.35); }
+  .day-header{
+    display:flex; align-items:center; gap:12px; padding:16px 18px; cursor:pointer;
+  }
+  .day-date{
+    text-align:center; flex-shrink:0; width:44px;
+  }
+  .day-date .dow{
+    display:block; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; color: rgba(252,250,244,0.5);
+  }
+  .day-date .dnum{
+    display:block; font-family:'Fraunces', serif; font-size:1.15rem; font-weight:600;
+  }
+  .day-title-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .day-title{ font-family:'Fraunces', serif; font-size:1.02rem; font-weight:600; margin:0; }
+  .today-pill{
+    background: var(--lemon); color: var(--ink); font-size:0.6rem; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase; padding:2px 9px; border-radius:99px;
+  }
+  .chevron{ font-size:1.1rem; color: rgba(252,250,244,0.5); transition: transform 0.2s ease; flex-shrink:0; }
+  .chevron.open{ transform: rotate(180deg); }
+  .day-body{ padding:0 18px 18px; }
+
+  .item-row{ border-top:1px solid var(--line); padding:10px 0; }
+  .item-row-main{ display:flex; align-items:flex-start; gap:10px; }
+  .item-row .chk{ margin-top:2px; }
+  .item-main{ flex:1; min-width:0; }
+  .item-time{
+    display:block; font-size:0.72rem; color: var(--majolica); font-weight:600; letter-spacing:0.02em;
+  }
+  .item-text{ display:block; font-size:0.9rem; line-height:1.4; margin-top:2px; }
+  .item-price{ display:block; font-size:0.8rem; color: var(--lemon); margin-top:3px; font-weight:600; }
+  .item-maps-link{
+    display:inline-block; margin-top:3px; font-size:0.75rem; color: var(--majolica);
+    border-bottom:1px dotted var(--majolica); cursor:pointer; font-weight:600;
+  }
+  .item-maps-link:hover{ color: var(--lemon); border-bottom-color: var(--lemon); }
+  .item-row.is-done .item-text, .item-row.is-done .item-time{
+    opacity:0.4; text-decoration: line-through; text-decoration-color: rgba(252,250,244,0.5);
+  }
+  .item-row.is-skipped .item-text, .item-row.is-skipped .item-time{
+    opacity:0.55; text-decoration: line-through; text-decoration-color: var(--crossed); color: var(--crossed);
+  }
+  .item-controls{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .item-controls button{
+    background:transparent; border:none; color: rgba(252,250,244,0.55); font-size:0.85rem;
+    width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  }
+  .item-controls button:hover{ background: rgba(252,250,244,0.08); color: var(--plaster); }
+  .item-controls button.note-btn.has-note{ color: var(--lemon); }
+  .note-wrap{ padding:8px 0 0 28px; }
+  .note-textarea{
+    width:100%; font-family:'Inter',sans-serif; background: rgba(16,26,34,0.65);
+    border:1px solid var(--line-strong); border-radius:8px; color: var(--plaster);
+    padding:8px 10px; font-size:0.85rem; resize:vertical; min-height:44px;
+  }
+
+  .add-stop-toggle{
+    margin-top:12px; background:transparent; border:1px dashed var(--line-strong);
+    color: rgba(252,250,244,0.6); font-size:0.82rem; padding:8px 12px; border-radius:10px; width:100%;
+  }
+  .add-stop-toggle:hover{ border-color: var(--lemon); color: var(--lemon); }
+  .add-form{
+    margin-top:10px; display:flex; flex-direction:column; gap:8px;
+    background: rgba(16,26,34,0.5); border-radius:10px; padding:12px;
+  }
+  .add-form input[type="time"], .add-form input[type="text"]{
+    font-family:'Inter',sans-serif; background: rgba(16,26,34,0.7); border:1px solid var(--line-strong);
+    border-radius:8px; color: var(--plaster); padding:8px 10px; font-size:0.85rem; width:100%;
+  }
+  .add-form-actions{ display:flex; gap:8px; }
+  .add-form-actions button{
+    flex:1; border-radius:8px; padding:8px 0; font-size:0.82rem; font-weight:600; border:none;
+  }
+  .add-form-actions .btn-add{ background: var(--lemon); color: var(--ink); }
+  .add-form-actions .btn-cancel{ background: transparent; color: rgba(252,250,244,0.55); border:1px solid var(--line-strong); }
+
+  /* ---------- choice toggle ---------- */
+  .choice-toggle{ margin:16px 0 10px; padding-top:14px; border-top:1px solid var(--line-strong); }
+  .choice-toggle-label{
+    font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color: var(--terracotta);
+    font-weight:700; margin-bottom:8px;
+  }
+  .choice-toggle-buttons{ display:flex; gap:8px; }
+  .choice-btn{
+    flex:1; padding:10px 6px; border-radius:10px; border:1px solid var(--line-strong);
+    background: rgba(16,26,34,0.4); color: rgba(252,250,244,0.65); font-size:0.82rem; font-weight:600;
+    text-align:center;
+  }
+  .choice-btn:hover{ border-color: var(--lemon); color: var(--plaster); }
+  .choice-btn.is-active{ background: var(--lemon); color: var(--ink); border-color: var(--lemon); }
+
+  /* ---------- recommendations panel ---------- */
+  .recs-toggle-wrap{ margin:14px 0; padding-top:12px; border-top:1px solid var(--line-strong); }
+  .recs-toggle-btn{
+    width:100%; background: rgba(181,80,47,0.12); border:1px solid rgba(181,80,47,0.4);
+    color: var(--plaster); font-size:0.85rem; font-weight:600; padding:12px 14px; border-radius:12px;
+    display:flex; align-items:center; justify-content:space-between; text-align:left;
+  }
+  .recs-toggle-btn:hover{ border-color: var(--terracotta); }
+  .recs-toggle-btn .recs-sub{ display:block; font-size:0.72rem; font-weight:400; color:rgba(252,250,244,0.5); margin-top:2px; }
+  .recs-panel{ margin-top:10px; }
+  .recs-category{ font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--terracotta); font-weight:700; margin:14px 0 8px; }
+  .recs-category:first-child{ margin-top:4px; }
+  .recs-item{ padding:8px 0; border-top:1px solid var(--line); }
+  .recs-item-name{ font-weight:600; font-size:0.88rem; }
+  .recs-item-desc{ font-size:0.75rem; color:rgba(252,250,244,0.5); margin-top:2px; }
+  .recs-item-tags{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .recs-item-tag{ font-size:0.6rem; letter-spacing:0.04em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:99px; background:rgba(44,110,142,0.25); color:#8fc5de; }
+  .recs-item-price{ font-size:0.78rem; color:var(--lemon); margin-top:6px; font-weight:600; }
+  .recs-item-maps{ display:inline-block; margin-top:5px; font-size:0.75rem; color:var(--majolica); border-bottom:1px dotted var(--majolica); text-decoration:none; font-weight:600; }
+
+  /* ---------- footer ---------- */
+  .footnote{ text-align:center; padding:8px 10px 0; }
+  .footnote p{ font-size:0.76rem; font-style:italic; color: rgba(252,250,244,0.4); line-height:1.5; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hero">
+    <p class="eyebrow">8 – 11 September 2026</p>
+    <h1>Naples · Pompeii · Positano</h1>
+    <p class="route">easyJet EZY2125 out · Ryanair FR6834 back</p>
+  </header>
+
+  <section class="card" id="statusCard" aria-live="polite"></section>
+
+  <section class="card coastline-card">
+    <p class="coastline-caption">Naples → Pompeii → Positano → Naples</p>
+    <svg id="coastlineSvg" viewBox="0 0 420 130" xmlns="http://www.w3.org/2000/svg">
+      <path id="coastlinePath" d="M30,90 C70,50 110,40 150,45 C190,50 230,120 270,105 C310,92 350,45 390,55"
+            fill="none" stroke="var(--majolica)" stroke-width="2" stroke-dasharray="5 7" stroke-linecap="round"/>
+      <circle id="dot0" cx="30" cy="90" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot1" cx="150" cy="45" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot2" cx="270" cy="105" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <circle id="dot3" cx="390" cy="55" r="6" fill="none" stroke="var(--plaster)" stroke-width="2"/>
+      <text class="stop-label" x="30" y="112" text-anchor="middle">Naples</text>
+      <text class="stop-label" x="150" y="30" text-anchor="middle">Pompeii</text>
+      <text class="stop-label" x="270" y="126" text-anchor="middle">Positano</text>
+      <text class="stop-label" x="390" y="40" text-anchor="middle">Naples</text>
+      <text id="boatMarker" x="30" y="78" font-size="18" text-anchor="middle">⛵</text>
+    </svg>
+  </section>
+
+  <section class="card" id="ledgerCard"></section>
+
+  <section class="card" id="placesCard"></section>
+
+  <section id="daysContainer"></section>
+
+  <footer class="footnote">
+    <p><em>Ferry times are seasonal and published weekly — reconfirm with NLG or Positano Jet a few days before travel; high-speed ferries can be suspended in rough seas.</em></p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = 'naples-trip-dashboard-v3';
+
+  const TRIP = {
+    startUTC: Date.UTC(2026,8,8,5,15,0),   // 06:15 UK (BST, UTC+1) departure
+    endUTC:   Date.UTC(2026,8,11,17,15,0), // 18:15 UK (BST, UTC+1) arrival
+    days: [
+      {
+        key:'day1', date:'2026-09-08', dow:'Tue', label:'8 Sep', title:'Arrival & 2:00 PM Ragù',
+        items:[
+          {id:'d1-1', start:'10:25', end:'10:35', time:'10:25', text:'Land at Naples Airport (NAP) — easyJet EZY2125 from Manchester', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
+          {id:'d1-2', start:'10:25', end:'11:15', time:'10:25–11:15', text:'Clear passport control, collect bags, exit the terminal', price_gbp:'—', price_eur:'—'},
+          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to Airbnb Casa Dante (near Piazza Dante)', maps:'Piazza Dante Naples', price_gbp:'£18–22', price_eur:'€20–25'},
+          {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags at Airbnb, freshen up, explore Spaccanapoli street', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'★ BOOKED: Tandem Ristorante — legendary Neapolitan ragù lunch at Piazzetta Nilo', maps:'Tandem Ristorante Piazzetta Nilo Naples', price_gbp:'£28–40', price_eur:'€32–46'},
+          {id:'d1-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Post-lunch wander: Spaccanapoli, street art, Via San Gregorio Armeno (presepi shops)', maps:'Via San Gregorio Armeno Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d1-7', start:'17:00', end:'18:30', time:'17:00–18:30', text:'Caffè Gambrinus: sfogliatella & espresso with views (historic cafe, since 1860)', maps:'Caffè Gambrinus Naples', price_gbp:'£4–7', price_eur:'€5–8'},
+          {id:'d1-8', start:'18:30', end:'20:00', time:'18:30–20:00', text:'Aperitivo at Enoteca Belledonne — natural wines, charcuterie, Piazza Bellini vibes', maps:'Enoteca Belledonne Piazza Bellini Naples', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d1-9', start:'20:00', end:'21:30', time:'20:00–21:30', text:'Napul\'è Bar: cocktails & street food, Piazza Bellini sunset crowd', maps:'Napul\'è Bar Piazza Bellini Naples', price_gbp:'£6–14', price_eur:'€7–16'},
+          {id:'d1-10', start:'21:30', end:'23:59', time:'21:30 – late', text:'Barril (Via Cisterna dell\'Olio): craft cocktails, intimate vibe. Or Marechiaro wine bar — wherever the night takes you', maps:'Barril Naples cocktail bar', price_gbp:'£8–16', price_eur:'€10–18'}
+        ]
+      },
+      {
+        key:'day2', date:'2026-09-09', dow:'Wed', label:'9 Sep', title:'Pompeii or Vesuvius & Volcanic Winery',
+        items:[
+          {id:'d2-1', start:'07:30', end:'08:15', time:'07:30–08:15', text:'Breakfast: pastry & coffee at Pasticceria Poppella near Dante', maps:'Pasticceria Poppella Naples', price_gbp:'£3–5', price_eur:'€4–6'},
+
+          {id:'d2-pom-1', choiceGroup:'day2-excursion', choiceOption:'pompeii', start:'08:30', end:'09:10', time:'08:30–09:10', text:'Metro Dante (Line 1 → Garibaldi) → Circumvesuviana to Pompei Scavi', maps:'Pompei Scavi Station', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d2-pom-2', choiceGroup:'day2-excursion', choiceOption:'pompeii', start:'09:30', end:'12:30', time:'09:30–12:30', text:'Pompeii Archaeological Park — 3-hour highlights tour (guide recommended, book ahead)', maps:'Pompeii Archaeological Park', price_gbp:'£18–24', price_eur:'€20–27'},
+          {id:'d2-pom-3', choiceGroup:'day2-excursion', choiceOption:'pompeii', start:'12:30', end:'13:00', time:'12:30–13:00', text:'Taxi from Pompei Scavi to Cantina del Vesuvio', maps:'Cantina del Vesuvio', price_gbp:'£12–16', price_eur:'€14–18'},
+
+          {id:'d2-ves-1', choiceGroup:'day2-excursion', choiceOption:'vesuvius', start:'08:15', end:'09:00', time:'08:15–09:00', text:'Metro Dante (Line 1 → Garibaldi) → Circumvesuviana to Ercolano Scavi (one stop before Pompei)', maps:'Ercolano Scavi Station', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d2-ves-2', choiceGroup:'day2-excursion', choiceOption:'vesuvius', start:'09:00', end:'09:30', time:'09:00–09:30', text:'Vesuvio Express shuttle bus: Ercolano Scavi → Quota 1000 car park (book crater ticket online in advance — limited daily capacity)', maps:'Vesuvio Express Ercolano', price_gbp:'£9–11', price_eur:'€10–12'},
+          {id:'d2-ves-3', choiceGroup:'day2-excursion', choiceOption:'vesuvius', start:'09:30', end:'11:15', time:'09:30–11:15', text:'Hike to the crater rim & back (~45 min each way, steep gravel path — wear proper shoes) — panoramic views over the Bay of Naples', maps:'Mount Vesuvius Crater', price_gbp:'£9–11 entry', price_eur:'€10–12 entry'},
+          {id:'d2-ves-4', choiceGroup:'day2-excursion', choiceOption:'vesuvius', start:'11:15', end:'11:45', time:'11:15–11:45', text:'Shuttle bus back down: Quota 1000 → Ercolano Scavi', maps:'Vesuvio Express Ercolano', price_gbp:'Included', price_eur:'Included'},
+          {id:'d2-ves-5', choiceGroup:'day2-excursion', choiceOption:'vesuvius', start:'11:45', end:'12:30', time:'11:45–12:30', text:'Taxi from Ercolano to Cantina del Vesuvio', maps:'Cantina del Vesuvio', price_gbp:'£14–18', price_eur:'€16–20'},
+
+          {id:'d2-5', start:'13:00', end:'15:30', time:'13:00–15:30', text:'Wine tasting & 4-course organic lunch at Cantina del Vesuvio', maps:'Cantina del Vesuvio', price_gbp:'£45–60', price_eur:'€50–68'},
+          {id:'d2-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Return to Dante via Circumvesuviana + Metro (reverse journey)', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d2-7', start:'17:00', end:'18:00', time:'17:00–18:00', text:'Rest at Airbnb, shower & change', maps:'Piazza Dante Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d2-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Evening stroll through Spaccanapoli — narrow medieval streets, street vendors, street art', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d2-9', start:'18:45', end:'19:15', time:'18:45–19:15', text:'Stop at Piazza San Domenico Maggiore — baroque church, street musicians, local scene', maps:'Piazza San Domenico Maggiore Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d2-10', start:'19:15', end:'20:00', time:'19:15–20:00', text:'Explore Via dei Tribunali — cafes, artisan shops, presepio boutiques, street food vendors', maps:'Via dei Tribunali Naples', price_gbp:'£4–10', price_eur:'€5–12'},
+          {id:'d2-11', start:'20:00', end:'20:45', time:'20:00–20:45', text:'Aperitivo at Enoteca Belledonne or Napul\'è Bar (Piazza Bellini) — wine, natural cork, local crowd', maps:'Enoteca Belledonne Piazza Bellini Naples', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d2-12', start:'20:45', end:'21:45', time:'20:45–21:45', text:'★ PIZZA: Pizzeria Gino Sorbillo — legendary family-run, pizza al taglio (counter) or sit-down', maps:'Pizzeria Gino Sorbillo Naples', price_gbp:'£10–16', price_eur:'€12–18'},
+          {id:'d2-13', start:'21:45', end:'23:00', time:'21:45–23:00', text:'Alternative dinner: Di Fara (iconic since 1957, Margherita pizza) or L\'Ebbrezza di Noè (pizza + natural wines)', maps:'Di Fara Naples', price_gbp:'£14–22', price_eur:'€16–26'},
+          {id:'d2-14', start:'23:00', end:'23:59', time:'23:00 – late', text:'Late night: Barril cocktail bar or stroll Piazza Bellini, street food at vendors', maps:'Barril Naples cocktail bar', price_gbp:'£6–12', price_eur:'€8–15'}
+        ]
+      },
+      {
+        key:'day3', date:'2026-09-10', dow:'Thu', label:'10 Sep', title:'Positano Direct Ferry Day Trip',
+        items:[
+          {id:'d3-1', start:'08:30', end:'09:00', time:'08:30–09:00', text:'Coffee & cornetto at Caffè Gambrinus or nearby (fuel up)', maps:'Caffè Gambrinus Naples', price_gbp:'£4–7', price_eur:'€5–8'},
+          {id:'d3-2', start:'09:15', end:'09:45', time:'09:15–09:45', text:'Walk to Municipio Metro (Line 1) → Molo Beverello Port', maps:'Molo Beverello Port Naples', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d3-3', start:'10:00', end:'11:30', time:'★ BOOKED: 10:00–11:30', text:'★ BOOKED: Direct ferry Naples → Positano (NLG JET)', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
+          {id:'d3-4', recsBefore:'day3-positano', start:'11:30', end:'13:30', time:'11:30–13:30', text:'Beach swim & drinks at La Gavitella or Spiaggia Grande beach club', maps:'La Gavitella Positano', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d3-5', start:'13:30', end:'16:00', time:'13:30–16:00', text:'Lunch: Chez Black or Da Vincenzo — cliffside Amalfi views, fresh pasta & seafood', maps:'Chez Black Positano', price_gbp:'£24–36', price_eur:'€28–40'},
+          {id:'d3-6', start:'16:00', end:'16:20', time:'16:00–16:20', text:'Explore Positano village: boutiques, narrow cliffside streets, gelato at Bacco', maps:'Positano town center', price_gbp:'£4–6', price_eur:'€5–7'},
+          {id:'d3-7', start:'16:24', end:'17:49', time:'★ BOOKED: 16:24–17:49', text:'★ BOOKED: Return ferry Positano → Molo Beverello, Naples (NLG JET)', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
+          {id:'d3-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Walk Lungomare Caracciolo — waterfront promenade with Vesuvius views, sea breezes, golden hour light', maps:'Lungomare Caracciolo Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d3-9', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Explore Borgo Marinaro — fishermen\'s quarter, pastel houses, local restaurants overlooking bay', maps:'Borgo Marinaro Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d3-10', start:'19:30', end:'20:15', time:'19:30–20:15', text:'Sunset drinks: Rooftop at Decumani Hotel or cocktails at Il Transatlantico (bay views with sunset)', maps:'Decumani Hotel Rooftop Naples', price_gbp:'£10–18', price_eur:'€12–21'},
+          {id:'d3-11', start:'20:15', end:'21:30', time:'20:15–21:30', text:'Dinner: Pizzeria Sorbillo (street pizza al taglio, quick & authentic) or sit-down at L\'Ebbrezza di Noè', maps:'Pizzeria Sorbillo Naples', price_gbp:'£12–20', price_eur:'€14–23'},
+          {id:'d3-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'Piazza Bellini nightlife — wine bars, craft cocktails at Barril, street musicians, local energy', maps:'Piazza Bellini Naples bars', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d3-13', start:'22:30', end:'23:59', time:'22:30 – late', text:'Late night: Marechiaro wine bar (seafood-focused), more Piazza Bellini exploration, or wind down at Spaccanapoli', maps:'Marechiaro Naples wine bar', price_gbp:'£6–14', price_eur:'€7–16'}
+        ]
+      },
+      {
+        key:'day4', date:'2026-09-11', dow:'Fri', label:'11 Sep', title:'Final Stroll & Flight Home',
+        items:[
+          {id:'d4-1', start:'08:00', end:'09:00', time:'08:00–09:00', text:'Check out of Airbnb, store bags at luggage service (€5–8/bag)', maps:'Piazza Dante Naples', price_gbp:'£4–6', price_eur:'€5–8'},
+          {id:'d4-2', start:'09:00', end:'10:30', time:'09:00–10:30', text:'Final pastries: sfogliatella at Pasticceria Poppella + espresso', maps:'Pasticceria Poppella Naples', price_gbp:'£4–8', price_eur:'€5–9'},
+          {id:'d4-3', start:'10:30', end:'12:30', time:'10:30–12:30', text:'Wander & shopping: Toledo street (via San Carlo), Via Chiaia designer quarter', maps:'Via Toledo Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d4-4', start:'12:30', end:'13:30', time:'12:30–13:30', text:'Light lunch: Trattoria da Pepe or pizza al taglio near Toledo', maps:'Trattoria da Pepe Naples', price_gbp:'£8–14', price_eur:'€10–16'},
+          {id:'d4-5', start:'13:40', end:'14:15', time:'13:40–14:15', text:'Taxi: Piazza Dante → Naples Airport (€20–25, ~20 min)', price_gbp:'£18–22', price_eur:'€20–25'},
+          {id:'d4-6', start:'14:15', end:'16:15', time:'14:15–16:15', text:'Check in, security & boarding (Ryanair FR6834)', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
+          {id:'d4-7', start:'16:15', end:'18:15', time:'16:15–18:15', text:'Flight home: Ryanair FR6834 to Manchester', price_gbp:'—', price_eur:'—'}
+        ]
+      }
+    ],
+    extras: [
+      {id:'ex-airbnb', name:'Casa Dante Airbnb', tags:['Accommodation'], maps:'Piazza Dante Naples', price_gbp:'~£40–60/night', price_eur:'~€45–70/night', desc:'3-night stay'},
+      {id:'ex-metro-dante', name:'Dante Metro Station', tags:['Transport'], maps:'Dante Metro Station Naples', price_gbp:'£8 (3-day pass)', price_eur:'€9.60 (3-day pass)', desc:'Line 1 transport hub'},
+      {id:'ex-metro-garibaldi', name:'Garibaldi Metro Station', tags:['Transport'], maps:'Garibaldi Metro Station Naples', price_gbp:'Incl. in pass', price_eur:'Incl. in pass', desc:'Transfer to Circumvesuviana'},
+      {id:'ex-metro-municipio', name:'Municipio Metro Station', tags:['Transport'], maps:'Municipio Metro Station Naples', price_gbp:'Incl. in pass', price_eur:'Incl. in pass', desc:'Ferry port access'},
+      {id:'ex-supermarket', name:'Carrefour Express (Via Chiaia)', tags:['Supermarket'], maps:'Carrefour Naples Via Chiaia', price_gbp:'—', price_eur:'—', desc:'Supermarket near Dante'},
+      {id:'ex-pastries', name:'Pasticceria Poppella', tags:['Pastries'], maps:'Pasticceria Poppella Naples', price_gbp:'£3–5', price_eur:'€4–6', desc:'Award-winning sfogliatelle'},
+      {id:'ex-pastries2', name:'Gran Caffè Vergnano', tags:['Coffee','Pastries'], maps:'Gran Caffè Vergnano Naples', price_gbp:'£3–5', price_eur:'€4–6', desc:'Coffee roastery + pastries'},
+      {id:'ex-coffee', name:'Caffè Gambrinus', tags:['Coffee','Historic Cafe'], maps:'Caffè Gambrinus Naples', price_gbp:'£4–7', price_eur:'€5–8', desc:'Historic cafe since 1860'},
+      {id:'ex-pizza', name:'L\'Antica Pizzeria da Michele', tags:['Casual Pizza'], maps:'L\'Antica Pizzeria da Michele Naples', price_gbp:'£8–14', price_eur:'€10–16', desc:'Quick pizza by the slice, central'},
+      {id:'ex-trattoria', name:'Osteria da Carmela', tags:['General Italian','Traditional Neapolitan'], maps:'Osteria da Carmela Naples', price_gbp:'£16–26', price_eur:'€18–30', desc:'Family-run trattoria near Piazza Dante'},
+      {id:'ex-beer', name:'Il Birraiuolo', tags:['Craft Beer'], maps:'Il Birraiuolo Naples', price_gbp:'£4–7', price_eur:'€5–8', desc:'Cosy craft beer bar just north of Dante Metro'},
+      {id:'ex-bar', name:'Napul\'è Bar (Piazza Bellini)', tags:['Wine','Aperitivo'], maps:'Napul\'è Bar Piazza Bellini Naples', price_gbp:'£6–14', price_eur:'€7–16', desc:'Wine bar, aperitivo'},
+      {id:'ex-enoteca', name:'Enoteca Belledonne', tags:['Wine','Charcuterie'], maps:'Enoteca Belledonne Piazza Bellini Naples', price_gbp:'£8–16', price_eur:'€10–18', desc:'Natural wines, charcuterie'},
+      {id:'ex-music', name:'Alter Ego Lounge Bar', tags:['Live Music','Cocktails'], maps:'Alter Ego Lounge Bar Piazza Bellini Naples', price_gbp:'£6–12', price_eur:'€7–14', desc:'Live music & DJs near Piazza Bellini'},
+      {id:'ex-barril', name:'Barril (Via Cisterna dell\'Olio)', tags:['Cocktails'], maps:'Barril Naples cocktail bar', price_gbp:'£8–16', price_eur:'€10–18', desc:'Craft cocktails, intimate'},
+      {id:'ex-marechiaro', name:'Marechiaro Wine Bar', tags:['Wine','Seafood'], maps:'Marechiaro Naples wine bar', price_gbp:'£6–14', price_eur:'€7–16', desc:'Seafood-focused wine bar'}
+    ]
+  };
+
+  const PAID_ITEMS = [
+    {id:'ferry',      label:'Naples ↔ Positano Ferry'},
+    {id:'winetour',   label:'Cantina del Vesuvio Wine Tour'},
+    {id:'airbnb',     label:'Piazza Dante Airbnb'},
+    {id:'flight-out', label:'Outbound Flight — EZY2125'},
+    {id:'flight-in',  label:'Return Flight — FR6834'}
+  ];
+
+  const CHOICE_GROUPS = {
+    'day2-excursion': {
+      label: 'Morning excursion — choose one',
+      options: [
+        {key:'pompeii', icon:'🏛', label:'Pompeii Ruins'},
+        {key:'vesuvius', icon:'🌋', label:'Mount Vesuvius'}
+      ]
+    }
+  };
+
+  const REGION_RECOMMENDATIONS = {
+    'day3-positano': {
+      title: '☀️ Free time in Positano — need inspiration?',
+      subtitle: 'You have from 11:30 to ~16:00 before the return ferry',
+      groups: [
+        {
+          category: 'Beach Clubs',
+          items: [
+            {name:'La Scogliera', tags:['Luxury','Quiet'], maps:'La Scogliera Positano', price_gbp:'£210+ for two', price_eur:'€250+ for two', desc:'Quiet end of Spiaggia Grande, ladder into the water, adults-focused'},
+            {name:'Arienzo Beach Club', tags:['Iconic','Social'], maps:'Arienzo Beach Club Positano', price_gbp:'£170+pp', price_eur:'€200+pp', desc:'Famous orange umbrellas, free boat shuttle from the pier every 30 min'},
+            {name:'Da Adolfo', tags:['Local','Food-focused'], maps:'Da Adolfo Positano', price_gbp:'£25–40pp', price_eur:'€30–46pp', desc:'Boat-only access, grilled fish, relaxed local vibe'},
+            {name:'Fornillo Beach (La Marinella)', tags:['Budget','Quieter'], maps:'Fornillo Beach Positano', price_gbp:'£10–20pp', price_eur:'€12–23pp', desc:'A short walk from the main beach, far fewer crowds'}
+          ]
+        },
+        {
+          category: 'Restaurants & Views',
+          items: [
+            {name:'Chez Black', tags:['Seafood','On the beach'], maps:'Chez Black Positano', price_gbp:'£24–36', price_eur:'€28–40', desc:'Your scheduled lunch spot — right on Spiaggia Grande'},
+            {name:'Next2', tags:['Modern','Wine Bar'], maps:'Next2 Positano', price_gbp:'£20–32', price_eur:'€23–37', desc:'Stylish spot just off the main tourist drag'},
+            {name:'Terrazza Celé', tags:['Panoramic View'], maps:'Terrazza Celé Positano', price_gbp:'£26–40', price_eur:'€30–46', desc:'Stunning terrace, one of the best views in town'}
+          ]
+        },
+        {
+          category: 'View Spots',
+          items: [
+            {name:'Church of Santa Maria Assunta', tags:['Free','Iconic'], maps:'Chiesa Santa Maria Assunta Positano', price_gbp:'Free', price_eur:'Free', desc:'The majolica-tiled dome landmark, right in the village centre'},
+            {name:'Positano Belvedere', tags:['Free','Photo Spot'], maps:'Positano viewpoint belvedere', price_gbp:'Free', price_eur:'Free', desc:'Classic postcard view of the pastel houses cascading to the sea'}
+          ]
+        }
+      ]
+    }
+  };
+
+  // ---------------- state ----------------
+  function defaultState(){
+    return {
+      order: {
+        day1:['d1-1','d1-2','d1-3','d1-4','d1-5','d1-6','d1-7','d1-8','d1-9','d1-10'],
+        day2:['d2-1','d2-pom-1','d2-pom-2','d2-pom-3','d2-ves-1','d2-ves-2','d2-ves-3','d2-ves-4','d2-ves-5','d2-5','d2-6','d2-7','d2-8','d2-9','d2-10','d2-11','d2-12','d2-13','d2-14'],
+        day3:['d3-1','d3-2','d3-3','d3-4','d3-5','d3-6','d3-7','d3-8','d3-9','d3-10','d3-11','d3-12','d3-13'],
+        day4:['d4-1','d4-2','d4-3','d4-4','d4-5','d4-6','d4-7']
+      },
+      done:{}, skipped:{},
+      customItems:{ day1:[], day2:[], day3:[], day4:[] },
+      notes:{},
+      paid:{ 'airbnb':false, 'winetour':true, 'ferry':true, 'flight-out':false, 'flight-in':false },
+      paidDetails:{
+        'airbnb': { amount_gbp:'332.28', amount_eur:'', date:'2026-08-26', provider:'Airbnb — Accogliente appartamento nel Cuore della Città', ref:'', paidBy:'Chris (you)', notes:'Charged via Google Pay · 8–11 Sept stay' },
+        'winetour': { amount_gbp:'', amount_eur:'60', date:'', provider:'Cantina del Vesuvio', ref:'', paidBy:'Dave', notes:'Covers both of us' },
+        'ferry': { amount_gbp:'126.95', amount_eur:'', date:'', provider:'Ferryhopper (NLG Jet)', ref:'FH99ZV2924UE', paidBy:'Dave', notes:'Covers both passengers, round trip' }
+      },
+      choices:{ 'day2-excursion':'pompeii' }
+    };
+  }
+  let state = defaultState();
+  const uiState = { expandedDay: null, openNotes:new Set(), openAddForm:new Set(), expandedPaid:new Set(), openRecommendations:new Set() };
+
+  function loadState(){
+    try{
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if(stored){
+        const loaded = JSON.parse(stored);
+        const base = defaultState();
+        // Merge order arrays: keep user's saved order/customizations, but append
+        // any newly-added built-in items that aren't in the saved list yet,
+        // and drop ids that no longer exist as built-ins or customs.
+        const mergedOrder = {};
+        Object.keys(base.order).forEach(function(dayKey){
+          const savedArr = (loaded.order && loaded.order[dayKey]) ? loaded.order[dayKey] : [];
+          const customIds = (loaded.customItems && loaded.customItems[dayKey]) ? loaded.customItems[dayKey].map(function(c){ return c.id; }) : [];
+          const validIds = base.order[dayKey].concat(customIds);
+          const kept = savedArr.filter(function(id){ return validIds.indexOf(id)!==-1; });
+          const missing = base.order[dayKey].filter(function(id){ return kept.indexOf(id)===-1; });
+          mergedOrder[dayKey] = kept.concat(missing);
+        });
+        const mergedPaidDetails = {};
+        Object.keys(Object.assign({}, base.paidDetails, loaded.paidDetails||{})).forEach(function(pid){
+          mergedPaidDetails[pid] = Object.assign({}, base.paidDetails[pid]||{}, (loaded.paidDetails||{})[pid]||{});
+        });
+        state = {
+          order: mergedOrder,
+          done: loaded.done||{},
+          skipped: loaded.skipped||{},
+          customItems: Object.assign(base.customItems, loaded.customItems||{}),
+          notes: loaded.notes||{},
+          paid: Object.assign({}, base.paid, loaded.paid||{}),
+          paidDetails: mergedPaidDetails,
+          choices: Object.assign({}, base.choices, loaded.choices||{})
+        };
+      }
+    }catch(e){
+      console.warn('Trip dashboard: storage unavailable, using in-memory state only.', e);
+    }
+  }
+
+  let saveTimer = null;
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.warn('Trip dashboard: save failed.', e);
+    }
+  }
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 400);
+  }
+
+  // ---------------- helpers ----------------
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function timeToMinutes(t){
+    const parts = t.split(':');
+    return (+parts[0])*60 + (+parts[1]);
+  }
+  function addMinutesStr(t, add){
+    const total = timeToMinutes(t) + add;
+    const h = Math.floor((total%1440)/60), m = total%60;
+    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  function getRomeNow(){
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone:'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+    });
+    const parts = {};
+    fmt.formatToParts(now).forEach(function(p){ parts[p.type]=p.value; });
+    const dateStr = parts.year+'-'+parts.month+'-'+parts.day;
+    const minutes = (+parts.hour)*60 + (+parts.minute) + (+parts.second)/60;
+    return { dateStr:dateStr, minutes:minutes };
+  }
+  function getPhase(){
+    const now = Date.now();
+    if(now < TRIP.startUTC) return 'before';
+    if(now > TRIP.endUTC) return 'after';
+    return 'during';
+  }
+
+  function findItem(dayKey, id){
+    const day = TRIP.days.find(function(d){ return d.key===dayKey; });
+    const builtin = day.items.find(function(i){ return i.id===id; });
+    if(builtin) return Object.assign({custom:false}, builtin);
+    const custom = state.customItems[dayKey].find(function(i){ return i.id===id; });
+    if(custom){
+      return { id:custom.id, start:custom.time, end:addMinutesStr(custom.time,30), time:custom.time, text:custom.text, price_gbp:custom.price_gbp, price_eur:custom.price_eur, maps:custom.maps, custom:true };
+    }
+    return null;
+  }
+  function getMapsUrl(location){
+    if(!location) return null;
+    return 'https://www.google.com/maps/search/'+encodeURIComponent(location);
+  }
+  function isItemActive(item){
+    if(!item.choiceGroup) return true;
+    return state.choices[item.choiceGroup] === item.choiceOption;
+  }
+
+  function getDayItemsInTimeOrder(dayKey){
+    const day = TRIP.days.find(function(d){ return d.key===dayKey; });
+    let items = day.items.filter(isItemActive).map(function(i){ return Object.assign({custom:false}, i); });
+    items = items.concat(state.customItems[dayKey].map(function(c){
+      return { id:c.id, start:c.time, end:addMinutesStr(c.time,30), time:c.time, text:c.text, custom:true };
+    }));
+    items = items.filter(function(i){ return !state.skipped[i.id]; });
+    items.sort(function(a,b){ return timeToMinutes(a.start)-timeToMinutes(b.start); });
+    return items;
+  }
+
+  function getCurrentActivity(){
+    const rn = getRomeNow();
+    const day = TRIP.days.find(function(d){ return d.date===rn.dateStr; });
+    if(!day) return null;
+    const items = getDayItemsInTimeOrder(day.key);
+    for(let i=0;i<items.length;i++){
+      const it = items[i];
+      if(rn.minutes >= timeToMinutes(it.start) && rn.minutes < timeToMinutes(it.end)){
+        return { status:'current', item:it, day:day };
+      }
+    }
+    const next = items.find(function(it){ return timeToMinutes(it.start) > rn.minutes; });
+    if(next) return { status:'next', item:next, day:day };
+    return { status:'wrapped', day:day };
+  }
+
+  function getBoatProgress(){
+    const phase = getPhase();
+    if(phase==='before') return 0;
+    if(phase==='after') return 1;
+    const rn = getRomeNow();
+    let dayIdx = TRIP.days.findIndex(function(d){ return d.date===rn.dateStr; });
+    if(dayIdx===-1){
+      dayIdx = rn.dateStr < TRIP.days[0].date ? 0 : 3;
+    }
+    if(dayIdx===3) return 1;
+    const day = TRIP.days[dayIdx];
+    const items = getDayItemsInTimeOrder(day.key);
+    let frac = 0;
+    if(items.length){
+      const dayStart = timeToMinutes(items[0].start);
+      const dayEnd = timeToMinutes(items[items.length-1].end);
+      frac = dayEnd>dayStart ? clamp((rn.minutes-dayStart)/(dayEnd-dayStart),0,1) : 0;
+    }
+    return (dayIdx + frac)/3;
+  }
+
+  function computeDefaultExpandedDay(){
+    const phase = getPhase();
+    if(phase==='before') return 'day1';
+    if(phase==='after') return 'day4';
+    const rn = getRomeNow();
+    const day = TRIP.days.find(function(d){ return d.date===rn.dateStr; });
+    return day ? day.key : 'day1';
+  }
+
+  // ---------------- status card ----------------
+  function renderStatusCard(){
+    const el = document.getElementById('statusCard');
+    const phase = getPhase();
+    let html = '';
+    if(phase==='before'){
+      const diff = TRIP.startUTC - Date.now();
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/3600000);
+      const m = Math.floor((diff%3600000)/60000);
+      const s = Math.floor((diff%60000)/1000);
+      html += '<div class="status-label">Countdown to departure</div>';
+      html += '<div class="countdown-grid">';
+      html += '<div class="cd-cell"><span class="num">'+d+'</span><span class="unit">days</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+h+'</span><span class="unit">hrs</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+m+'</span><span class="unit">min</span></div>';
+      html += '<div class="cd-cell"><span class="num">'+s+'</span><span class="unit">sec</span></div>';
+      html += '</div>';
+      html += '<div class="status-sub">EZY2125 departs Manchester 06:15, Tue 8 Sep</div>';
+    } else if(phase==='after'){
+      html += '<div class="status-label">Trip complete</div>';
+      html += '<div class="status-main">Naples, Pompeii &amp; Positano — in the books. Buon ritorno. ✈️</div>';
+    } else {
+      const activity = getCurrentActivity();
+      if(!activity){
+        html += '<div class="status-label">In transit</div>';
+        html += '<div class="status-main">Somewhere between stops — check back shortly.</div>';
+      } else if(activity.status==='current'){
+        html += '<div class="status-label">Right now</div>';
+        html += '<div class="status-main">'+activity.item.time+' — '+escapeHtml(activity.item.text)+'</div>';
+      } else if(activity.status==='next'){
+        html += '<div class="status-label">Up next</div>';
+        html += '<div class="status-main">'+activity.item.time+' — '+escapeHtml(activity.item.text)+'</div>';
+      } else {
+        html += '<div class="status-label">Day wrapped</div>';
+        html += '<div class="status-main">Buona notte — next stop tomorrow.</div>';
+      }
+      html += '<div class="status-sub">'+activity.day.dow+' '+activity.day.label+' — '+escapeHtml(activity.day.title)+'</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  // ---------------- coastline ----------------
+  let coastPath, coastLen;
+  function initCoastline(){
+    coastPath = document.getElementById('coastlinePath');
+    coastLen = coastPath.getTotalLength();
+    updateBoatAndDots();
+  }
+  function updateBoatAndDots(){
+    if(!coastPath) return;
+    const progress = getBoatProgress();
+    const pt = coastPath.getPointAtLength(progress*coastLen);
+    const boat = document.getElementById('boatMarker');
+    boat.setAttribute('x', pt.x);
+    boat.setAttribute('y', pt.y - 12);
+    for(let i=0;i<4;i++){
+      const dot = document.getElementById('dot'+i);
+      const reached = progress >= (i/3) - 0.001;
+      dot.setAttribute('fill', reached ? 'var(--lemon)' : 'none');
+      dot.setAttribute('stroke', reached ? 'var(--lemon)' : 'var(--plaster)');
+    }
+  }
+
+  // ---------------- places ----------------
+  function renderPlaces(){
+    const el = document.getElementById('placesCard');
+    if(!TRIP.extras || !TRIP.extras.length) { el.innerHTML=''; return; }
+    let html = '<h2 class="card-title">Places & Essentials</h2>';
+    html += '<p style="font-size:0.75rem; color:rgba(252,250,244,0.45); margin:2px 0 4px;">All near the Piazza Dante Airbnb</p>';
+    TRIP.extras.forEach(function(place){
+      html += '<div style="border-top:1px solid var(--line); padding:10px 0;">';
+      html += '  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">';
+      html += '    <div>';
+      html += '      <div style="font-weight:600; font-size:0.95rem;">'+escapeHtml(place.name)+'</div>';
+      if(place.desc) html += '      <div style="font-size:0.75rem; color:rgba(252,250,244,0.5); margin-top:2px;">'+escapeHtml(place.desc)+'</div>';
+      if(place.tags && place.tags.length){
+        html += '      <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;">';
+        place.tags.forEach(function(tag){
+          html += '<span style="font-size:0.62rem; letter-spacing:0.04em; text-transform:uppercase; font-weight:700; padding:3px 8px; border-radius:99px; background:rgba(242,183,5,0.16); color:var(--lemon);">'+escapeHtml(tag)+'</span>';
+        });
+        html += '      </div>';
+      }
+      if(place.price_gbp || place.price_eur) html += '      <div style="font-size:0.8rem; color:var(--lemon); margin-top:6px; font-weight:600;">'+escapeHtml(place.price_gbp||'—')+' / '+escapeHtml(place.price_eur||'—')+'</div>';
+      if(place.maps){
+        html += '      <a href="'+getMapsUrl(place.maps)+'" target="_blank" rel="noopener" style="display:inline-block; margin-top:5px; font-size:0.75rem; color:var(--majolica); border-bottom:1px dotted var(--majolica); text-decoration:none; font-weight:600;">🗺 Maps</a>';
+      }
+      html += '    </div>';
+      html += '  </div>';
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  // ---------------- ledger ----------------
+  function computeLedgerTotals(){
+    let totalGbp=0, settledGbp=0, anyGbp=false;
+    let totalEur=0, settledEur=0, anyEur=false;
+    PAID_ITEMS.forEach(function(p){
+      const d = state.paidDetails[p.id] || {};
+      const amtG = parseFloat(d.amount_gbp);
+      if(!isNaN(amtG) && d.amount_gbp!==undefined && d.amount_gbp!==''){
+        anyGbp = true; totalGbp += amtG;
+        if(state.paid[p.id]) settledGbp += amtG;
+      }
+      const amtE = parseFloat(d.amount_eur);
+      if(!isNaN(amtE) && d.amount_eur!==undefined && d.amount_eur!==''){
+        anyEur = true; totalEur += amtE;
+        if(state.paid[p.id]) settledEur += amtE;
+      }
+    });
+    const paidCount = PAID_ITEMS.filter(function(p){ return state.paid[p.id]; }).length;
+    return { anyGbp:anyGbp, totalGbp:totalGbp, settledGbp:settledGbp, anyEur:anyEur, totalEur:totalEur, settledEur:settledEur, paidCount:paidCount };
+  }
+  function formatDateShort(iso){
+    if(!iso) return '';
+    const parts = iso.split('-');
+    if(parts.length!==3) return iso;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return parts[2]+' '+months[(+parts[1])-1];
+  }
+  function buildPaidSummary(p){
+    const d = state.paidDetails[p.id] || {};
+    const parts = [];
+    if(d.provider) parts.push(escapeHtml(d.provider));
+    if(d.ref) parts.push(escapeHtml(d.ref));
+    if(d.date) parts.push(formatDateShort(d.date));
+    if(d.paidBy) parts.push('Paid by '+escapeHtml(d.paidBy));
+    if(d.notes && d.notes.trim()) parts.push('📝 note');
+    return parts.length ? parts.join(' · ') : 'No details yet';
+  }
+  function renderLedger(){
+    const el = document.getElementById('ledgerCard');
+    const totals = computeLedgerTotals();
+    let headerParts = [];
+    if(totals.anyGbp) headerParts.push('£'+totals.settledGbp.toFixed(2)+' / £'+totals.totalGbp.toFixed(2));
+    if(totals.anyEur) headerParts.push('€'+totals.settledEur.toFixed(2)+' / €'+totals.totalEur.toFixed(2));
+    const headerText = headerParts.length ? headerParts.join(' · ') : (totals.paidCount+'/'+PAID_ITEMS.length+' paid');
+    let html = '<div class="ledger-header"><h2 class="card-title">Paid in advance</h2>';
+    html += '<span class="ledger-total">'+headerText+'</span></div>';
+    PAID_ITEMS.forEach(function(p){
+      const d = state.paidDetails[p.id] || {};
+      const isPaid = !!state.paid[p.id];
+      const expanded = uiState.expandedPaid.has(p.id);
+      const amtParts = [];
+      if(d.amount_gbp!==undefined && d.amount_gbp!=='') amtParts.push('£'+parseFloat(d.amount_gbp).toFixed(2));
+      if(d.amount_eur!==undefined && d.amount_eur!=='') amtParts.push('€'+parseFloat(d.amount_eur).toFixed(2));
+      const amountDisplay = amtParts.length ? amtParts.join(' / ') : '—';
+      html += '<div class="paid-row '+(isPaid?'is-paid':'')+'">';
+      html += '  <div class="paid-row-header" data-action="toggle-paid-expand" data-id="'+p.id+'">';
+      html += '    <label class="chk"><input type="checkbox" aria-label="Mark paid" data-action="toggle-paid" data-id="'+p.id+'" '+(isPaid?'checked':'')+'></label>';
+      html += '    <div class="paid-info"><div class="paid-label">'+p.label+'</div><div class="paid-summary">'+buildPaidSummary(p)+'</div></div>';
+      html += '    <div class="paid-amount">'+amountDisplay+'</div>';
+      html += '    <span class="pill '+(isPaid?'pill-paid':'pill-pending')+'">'+(isPaid?'Paid':'Pending')+'</span>';
+      html += '  </div>';
+      if(expanded){
+        html += '  <div class="paid-details">';
+        html += '    <label>Amount (£)<input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount_gbp" value="'+escapeHtml(d.amount_gbp||'')+'"></label>';
+        html += '    <label>Amount (€)<input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount_eur" value="'+escapeHtml(d.amount_eur||'')+'"></label>';
+        html += '    <label>'+(isPaid?'Date paid':'Due date')+'<input class="pd-field" type="date" data-id="'+p.id+'" data-field="date" value="'+escapeHtml(d.date||'')+'"></label>';
+        html += '    <label>Provider<input class="pd-field" type="text" data-id="'+p.id+'" data-field="provider" value="'+escapeHtml(d.provider||'')+'"></label>';
+        html += '    <label>Booking ref<input class="pd-field" type="text" data-id="'+p.id+'" data-field="ref" value="'+escapeHtml(d.ref||'')+'"></label>';
+        html += '    <label>Paid by<input class="pd-field" type="text" data-id="'+p.id+'" data-field="paidBy" value="'+escapeHtml(d.paidBy||'')+'" placeholder="Who paid this?"></label>';
+        html += '    <label>Notes<textarea class="pd-field" data-id="'+p.id+'" data-field="notes">'+escapeHtml(d.notes||'')+'</textarea></label>';
+        html += '  </div>';
+      }
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function handleLedgerClick(e){
+    const target = e.target.closest('[data-action]');
+    if(!target) return;
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+    if(action==='toggle-paid'){
+      state.paid[id] = !state.paid[id];
+      saveState(); renderLedger();
+    } else if(action==='toggle-paid-expand'){
+      if(uiState.expandedPaid.has(id)) uiState.expandedPaid.delete(id); else uiState.expandedPaid.add(id);
+      renderLedger();
+    }
+  }
+  function handleLedgerFieldInput(e){
+    const field = e.target.closest('.pd-field');
+    if(!field) return;
+    const id = field.dataset.id, key = field.dataset.field;
+    if(!state.paidDetails[id]) state.paidDetails[id] = {};
+    state.paidDetails[id][key] = field.value;
+    scheduleSave();
+  }
+  function handleLedgerFieldBlur(e){
+    const field = e.target.closest('.pd-field');
+    if(!field) return;
+    renderLedger();
+  }
+
+  function renderRecommendationsPanel(key){
+    const data = REGION_RECOMMENDATIONS[key];
+    if(!data) return '';
+    const open = uiState.openRecommendations.has(key);
+    let html = '<div class="recs-toggle-wrap">';
+    html += '  <button class="recs-toggle-btn" data-action="toggle-recs" data-key="'+key+'">';
+    html += '    <span>'+data.title+'<span class="recs-sub">'+data.subtitle+'</span></span>';
+    html += '    <span>'+(open?'▲':'▼')+'</span>';
+    html += '  </button>';
+    if(open){
+      html += '  <div class="recs-panel">';
+      data.groups.forEach(function(group){
+        html += '<div class="recs-category">'+escapeHtml(group.category)+'</div>';
+        group.items.forEach(function(item){
+          html += '<div class="recs-item">';
+          html += '  <div class="recs-item-name">'+escapeHtml(item.name)+'</div>';
+          html += '  <div class="recs-item-desc">'+escapeHtml(item.desc)+'</div>';
+          if(item.tags && item.tags.length){
+            html += '  <div class="recs-item-tags">';
+            item.tags.forEach(function(tag){ html += '<span class="recs-item-tag">'+escapeHtml(tag)+'</span>'; });
+            html += '  </div>';
+          }
+          if(item.price_gbp || item.price_eur){
+            html += '  <div class="recs-item-price">'+escapeHtml(item.price_gbp||'—')+' / '+escapeHtml(item.price_eur||'—')+'</div>';
+          }
+          if(item.maps){
+            html += '  <a class="recs-item-maps" href="'+getMapsUrl(item.maps)+'" target="_blank" rel="noopener">🗺 Maps</a>';
+          }
+          html += '</div>';
+        });
+      });
+      html += '  </div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ---------------- days ----------------
+  function renderDays(){
+    const container = document.getElementById('daysContainer');
+    const rn = getRomeNow();
+    let html = '';
+    TRIP.days.forEach(function(day){
+      const isToday = day.date === rn.dateStr;
+      const expanded = uiState.expandedDay === day.key;
+      html += '<div class="day-card '+(isToday?'is-today':'')+'">';
+      html += '  <div class="day-header" data-action="toggle-day" data-day="'+day.key+'">';
+      html += '    <div class="day-date"><span class="dow">'+day.dow+'</span><span class="dnum">'+day.label+'</span></div>';
+      html += '    <div class="day-title-wrap"><h3 class="day-title">'+day.title+'</h3>'+(isToday?'<span class="today-pill">Today</span>':'')+'</div>';
+      html += '    <span class="chevron '+(expanded?'open':'')+'">⌄</span>';
+      html += '  </div>';
+      if(expanded){
+        html += '  <div class="day-body">';
+        const order = state.order[day.key];
+        const renderedGroups = new Set();
+        order.forEach(function(id){
+          const item = findItem(day.key, id);
+          if(!item) return;
+          if(item.recsBefore){
+            html += renderRecommendationsPanel(item.recsBefore);
+          }
+          if(item.choiceGroup){
+            const group = CHOICE_GROUPS[item.choiceGroup];
+            if(!renderedGroups.has(item.choiceGroup)){
+              renderedGroups.add(item.choiceGroup);
+              const activeOption = state.choices[item.choiceGroup];
+              html += '<div class="choice-toggle" data-group="'+item.choiceGroup+'">';
+              html += '  <div class="choice-toggle-label">'+group.label+'</div>';
+              html += '  <div class="choice-toggle-buttons">';
+              group.options.forEach(function(opt){
+                html += '    <button class="choice-btn '+(activeOption===opt.key?'is-active':'')+'" data-action="set-choice" data-group="'+item.choiceGroup+'" data-option="'+opt.key+'">'+opt.icon+' '+opt.label+'</button>';
+              });
+              html += '  </div>';
+              html += '</div>';
+            }
+            if(!isItemActive(item)) return;
+          }
+          const isDone = !!state.done[id];
+          const isSkipped = !!state.skipped[id];
+          const noteOpen = uiState.openNotes.has(id);
+          const hasNote = !!(state.notes[id] && state.notes[id].trim());
+          html += '<div class="item-row '+(isDone?'is-done':'')+' '+(isSkipped?'is-skipped':'')+'">';
+          html += '  <div class="item-row-main">';
+          html += '    <label class="chk"><input type="checkbox" aria-label="Mark done" data-action="toggle-done" data-id="'+id+'" '+(isDone?'checked':'')+'></label>';
+          html += '    <div class="item-main"><span class="item-time">'+item.time+'</span><span class="item-text">'+(item.custom?escapeHtml(item.text):item.text)+'</span>';
+          if(item.price_gbp || item.price_eur){
+            html += '<span class="item-price">'+escapeHtml(item.price_gbp||'—')+' / '+escapeHtml(item.price_eur||'—')+'</span>';
+          }
+          if(item.maps){
+            html += '<a class="item-maps-link" href="'+getMapsUrl(item.maps)+'" target="_blank" rel="noopener">🗺 Maps</a>';
+          }
+          html += '</div>';
+          html += '    <div class="item-controls">';
+          html += '      <button data-action="move-up" data-day="'+day.key+'" data-id="'+id+'" aria-label="Move up">▲</button>';
+          html += '      <button data-action="move-down" data-day="'+day.key+'" data-id="'+id+'" aria-label="Move down">▼</button>';
+          html += '      <button class="note-btn '+(hasNote?'has-note':'')+'" data-action="toggle-note" data-id="'+id+'" aria-label="Note">📝</button>';
+          html += '      <button data-action="toggle-skip" data-id="'+id+'" aria-label="Cross off">✕</button>';
+          if(item.custom){
+            html += '    <button data-action="delete-custom" data-day="'+day.key+'" data-id="'+id+'" aria-label="Delete">🗑</button>';
+          }
+          html += '    </div>';
+          html += '  </div>';
+          if(noteOpen){
+            html += '  <div class="note-wrap"><textarea class="note-textarea" data-id="'+id+'" placeholder="Add a note…">'+escapeHtml(state.notes[id]||'')+'</textarea></div>';
+          }
+          html += '</div>';
+        });
+        const formOpen = uiState.openAddForm.has(day.key);
+        html += '<button class="add-stop-toggle" data-action="toggle-add-form" data-day="'+day.key+'">'+(formOpen?'Cancel':'+ Add a stop')+'</button>';
+        if(formOpen){
+          html += '<div class="add-form" data-day="'+day.key+'">';
+          html += '  <input type="time" class="add-time" value="12:00" placeholder="Time">';
+          html += '  <input type="text" class="add-text" placeholder="What is the plan?">';
+          html += '  <input type="text" class="add-gbp" placeholder="Price (£) — optional">';
+          html += '  <input type="text" class="add-eur" placeholder="Price (€) — optional">';
+          html += '  <input type="text" class="add-maps" placeholder="Location for Google Maps — optional">';
+          html += '  <div class="add-form-actions">';
+          html += '    <button class="btn-add" data-action="submit-add" data-day="'+day.key+'">Add</button>';
+          html += '    <button class="btn-cancel" data-action="cancel-add" data-day="'+day.key+'">Cancel</button>';
+          html += '  </div>';
+          html += '</div>';
+        }
+        html += '  </div>';
+      }
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function moveItem(dayKey, id, dir){
+    const arr = state.order[dayKey];
+    const idx = arr.indexOf(id);
+    if(idx===-1) return;
+    const newIdx = idx+dir;
+    if(newIdx<0 || newIdx>=arr.length) return;
+    const tmp = arr[idx]; arr[idx]=arr[newIdx]; arr[newIdx]=tmp;
+    saveState(); renderDays();
+  }
+  function deleteCustom(dayKey, id){
+    state.customItems[dayKey] = state.customItems[dayKey].filter(function(i){ return i.id!==id; });
+    state.order[dayKey] = state.order[dayKey].filter(function(x){ return x!==id; });
+    delete state.done[id]; delete state.skipped[id]; delete state.notes[id];
+    saveState(); renderDays();
+  }
+  function submitAdd(dayKey, btn){
+    const form = btn.closest('.add-form');
+    const timeVal = form.querySelector('.add-time').value || '12:00';
+    const textVal = form.querySelector('.add-text').value.trim();
+    const gbpVal = form.querySelector('.add-gbp').value.trim();
+    const eurVal = form.querySelector('.add-eur').value.trim();
+    const mapsVal = form.querySelector('.add-maps').value.trim();
+    if(!textVal) return;
+    const id = 'custom-'+dayKey+'-'+Date.now();
+    state.customItems[dayKey].push({ 
+      id:id, time:timeVal, text:textVal, 
+      price_gbp:gbpVal||undefined, price_eur:eurVal||undefined, maps:mapsVal||undefined 
+    });
+    state.order[dayKey].push(id);
+    uiState.openAddForm.delete(dayKey);
+    saveState(); renderDays();
+  }
+
+  function handleDaysClick(e){
+    const target = e.target.closest('[data-action]');
+    if(!target) return;
+    const action = target.dataset.action;
+    const dayKey = target.dataset.day;
+    const id = target.dataset.id;
+    if(action==='toggle-day'){
+      uiState.expandedDay = (uiState.expandedDay===dayKey) ? null : dayKey;
+      renderDays();
+    } else if(action==='toggle-done'){
+      state.done[id] = !state.done[id];
+      saveState(); renderDays(); renderStatusCard();
+    } else if(action==='toggle-skip'){
+      state.skipped[id] = !state.skipped[id];
+      saveState(); renderDays(); renderStatusCard(); updateBoatAndDots();
+    } else if(action==='move-up'){
+      moveItem(dayKey, id, -1);
+    } else if(action==='move-down'){
+      moveItem(dayKey, id, 1);
+    } else if(action==='toggle-note'){
+      if(uiState.openNotes.has(id)) uiState.openNotes.delete(id); else uiState.openNotes.add(id);
+      renderDays();
+    } else if(action==='delete-custom'){
+      deleteCustom(dayKey, id);
+    } else if(action==='toggle-add-form'){
+      if(uiState.openAddForm.has(dayKey)) uiState.openAddForm.delete(dayKey); else uiState.openAddForm.add(dayKey);
+      renderDays();
+    } else if(action==='submit-add'){
+      submitAdd(dayKey, target);
+    } else if(action==='cancel-add'){
+      uiState.openAddForm.delete(dayKey);
+      renderDays();
+    } else if(action==='set-choice'){
+      const group = target.dataset.group, option = target.dataset.option;
+      state.choices[group] = option;
+      saveState(); renderDays(); renderStatusCard(); updateBoatAndDots();
+    } else if(action==='toggle-recs'){
+      const key = target.dataset.key;
+      if(uiState.openRecommendations.has(key)) uiState.openRecommendations.delete(key); else uiState.openRecommendations.add(key);
+      renderDays();
+    }
+  }
+  function handleDaysNoteInput(e){
+    const ta = e.target.closest('.note-textarea');
+    if(!ta) return;
+    state.notes[ta.dataset.id] = ta.value;
+    scheduleSave();
+  }
+  function handleDaysNoteBlur(e){
+    const ta = e.target.closest('.note-textarea');
+    if(!ta) return;
+    renderDays();
+  }
+
+  // ---------------- init ----------------
+  let lastDateStr = null, lastPhase = null;
+  function tick(){
+    renderStatusCard();
+    updateBoatAndDots();
+    const rn = getRomeNow();
+    const phase = getPhase();
+    if(rn.dateStr!==lastDateStr || phase!==lastPhase){
+      if(lastDateStr!==null){
+        uiState.expandedDay = computeDefaultExpandedDay();
+      }
+      lastDateStr = rn.dateStr; lastPhase = phase;
+      renderDays();
+    }
+  }
+
+  function init(){
+    loadState();
+    uiState.expandedDay = computeDefaultExpandedDay();
+    document.getElementById('ledgerCard').addEventListener('click', handleLedgerClick);
+    document.getElementById('ledgerCard').addEventListener('input', handleLedgerFieldInput);
+    document.getElementById('ledgerCard').addEventListener('focusout', handleLedgerFieldBlur);
+    document.getElementById('daysContainer').addEventListener('click', handleDaysClick);
+    document.getElementById('daysContainer').addEventListener('input', handleDaysNoteInput);
+    document.getElementById('daysContainer').addEventListener('focusout', handleDaysNoteBlur);
+
+    renderStatusCard();
+    initCoastline();
+    renderLedger();
+    renderPlaces();
+    renderDays();
+
+    const rn = getRomeNow();
+    lastDateStr = rn.dateStr; lastPhase = getPhase();
+    setInterval(tick, 1000);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
