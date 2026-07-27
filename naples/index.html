@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink: #16232E;
@@ -318,6 +319,59 @@
 
   const STORAGE_KEY = 'naples-trip-dashboard-v3';
 
+  // ---------------- supabase sync (checkbox states) ----------------
+  const SUPABASE_URL = 'https://jyxtduvkmztexwurrjsf.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_KY9uqIN4zqY0WYmDJoCe3A_dr-YwArX';
+  const SUPABASE_TABLE = 'checkbox_states';
+  const DASHBOARD_ID = 'naples';
+
+  let supabaseClient = null;
+  try{
+    if(window.supabase && typeof window.supabase.createClient === 'function'){
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+      console.warn('Trip dashboard: Supabase library not loaded, checkbox sync disabled.');
+    }
+  }catch(e){
+    console.warn('Trip dashboard: Supabase init failed, checkbox sync disabled.', e);
+  }
+
+  async function loadCheckboxStatesFromSupabase(){
+    if(!supabaseClient) return;
+    try{
+      const { data, error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .select('item_id, is_checked')
+        .eq('dashboard_id', DASHBOARD_ID);
+      if(error){ console.warn('Trip dashboard: Supabase load error.', error); return; }
+      if(data && data.length){
+        const paidIds = PAID_ITEMS.map(function(p){ return p.id; });
+        data.forEach(function(row){
+          if(paidIds.indexOf(row.item_id)!==-1){
+            state.paid[row.item_id] = !!row.is_checked;
+          } else {
+            state.done[row.item_id] = !!row.is_checked;
+          }
+        });
+      }
+    }catch(e){
+      console.warn('Trip dashboard: Supabase load failed.', e);
+    }
+  }
+
+  function saveCheckboxStateToSupabase(itemId, isChecked){
+    if(!supabaseClient) return;
+    supabaseClient
+      .from(SUPABASE_TABLE)
+      .upsert({ dashboard_id: DASHBOARD_ID, item_id: itemId, is_checked: isChecked }, { onConflict: 'dashboard_id,item_id' })
+      .then(function(res){
+        if(res && res.error) console.warn('Trip dashboard: Supabase save error.', res.error);
+      })
+      .catch(function(e){
+        console.warn('Trip dashboard: Supabase save failed.', e);
+      });
+  }
+
   const TRIP = {
     startUTC: Date.UTC(2026,8,8,5,15,0),   // 06:15 UK (BST, UTC+1) departure
     endUTC:   Date.UTC(2026,8,11,17,15,0), // 18:15 UK (BST, UTC+1) arrival
@@ -327,7 +381,7 @@
         items:[
           {id:'d1-1', start:'10:25', end:'10:35', time:'10:25', text:'Land at Naples Airport (NAP) — easyJet EZY2125 from Manchester', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
           {id:'d1-2', start:'10:25', end:'11:15', time:'10:25–11:15', text:'Clear passport control, collect bags, exit the terminal', price_gbp:'—', price_eur:'—'},
-          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to Airbnb Casa Dante (near Piazza Dante)', maps:'Piazza Dante Naples', price_gbp:'£18–22', price_eur:'€20–25'},
+          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to the Airbnb (near Piazza Dante)', maps:'Piazza Dante Naples', price_gbp:'£18–22', price_eur:'€20–25'},
           {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags at Airbnb, freshen up, explore Spaccanapoli street', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
           {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'★ BOOKED: Tandem Ristorante — legendary Neapolitan ragù lunch at Piazzetta Nilo', maps:'Tandem Ristorante Piazzetta Nilo Naples', price_gbp:'£28–40', price_eur:'€32–46'},
           {id:'d1-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Post-lunch wander: Spaccanapoli, street art, Via San Gregorio Armeno (presepi shops)', maps:'Via San Gregorio Armeno Naples', price_gbp:'—', price_eur:'—'},
@@ -396,7 +450,7 @@
       }
     ],
     extras: [
-      {id:'ex-airbnb', name:'Casa Dante Airbnb', tags:['Accommodation'], maps:'Piazza Dante Naples', price_gbp:'~£40–60/night', price_eur:'~€45–70/night', desc:'3-night stay'},
+      {id:'ex-airbnb', name:'Accogliente appartamento nel Cuore della Città', tags:['Accommodation'], maps:'Piazza Dante Naples', price_gbp:'£332.28 total', price_eur:'—', desc:'3 nights, 8–11 Sept · booked by you'},
       {id:'ex-metro-dante', name:'Dante Metro Station', tags:['Transport'], maps:'Dante Metro Station Naples', price_gbp:'£8 (3-day pass)', price_eur:'€9.60 (3-day pass)', desc:'Line 1 transport hub'},
       {id:'ex-metro-garibaldi', name:'Garibaldi Metro Station', tags:['Transport'], maps:'Garibaldi Metro Station Naples', price_gbp:'Incl. in pass', price_eur:'Incl. in pass', desc:'Transfer to Circumvesuviana'},
       {id:'ex-metro-municipio', name:'Municipio Metro Station', tags:['Transport'], maps:'Municipio Metro Station Naples', price_gbp:'Incl. in pass', price_eur:'Incl. in pass', desc:'Ferry port access'},
@@ -481,7 +535,7 @@
       paid:{ 'airbnb':false, 'winetour':true, 'ferry':true, 'flight-out':false, 'flight-in':false },
       paidDetails:{
         'airbnb': { amount_gbp:'332.28', amount_eur:'', date:'2026-08-26', provider:'Airbnb — Accogliente appartamento nel Cuore della Città', ref:'', paidBy:'Chris (you)', notes:'Charged via Google Pay · 8–11 Sept stay' },
-        'winetour': { amount_gbp:'', amount_eur:'60', date:'', provider:'Cantina del Vesuvio', ref:'', paidBy:'Dave', notes:'Covers both of us' },
+        'winetour': { amount_gbp:'', amount_eur:'120', date:'', provider:'Cantina del Vesuvio', ref:'', paidBy:'Dave', notes:'€60 each, covers both of us' },
         'ferry': { amount_gbp:'126.95', amount_eur:'', date:'', provider:'Ferryhopper (NLG Jet)', ref:'FH99ZV2924UE', paidBy:'Dave', notes:'Covers both passengers, round trip' }
       },
       choices:{ 'day2-excursion':'pompeii' }
@@ -832,6 +886,7 @@
     if(action==='toggle-paid'){
       state.paid[id] = !state.paid[id];
       saveState(); renderLedger();
+      saveCheckboxStateToSupabase(id, state.paid[id]);
     } else if(action==='toggle-paid-expand'){
       if(uiState.expandedPaid.has(id)) uiState.expandedPaid.delete(id); else uiState.expandedPaid.add(id);
       renderLedger();
@@ -1025,6 +1080,7 @@
     } else if(action==='toggle-done'){
       state.done[id] = !state.done[id];
       saveState(); renderDays(); renderStatusCard();
+      saveCheckboxStateToSupabase(id, state.done[id]);
     } else if(action==='toggle-skip'){
       state.skipped[id] = !state.skipped[id];
       saveState(); renderDays(); renderStatusCard(); updateBoatAndDots();
@@ -1102,6 +1158,14 @@
     const rn = getRomeNow();
     lastDateStr = rn.dateStr; lastPhase = getPhase();
     setInterval(tick, 1000);
+
+    // Pull latest checkbox states from Supabase (cross-device) and refresh once loaded.
+    loadCheckboxStatesFromSupabase().then(function(){
+      renderStatusCard();
+      renderLedger();
+      renderDays();
+      updateBoatAndDots();
+    });
   }
 
   init();
