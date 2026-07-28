@@ -92,11 +92,27 @@
   .tp-stub-datelabel { font-family:'Space Grotesk',sans-serif; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:#8FB0AC; }
   .tp-stub-dateval { font-family:'Space Mono',monospace; font-size:0.8rem; margin-top:0.15rem; }
   .tp-stub-note { font-size:0.74rem; color:#B7C8C5; margin-top:0.5rem; line-height:1.4; }
+  .tp-lock { position:fixed; inset:0; background:linear-gradient(180deg,#0E2A2E 0%,#0B2226 100%); display:flex; align-items:center; justify-content:center; padding:1.5rem; z-index:100; font-family:'Inter',sans-serif; }
+  .tp-lock-card { width:100%; max-width:20rem; background:#143C42; border:1px solid rgba(232,163,61,0.2); border-radius:14px; padding:1.5rem 1.4rem; text-align:center; }
+  .tp-lock-title { font-family:'Space Grotesk',sans-serif; font-size:1.15rem; font-weight:700; color:#F5EFE0; margin:0.5rem 0 1.1rem; }
+  .tp-lock-input { width:100%; background:#0E2A2E; border:1px solid rgba(232,163,61,0.25); border-radius:8px; padding:0.65rem 0.75rem; color:#F5EFE0; font-size:1rem; text-align:center; letter-spacing:0.15em; }
+  .tp-lock-input::placeholder { color:#5f7f7c; letter-spacing:normal; }
+  .tp-lock-error { color:#F0654A; font-size:0.75rem; margin-top:0.6rem; min-height:1rem; }
   @media (prefers-reduced-motion: reduce) { .tp-app * { transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
-<div id="app" class="tp-app">
+<div id="lockScreen" class="tp-lock">
+  <form id="lockForm" class="tp-lock-card">
+    <div class="tp-eyebrow">Thailand · Nov 2026</div>
+    <div class="tp-lock-title">&#128274; Enter passcode</div>
+    <input id="lockInput" class="tp-lock-input" type="password" inputmode="numeric" placeholder="Passcode" autocomplete="off" autofocus />
+    <button type="submit" class="tp-btn-add" style="width:100%;justify-content:center;padding:0.6rem;margin-top:0.7rem;">Unlock</button>
+    <div id="lockError" class="tp-lock-error"></div>
+  </form>
+</div>
+<div id="app" class="tp-app" style="display:none;">
+
   <div class="tp-hero">
     <div class="tp-eyebrow">Thailand · Nov 2026</div>
     <div class="tp-hero-title">&#9992; Wheels up in</div>
@@ -897,9 +913,29 @@
     }
   });
 
-  renderFlightCard();
-  useCountdownTick();
-  loadState();
+  var PASSCODE = '192168';
+  function initApp() {
+    renderFlightCard();
+    useCountdownTick();
+    loadState();
+  }
+
+  var lockScreen = document.getElementById('lockScreen');
+  var lockForm = document.getElementById('lockForm');
+  var lockInput = document.getElementById('lockInput');
+  var lockError = document.getElementById('lockError');
+  lockForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (lockInput.value === PASSCODE) {
+      lockScreen.style.display = 'none';
+      app.style.display = '';
+      initApp();
+    } else {
+      lockError.textContent = 'Incorrect passcode';
+      lockInput.value = '';
+      lockInput.focus();
+    }
+  });
 })();
 </script>
 </body>
