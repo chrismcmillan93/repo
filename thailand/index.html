@@ -10,7 +10,7 @@
   .tp-app { min-height:100vh; background:linear-gradient(180deg,#0E2A2E 0%,#0B2226 100%); color:#F5EFE0; font-family:'Inter',sans-serif; padding-bottom:3rem; }
   .tp-app * { box-sizing:border-box; }
   .tp-app *:focus-visible { outline:2px solid #E8A33D; outline-offset:2px; border-radius:4px; }
-  button, input, textarea { font-family:inherit; }
+  button, input, textarea, select { font-family:inherit; }
   .tp-eyebrow { font-family:'Space Grotesk',sans-serif; font-size:0.68rem; letter-spacing:0.18em; text-transform:uppercase; color:#8FB0AC; font-weight:600; }
   .tp-hero { padding:1.6rem 1.1rem 1.4rem; border-bottom:1px solid rgba(232,163,61,0.16); background:radial-gradient(120% 100% at 10% 0%, rgba(232,163,61,0.08), transparent 60%); }
   .tp-hero-title { font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:700; margin:0.4rem 0 1.1rem; display:flex; align-items:center; gap:0.5rem; }
@@ -52,10 +52,13 @@
   .tp-item-title { font-size:0.84rem; line-height:1.3; }
   .tp-item-title.checked { text-decoration:line-through; color:#8FB0AC; }
   .tp-item-desc { font-size:0.74rem; color:#B7C8C5; line-height:1.35; margin-top:0.2rem; }
-  .tp-item-meta { display:flex; align-items:center; gap:0.6rem; margin-top:0.35rem; flex-wrap:wrap; }
+  .tp-tags-row { display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.35rem; }
+  .tp-tag { font-family:'Inter',sans-serif; font-size:0.64rem; color:#B7C8C5; border:1px solid rgba(232,163,61,0.25); border-radius:999px; padding:0.1rem 0.45rem; white-space:nowrap; }
+  .tp-item-meta { display:flex; align-items:center; gap:0.6rem; margin-top:0.4rem; flex-wrap:wrap; }
   .tp-item-cost { font-family:'Space Mono',monospace; font-size:0.72rem; color:#8FB0AC; }
-  .tp-map-link { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; color:#E8A33D; text-decoration:none; font-family:'Inter',sans-serif; font-weight:600; }
-  .tp-map-link:hover { text-decoration:underline; }
+  .tp-rating { font-family:'Space Mono',monospace; font-size:0.72rem; color:#E8A33D; white-space:nowrap; }
+  .tp-map-link, .tp-reviews-link { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; color:#E8A33D; text-decoration:none; font-family:'Inter',sans-serif; font-weight:600; white-space:nowrap; }
+  .tp-map-link:hover, .tp-reviews-link:hover { text-decoration:underline; }
   .tp-item-actions { display:flex; align-items:center; gap:0.05rem; margin-left:auto; }
   .tp-icon-btn { background:transparent; border:none; color:#8FB0AC; cursor:pointer; padding:0.3rem 0.35rem; border-radius:6px; display:flex; align-items:center; font-size:0.85rem; line-height:1; }
   .tp-icon-btn:hover:not(:disabled) { color:#F5EFE0; background:rgba(255,255,255,0.06); }
@@ -70,7 +73,7 @@
   .tp-input-place { flex:1; min-width:0; }
   .tp-btn-add { background:#E8A33D; color:#0E2A2E; border:none; border-radius:8px; padding:0 0.65rem; font-weight:700; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; gap:0.25rem; flex-shrink:0; }
   .tp-btn-add:hover { filter:brightness(1.08); }
-  .tp-edit-panel { margin-top:0.35rem; background:#0E2A2E; border:1px solid rgba(232,163,61,0.2); border-radius:10px; padding:0.6rem 0.65rem; display:flex; flex-direction:column; gap:0.5rem; }
+  .tp-edit-panel { margin-top:0.35rem; background:#0E2A2E; border:1px solid rgba(232,163,61,0.2); border-radius:10px; padding:0.6rem 0.65rem; display:flex; flex-direction:column; gap:0.5rem; width:100%; }
   .tp-edit-label { font-family:'Space Grotesk',sans-serif; font-size:0.58rem; letter-spacing:0.09em; text-transform:uppercase; color:#8FB0AC; display:block; margin-bottom:0.2rem; }
   .tp-edit-row { display:flex; gap:0.5rem; }
   .tp-edit-row > div { flex:1; min-width:0; }
@@ -148,33 +151,54 @@
     Rooftop: '#7FB3D9', Activity: '#6FBF8C', Other: '#B7C4C2'
   };
 
+  var PARTY = {
+    bkk1: ['Chris', 'Andrew', 'Craig'],
+    krabi: ['Chris', 'Andrew', 'Craig'],
+    phuket: ['Chris', 'Andrew', 'Craig', 'Dalz'],
+    kpg: ['Chris', 'Andrew', 'Craig', 'Dalz'],
+    bkk2: ['Chris', 'Andrew', 'Craig']
+  };
+
   function seedAirbnbs() {
     return [
       {
-        id: 'ab-bkk', location: 'Bangkok', name: 'Home in Khet Pathum Wan', status: 'confirmed',
+        id: 'ab-bkk', location: 'Bangkok', locKey: 'bkk1', name: 'Home in Khet Pathum Wan', status: 'confirmed',
         host: 'Hosted by Sommart', address: '39/9 Soi Langsuan, Pathum Wan, Bangkok',
         checkin: 'Fri 13 Nov · 15:00', checkout: 'Mon 16 Nov · 12:00',
-        priceGbp: 115.15, priceThb: 5182, bookedBy: 'Christopher',
-        note: 'Total £345.45 for 3 nights, split 3 ways (£201.12 paid 1 Jul, £144.33 due 29 Oct) — pay Christopher your share.'
+        totalGbp: 345.45, totalThb: null, bookedBy: 'Chris',
+        paid: { Chris: true },
+        rating: null, ratingCount: null, placeId: null,
+        note: '£201.12 paid 1 Jul, £144.33 due 29 Oct. Private Airbnb listing — no public Google rating.'
       },
       {
-        id: 'ab-krabi', location: 'Krabi', name: 'Current Krabi booking', status: 'review',
+        id: 'ab-krabi', location: 'Krabi', locKey: 'krabi', name: 'Current Krabi booking', status: 'review',
         host: '', address: 'Sai Thai, near Ao Nam Mao Beach, Krabi',
         checkin: 'Mon 16 Nov', checkout: 'Wed 18 Nov',
-        priceGbp: null, priceThb: null, bookedBy: '',
+        totalGbp: null, totalThb: null, bookedBy: '',
+        paid: {},
+        rating: null, ratingCount: null, placeId: null,
         note: 'Not walkable to Ao Nang — likely to be rebooked to Panan Krabi Resort. See Needs Booking below.'
       },
       {
-        id: 'ab-kpg', location: 'Koh Phangan', name: 'Haadrin Resort', status: 'confirmed',
+        id: 'ab-kpg', location: 'Koh Phangan', locKey: 'kpg', name: 'Haadrin Resort', status: 'confirmed',
         host: '', address: '128/9 Moo 6, Baan Tai, Ko Pha-ngan, Surat Thani 84280',
         checkin: 'Mon 23 Nov · 14:00', checkout: 'Wed 25 Nov · 12:00',
-        priceGbp: null, priceThb: null, bookedBy: '',
-        note: 'Only covers Jungle Experience + Full Moon nights. 22 Nov and 25–26 Nov still need booking.'
+        totalGbp: null, totalThb: null, bookedBy: '',
+        paid: {},
+        rating: 3.5, ratingCount: 120, placeId: 'ChIJ2_jk0br8VDARJWQFnmLtaM8',
+        note: 'Only covers Jungle Experience + Full Moon nights. 22 Nov and 25–26 Nov still need booking. Rating is mixed — several reviews mention deposit/checkout disputes, worth photographing room condition at check-in.'
       }
     ];
   }
 
-  function mapUrl(q) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
+  function mapUrlByText(q) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
+  function mapUrlForItem(item) {
+    if (item.placeId) return 'https://www.google.com/maps/place/?q=place_id:' + item.placeId;
+    return mapUrlByText(item.place);
+  }
+  function reviewsUrlForItem(item) {
+    return item.placeId ? 'https://search.google.com/local/reviews?placeid=' + item.placeId : null;
+  }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -182,134 +206,197 @@
   }
   function fmtGBP(n) { return '£' + Number(n).toFixed(2); }
   function fmtTHBNum(n) { return Math.round(n).toLocaleString('en-GB'); }
+  function fmtCount(n) {
+    if (n == null) return '';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
   function thbFor(item) { return item.thb != null ? item.thb : Math.round((item.cost * THB_RATE) / 10) * 10; }
-  function isApprox(item) { return item.thb == null; }
+  function isThbApprox(item) { return item.thb == null; }
   function costLine(item) {
     if (!item.cost || item.cost <= 0) return 'Free';
     var thb = thbFor(item);
-    return fmtGBP(item.cost) + 'pp · ' + (isApprox(item) ? '≈' : '') + '฿' + fmtTHBNum(thb) + 'pp';
+    return fmtGBP(item.cost) + 'pp · ' + (isThbApprox(item) ? '≈' : '') + '฿' + fmtTHBNum(thb) + 'pp';
+  }
+  function tagsRowHtml(tags) {
+    if (!tags || !tags.length) return '';
+    return '<div class="tp-tags-row">' + tags.map(function (t) { return '<span class="tp-tag">' + esc(t) + '</span>'; }).join('') + '</div>';
+  }
+  function ratingAndLinksHtml(item) {
+    var parts = [];
+    if (item.rating != null) {
+      parts.push('<span class="tp-rating">★ ' + item.rating.toFixed(1) + (item.ratingCount != null ? ' (' + fmtCount(item.ratingCount) + ')' : '') + '</span>');
+    }
+    if (item.place || item.placeId) {
+      parts.push('<a class="tp-map-link" href="' + mapUrlForItem(item) + '" target="_blank" rel="noopener noreferrer">📍 Map</a>');
+    }
+    var ru = reviewsUrlForItem(item);
+    if (ru) {
+      parts.push('<a class="tp-reviews-link" href="' + ru + '" target="_blank" rel="noopener noreferrer">★ Reviews</a>');
+    }
+    return parts.join('');
   }
 
   function seedItems() {
     return [
       { id: 'i1', location: 'bkk1', order: 0, category: 'Culture', title: 'Grand Palace', cost: 11, thb: 500, notes: '', checked: false,
         description: "Thailand's most iconic royal complex, includes the Emerald Buddha temple.",
-        place: 'Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200' },
+        place: 'Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200',
+        rating: 4.6, ratingCount: 79140, placeId: 'ChIJPzZsMU6Z4jARQUzvk913bCo', tags: ['Culture', 'Landmark'] },
       { id: 'i2', location: 'bkk1', order: 1, category: 'Culture', title: 'Wat Pho', cost: 7, thb: 300, notes: '', checked: false,
         description: 'Home of the 46m Reclining Buddha, right next to the Grand Palace.',
-        place: 'Wat Pho, 2 Sanamchai Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200' },
+        place: 'Wat Pho, 2 Sanamchai Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200',
+        rating: 4.7, ratingCount: 37824, placeId: 'ChIJgcxFcQWZ4jARLsIR9Qia9H0', tags: ['Culture', 'Landmark'] },
       { id: 'i3', location: 'bkk1', order: 2, category: 'Culture', title: 'Wat Arun', cost: 4.5, thb: 200, notes: '', checked: false,
         description: "Riverside 'Temple of Dawn' — cross by ferry from Wat Pho for the classic view.",
-        place: 'Wat Arun, 158 Thanon Wang Doem, Wat Arun, Bangkok Yai, Bangkok 10600' },
+        place: 'Wat Arun, 158 Thanon Wang Doem, Wat Arun, Bangkok Yai, Bangkok 10600',
+        rating: 4.7, ratingCount: 44815, placeId: 'ChIJaSv_6gaZ4jARnbiUVn6Z_YY', tags: ['Culture', 'Views'] },
       { id: 'i4', location: 'bkk1', order: 3, category: 'Culture', title: 'Jim Thompson House', cost: 4.5, thb: 200, notes: '', checked: false,
         description: "Silk entrepreneur's teak house museum, tucked in a quiet garden near Siam.",
-        place: 'Jim Thompson House, 6 Soi Kasemsan 2, Rama I Rd, Pathum Wan, Bangkok 10330' },
+        place: 'Jim Thompson House, 6 Soi Kasemsan 2, Rama I Rd, Pathum Wan, Bangkok 10330',
+        rating: 4.5, ratingCount: 17240, placeId: 'ChIJWVT7hDKZ4jARGJOhe21RhOk', tags: ['Culture', 'Museum'] },
       { id: 'i5', location: 'bkk1', order: 4, category: 'Food', title: 'Yaowarat (Chinatown) food crawl', cost: 10, thb: 450, notes: '', checked: false,
         description: "Bangkok's best street food after dark — crab omelette, grilled seafood, noodles.",
-        place: 'Yaowarat Road, Samphanthawong, Bangkok' },
+        place: 'Yaowarat Road, Samphanthawong, Bangkok',
+        rating: 4.7, ratingCount: 2187, placeId: 'ChIJ95Nh9yGZ4jARAjfcG2uIZFg', tags: ['Street food', 'Chinese food'] },
       { id: 'i6', location: 'bkk1', order: 5, category: 'Food', title: 'Central Embassy food hall', cost: 7, thb: 300, notes: '', checked: false,
         description: 'Easy, air-conditioned food hall close to the Airbnb, Thai to international.',
-        place: 'Central Embassy, 1031 Phloen Chit Rd, Lumphini, Pathum Wan, Bangkok 10330' },
-      { id: 'i7', location: 'bkk1', order: 6, category: 'Bar', title: 'Sukhumvit crawl (Soi 11 / Octave / Levels)', cost: 25, thb: 1100, notes: '', checked: false,
-        description: 'The bar-hop strip from your existing list, a short BTS ride away.',
-        place: 'Sukhumvit Soi 11, Bangkok' },
-      { id: 'i8', location: 'bkk1', order: 7, category: 'Rooftop', title: 'HI-SO rooftop, Hotel Indigo', cost: 9, thb: 400, notes: '10 min walk from the Airbnb', checked: false,
+        place: 'Central Embassy, 1031 Phloen Chit Rd, Lumphini, Pathum Wan, Bangkok 10330',
+        rating: 4.5, ratingCount: 13000, placeId: 'ChIJz_aVZ9ue4jAR9mXCLXqZstw', tags: ['Shopping', 'Food hall'] },
+      { id: 'i7', location: 'bkk1', order: 6, category: 'Rooftop', title: 'Octave Rooftop Bar, Marriott Sukhumvit', cost: 40, thb: 1800, notes: '~1,800 THB pp minimum spend per reviews', checked: false,
+        description: '360° Bangkok skyline views over Sukhumvit — the big one from your bar list.',
+        place: 'Octave Rooftop Lounge & Bar, 2 Sukhumvit Soi 57, Klongton Nua, Watthana, Bangkok 10110',
+        rating: 4.4, ratingCount: 6129, placeId: 'ChIJhxshNqWf4jARgYxEW8hBGcE', tags: ['Rooftop views', 'Cocktails'] },
+      { id: 'i7b', location: 'bkk1', order: 7, category: 'Bar', title: 'Levels Club', cost: 25, thb: 1100, notes: 'Entry ~400 THB men / 300 THB women, dress code', checked: false,
+        description: 'Two-room nightclub above the Aloft Sukhumvit 11, electronic music, VIP tables.',
+        place: 'Levels Club, Aloft Bangkok Sukhumvit 11, Soi Sukhumvit 11, Bangkok',
+        rating: 4.2, ratingCount: 2384, placeId: 'ChIJl7VMGOae4jART2WWLs0Pv0Q', tags: ['Nightclub', 'Live DJ'] },
+      { id: 'i8', location: 'bkk1', order: 8, category: 'Rooftop', title: 'HI-SO rooftop, Hotel Indigo', cost: 9, thb: 400, notes: '10 min walk from the Airbnb', checked: false,
         description: 'Rooftop over Lumpini Park, no minimum spend, cocktails from ~£8.',
-        place: 'Hotel Indigo Bangkok Wireless Road, 81 Wireless Rd, Lumphini, Pathum Wan, Bangkok 10330' },
-      { id: 'i9', location: 'bkk1', order: 8, category: 'Activity', title: 'YOKKAO Muay Thai drop-in', cost: 15, thb: 700, notes: 'Book ahead, min 1hr session', checked: false,
+        place: 'Hotel Indigo Bangkok Wireless Road, 81 Wireless Rd, Lumphini, Pathum Wan, Bangkok 10330',
+        rating: 4.6, ratingCount: 3357, placeId: 'ChIJq6qqqtae4jARcZkJuWK4z7s', tags: ['Rooftop views', 'Cocktails'] },
+      { id: 'i9', location: 'bkk1', order: 9, category: 'Activity', title: 'YOKKAO Muay Thai drop-in', cost: 15, thb: 700, notes: 'Book ahead, min 1hr session', checked: false,
         description: 'World-class Muay Thai gym, trains fighters like Superlek. Drop-ins need booking.',
-        place: 'YOKKAO Training Center, 190-190/1 Soi Sukhumvit 16, Khlong Toei, Bangkok 10110' },
-      { id: 'i10', location: 'bkk1', order: 9, category: 'Activity', title: 'Lumpini Park outdoor gym', cost: 1, thb: 40, notes: '', checked: false,
+        place: 'YOKKAO Training Center, 190-190/1 Soi Sukhumvit 16, Khlong Toei, Bangkok 10110',
+        rating: 4.6, ratingCount: 399, placeId: 'ChIJY3QAYhyf4jARQlQC-j46aTI', tags: ['Muay Thai'] },
+      { id: 'i10', location: 'bkk1', order: 10, category: 'Activity', title: 'Lumpini Park outdoor gym', cost: 1, thb: 40, notes: '', checked: false,
         description: 'Old-school free-weights area locals use — raw, cheap, next to the Airbnb.',
-        place: 'Lumpini Park, Rama IV Rd, Pathum Wan, Bangkok 10330' },
+        place: 'Lumpini Park, Rama IV Rd, Pathum Wan, Bangkok 10330',
+        rating: 4.5, ratingCount: 40613, placeId: 'ChIJG7BL7Saf4jARNmn5AQiyAaw', tags: ['Free workout', 'Local vibe'] },
 
       { id: 'k1', location: 'krabi', order: 0, category: 'Food', title: 'The Last Fisherman beach BBQ', cost: 12, thb: 540, notes: '', checked: false,
         description: 'Strip of beachfront bars on Ao Nang/Nopparat Thara for sunset BBQ and beers.',
-        place: 'The Last Fisherman, Ao Nang Beach, Krabi' },
+        place: 'The Last Fisherman, Ao Nang Beach, Krabi',
+        rating: 4.0, ratingCount: 2918, placeId: 'ChIJvwJ3-Q_AUTARDd_SDrEV3O4', tags: ['Beachfront', 'Sunset', 'Thai food'] },
       { id: 'k2', location: 'krabi', order: 1, category: 'Food', title: 'Carnivore Steak & Grill', cost: 15, thb: 675, notes: '', checked: false,
         description: 'Steaks and Mediterranean food, opposite Thai Village Resort.',
-        place: 'Carnivore Steak & Grill, 128 Khlong Hang Rd, Ao Nang, Mueang Krabi District, Krabi 81000' },
+        place: 'Carnivore Steak & Grill, 128 Khlong Hang Rd, Ao Nang, Mueang Krabi District, Krabi 81000',
+        rating: 4.6, ratingCount: 1538, placeId: 'ChIJ20jk2PW_UTARKhRRezcyzvM', tags: ['Steak', 'Western food'] },
       { id: 'k3', location: 'krabi', order: 2, category: 'Food', title: "D&E's Jungle Kitchen", cost: 8, thb: 360, notes: '', checked: false,
         description: 'Rustic bamboo spot for authentic Thai classics, family-run.',
-        place: "D&E's Jungle Kitchen, Ao Nang, Krabi" },
+        place: "D&E's Jungle Kitchen, Ao Nang, Krabi",
+        rating: 4.7, ratingCount: 1991, placeId: 'ChIJYzpD6liVUTARVlZGITpqSk0', tags: ['Thai food', 'Vegan-friendly'] },
       { id: 'k4', location: 'krabi', order: 3, category: 'Bar', title: 'Kiss Bar, Soi RCA', cost: 10, thb: 450, notes: '', checked: false,
-        description: "Ao Nang's main late-night party venue — DJs, dancefloor, rooftop level.",
-        place: 'Kiss Bar, Soi RCA, Ao Nang, Krabi' },
+        description: "Ao Nang's main late-night party venue — DJs, dancefloor, pool.",
+        place: 'Kiss Bar, Soi RCA, Ao Nang, Krabi',
+        rating: 4.5, ratingCount: 188, placeId: 'ChIJ6623Xw_AUTARgKqhcBbn92I', tags: ['Bar', 'Pool'] },
       { id: 'k5', location: 'krabi', order: 4, category: 'Rooftop', title: 'Catch Up Sky Lounge, Panan Krabi Resort', cost: 10, thb: 450, notes: 'On-site if we stay there', checked: false,
         description: '5th-floor rooftop with views over the limestone cliffs.',
-        place: 'Panan Krabi Resort, Ao Nang, Krabi' },
-      { id: 'k6', location: 'krabi', order: 5, category: 'Activity', title: 'Railay rock climbing (half-day)', cost: 30, thb: 1350, notes: 'King Climbers or Hot Rock', checked: false,
+        place: 'Panan Krabi Resort, Ao Nang, Krabi',
+        rating: 4.4, ratingCount: 3327, placeId: 'ChIJQyQilAXAUTARYzkeX-ZAgCs', tags: ['Rooftop views'] },
+      { id: 'k6', location: 'krabi', order: 5, category: 'Activity', title: 'Railay rock climbing (half-day)', cost: 30, thb: 1350, notes: 'Booked via King Climbers', checked: false,
         description: 'One of the best beginner climbing spots in the world.',
-        place: 'Railay Beach, Ao Nang, Krabi' },
+        place: 'King Climbers, Railay Beach, Ao Nang, Krabi',
+        rating: 4.6, ratingCount: 114, placeId: 'ChIJ3emcN7TBUTAR6XviGeIHp7c', tags: ['Adventure', 'Climbing'] },
       { id: 'k7', location: 'krabi', order: 6, category: 'Activity', title: 'Tiger Cave Temple', cost: 0, thb: 0, notes: '', checked: false,
         description: 'Wat Tham Suea — 1,237-step climb to a hilltop Buddha and panoramic views.',
-        place: 'Wat Tham Suea (Tiger Cave Temple), Krabi' },
+        place: 'Wat Tham Suea (Tiger Cave Temple), Krabi',
+        rating: 4.6, ratingCount: 13791, placeId: 'ChIJO2O10qqWUTAREYioi4E8t1Q', tags: ['Culture', 'Hiking', 'Views'] },
       { id: 'k8', location: 'krabi', order: 7, category: 'Activity', title: 'Emerald Pool & mangrove kayak', cost: 20, thb: 900, notes: '', checked: false,
         description: 'Jungle pool near Khao Phra Bang Khram, plus mangrove kayaking nearby.',
-        place: 'Emerald Pool (Sa Morakot), Khao Phra Bang Khram Wildlife Sanctuary, Krabi' },
+        place: 'Emerald Pool (Sa Morakot), Khao Phra Bang Khram Wildlife Sanctuary, Krabi',
+        rating: 4.3, ratingCount: 13814, placeId: 'ChIJ_6eLjQ0cUjAR7kXSfRh6n60', tags: ['Nature', 'Swimming'] },
 
       { id: 'p1', location: 'phuket', order: 0, category: 'Food', title: 'Rawai seafood market', cost: 8, thb: 360, notes: '', checked: false,
         description: 'Pick your own fresh catch, have it grilled to order at the stalls next door.',
-        place: 'Rawai Seafood Market, Rawai, Phuket' },
+        place: 'Rawai Seafood Market, Rawai, Phuket',
+        rating: 4.4, ratingCount: 4606, placeId: 'ChIJ62Ma6bgoUDARnQb8WjP71rY', tags: ['Fresh seafood', 'Local market'] },
       { id: 'p2', location: 'phuket', order: 1, category: 'Food', title: 'East 88, Serenity Phuket', cost: 12, thb: 540, notes: '', checked: false,
         description: 'Beach lounge and restaurant at the hotel proposed for your stay.',
-        place: 'Serenity Phuket, 14 Moo 5, Wiset Rd, Rawai, Muang, Phuket 83130' },
+        place: 'Selina Serenity Phuket, Wiset Rd, Rawai, Muang, Phuket 83130',
+        rating: 4.5, ratingCount: 854, placeId: 'ChIJE5-vHzcvUDARH-MMufrMNY0', tags: ['Beach lounge', 'Cocktails'] },
       { id: 'p3', location: 'phuket', order: 2, category: 'Food', title: 'Cane Crush, Chalong Bay Distillery', cost: 10, thb: 450, notes: '', checked: false,
         description: "Cocktail bar inside Phuket's only working rum distillery.",
-        place: 'Chalong Bay Distillery, Soi Palai, Chalong, Phuket 83130' },
+        place: 'The Distillery Phuket (Chalong Bay), Soi Palai, Chalong, Phuket 83130',
+        rating: 4.7, ratingCount: 974, placeId: 'ChIJqXwFLq0vUDARp9TfcnPRUx0', tags: ['Cocktails', 'Rum tasting'] },
       { id: 'p4', location: 'phuket', order: 3, category: 'Bar', title: 'Shot Lounge Bar', cost: 8, thb: 360, notes: '', checked: false,
         description: 'Casual beers and pool tables, a good starting point for a bar crawl.',
-        place: 'Shot Lounge Bar, Soi Khokmakham, Rawai, Phuket' },
+        place: 'SHOT Russian Billiards Club, Soi Khokmakham, Rawai, Phuket',
+        rating: 4.6, ratingCount: 213, placeId: 'ChIJhUYz360oUDARZjVeNleVNzM', tags: ['Pool/billiards', 'Casual'] },
       { id: 'p5', location: 'phuket', order: 4, category: 'Bar', title: 'Hush Hush Bar', cost: 12, thb: 540, notes: '', checked: false,
-        description: 'Speakeasy-style cocktail bar in Laguna Plaza.',
-        place: 'Hush Hush Bar, Laguna Plaza, Wiset Rd, Rawai, Phuket' },
+        description: 'Live-music bar in Laguna Plaza, themed weekly events.',
+        place: 'Hush Hush Bar, 178 Wiset Rd, Rawai, Phuket',
+        rating: 4.3, ratingCount: 41, placeId: 'ChIJD6E9ciwpUDARdYmYr6aol2M', tags: ['Live music', 'Cocktails'] },
       { id: 'p6', location: 'phuket', order: 5, category: 'Rooftop', title: 'Reflections Rooftop, The Nai Harn', cost: 10, thb: 450, notes: 'In Rawai itself', checked: false,
         description: 'Sea views over Nai Harn Bay, live saxophone at sunset.',
-        place: 'The Nai Harn Phuket, 23/3 Moo 1, Vises Rd, Rawai, Phuket 83100' },
+        place: 'The Nai Harn Phuket, 23/3 Moo 1, Vises Rd, Rawai, Phuket 83100',
+        rating: 4.7, ratingCount: 3019, placeId: 'ChIJF3SmmRwmUDAR5WyWdG_NRDk', tags: ['Rooftop views', 'Sunset'] },
       { id: 'p7', location: 'phuket', order: 6, category: 'Rooftop', title: 'Baba Nest, Sri Panwa (splurge)', cost: 27, thb: 1200, notes: 'Book weeks ahead, min spend applies', checked: false,
         description: "Phuket's most famous rooftop — 30-40 min taxi, book well ahead.",
-        place: 'Sri Panwa, 88/5 Sakdidej Rd, Tambon Wichit, Muang Phuket 83000' },
-      { id: 'p8', location: 'phuket', order: 7, category: 'Activity', title: 'Muay Thai camp (Tiger / Sinbi / PTT)', cost: 0, thb: 0, notes: 'Camp TBD — blocks accommodation choice', checked: false,
+        place: 'Sri Panwa, 88/5 Sakdidej Rd, Tambon Wichit, Muang Phuket 83000',
+        rating: 4.6, ratingCount: 149, placeId: 'ChIJq6ERr8IxUDARekvQXrJjCyQ', tags: ['Sunset views', 'Splurge dinner'] },
+      { id: 'p8', location: 'phuket', order: 7, category: 'Activity', title: 'Muay Thai camp (Tiger / Sinbi / PTT)', cost: 0, thb: 0,
+        notes: 'Sinbi 4.7★ (best reviewed, Rawai) · Tiger 3.9★ (biggest, more commercial, Chalong) · Phuket Top Team 4.1★ but multiple recent reviews report the gym closed/non-operating and a scam-like shop — avoid booking until confirmed still running.',
+        checked: false,
         description: 'Pick one — it decides where in Chalong/Rawai to base yourselves.',
-        place: 'Chalong, Phuket' },
+        place: 'Chalong, Phuket',
+        rating: null, ratingCount: null, placeId: null, tags: ['Muay Thai'] },
 
       { id: 'kp1', location: 'kpg', order: 0, category: 'Food', title: "Fisherman's Restaurant, Ban Tai", cost: 10, thb: 450, notes: '', checked: false,
         description: 'Fresh Thai seafood right in Ban Tai, close to Haadrin Resort.',
-        place: 'Ban Tai, Koh Phangan, Surat Thani' },
+        place: "Fisherman's Restaurant and Bar, Ban Tai, Koh Phangan, Surat Thani",
+        rating: 4.7, ratingCount: 1871, placeId: 'ChIJ64MaPE_8VDARxQF2ClPO1Pc', tags: ['Seafood', 'Beachfront', 'Cocktails'] },
       { id: 'kp2', location: 'kpg', order: 1, category: 'Food', title: 'Tong Yang Seafood', cost: 10, thb: 450, notes: '', checked: false,
         description: 'Clifftop seafood spot with sweeping views over Ban Tai bay.',
-        place: 'Tong Yang Seafood, between Haad Rin and Ban Khai, Koh Phangan' },
+        place: 'Thongyang Sea View, Ban Tai, Koh Phangan',
+        rating: 4.6, ratingCount: 249, placeId: 'ChIJ81hqmfP8VDARwKiOgTJbAX0', tags: ['Views', 'Thai food'] },
       { id: 'kp3', location: 'kpg', order: 2, category: 'Food', title: "L'Alcove (splurge, French)", cost: 25, thb: 1100, notes: '', checked: false,
         description: 'Romantic French bistro right on the sand at Hin Kong Bay.',
-        place: "L'Alcove, Hin Kong Bay, Koh Phangan" },
+        place: "L'Alcove, Hin Kong Bay, Koh Phangan",
+        rating: 4.7, ratingCount: 2057, placeId: 'ChIJ6fh3Shr-VDARyacjypRgv64', tags: ['Fine dining', 'Live music', 'Romantic'] },
       { id: 'kp4', location: 'kpg', order: 3, category: 'Bar', title: 'The Rock, Haad Rin', cost: 8, thb: 360, notes: '', checked: false,
         description: "Bar and restaurant on the south end of Haad Rin, bird's-eye view of the beach.",
-        place: 'The Rock, Haad Rin, Koh Phangan' },
+        place: 'The Rock, Haad Rin, Koh Phangan',
+        rating: 4.2, ratingCount: 369, placeId: 'ChIJfQ0SaqX8VDARLDm9pweqQu4', tags: ['Views', 'International food'] },
       { id: 'kp5', location: 'kpg', order: 4, category: 'Rooftop', title: 'Infinity Beach Club, Ban Tai', cost: 10, thb: 450, notes: 'Near Haadrin Resort', checked: false,
         description: 'Rooftop terrace, pool and 3 bars, a few minutes from Haadrin Resort.',
-        place: 'Infinity Beach Club, 17/3 Moo 4, Baan Tai, Koh Phangan 84280' },
-      { id: 'kp6', location: 'kpg', order: 5, category: 'Activity', title: 'Jungle Experience party', cost: 0, thb: 0, notes: '23 Nov', checked: false,
+        place: 'Infinity Beach Club, 17/3 Moo 4, Baan Tai, Koh Phangan 84280',
+        rating: 4.4, ratingCount: 715, placeId: 'ChIJayMkhVn8VDARm0SdT78oF_o', tags: ['Pool', 'Beach bar', 'Live DJ'] },
+      { id: 'kp6', location: 'kpg', order: 5, category: 'Activity', title: 'Jungle Experience party', cost: 0, thb: 0, notes: '23 Nov — event, not a single rated venue', checked: false,
         description: 'Jungle rave the night before Full Moon.',
-        place: 'Haad Rin, Koh Phangan' },
-      { id: 'kp7', location: 'kpg', order: 6, category: 'Activity', title: 'Full Moon Party', cost: 0, thb: 0, notes: '24 Nov — sort transport home in advance', checked: false,
+        place: 'Haad Rin, Koh Phangan',
+        rating: null, ratingCount: null, placeId: null, tags: ['Club', 'Live music'] },
+      { id: 'kp7', location: 'kpg', order: 6, category: 'Activity', title: 'Full Moon Party', cost: 0, thb: 0, notes: '24 Nov — sort transport home in advance. Event, not a single rated venue', checked: false,
         description: 'The big one, on Haad Rin Beach. No scooters home.',
-        place: 'Haad Rin Beach, Koh Phangan' },
+        place: 'Haad Rin Beach, Koh Phangan',
+        rating: null, ratingCount: null, placeId: null, tags: ['Club', 'Beach party'] },
 
       { id: 'b2a', location: 'bkk2', order: 0, category: 'Other', title: 'Buffer night hotel (airport-adjacent)', cost: 0, thb: 0, notes: 'Location TBD', checked: false,
         description: 'Overnight stop before the 27 Nov flight home.',
-        place: 'Suvarnabhumi Airport, Bangkok' }
+        place: 'Suvarnabhumi Airport, Bangkok',
+        rating: null, ratingCount: null, placeId: null, tags: [] }
     ];
   }
 
   function seedBookings() {
     return [
       { id: 'bk1', title: 'Confirm BKK–MAN return flight date matches 27 Nov', deadline: 'Confirmed ✓', urgency: 'low', notes: 'Fri 27 Nov 2026, 18:55 BKK departure', done: true },
-      { id: 'bk2', title: 'Confirm Phuket→Samui→Bangkok flights are ticketed', deadline: 'ASAP — original deadline (30 Jun) has passed', urgency: 'high', notes: '', done: false },
-      { id: 'bk3', title: 'Decide Muay Thai camp (Tiger / Sinbi / Phuket Top Team)', deadline: 'By 3 Aug', urgency: 'high', notes: 'Determines Phuket accommodation area', done: false },
+      { id: 'bk2', title: 'Confirm Phuket→Samui→Bangkok flights are ticketed', deadline: 'ASAP — original deadline (30 Jun) has passed', urgency: 'high', notes: 'Not yet booked as of last check — highest priority open item', done: false },
+      { id: 'bk3', title: 'Decide Muay Thai camp (Tiger / Sinbi / Phuket Top Team)', deadline: 'By 3 Aug', urgency: 'high', notes: 'Sinbi rated best (4.7★); Phuket Top Team has recent scam/closure reports — avoid for now', done: false },
       { id: 'bk4', title: 'Book Krabi accommodation (rebook or keep current)', deadline: 'By 10 Aug', urgency: 'high', notes: 'Panan Krabi Resort proposed', done: false },
       { id: 'bk5', title: 'Book Phuket accommodation (4 rooms)', deadline: 'By 10 Aug', urgency: 'high', notes: 'Selina Serenity Rawai proposed', done: false },
       { id: 'bk6', title: "Confirm Dalz's Phuket→Koh Phangan transfer seat", deadline: 'By 10 Aug', urgency: 'medium', notes: '', done: false },
-      { id: 'bk7', title: 'Book Krabi→Phuket transport (ferry or van)', deadline: 'By 31 Aug', urgency: 'medium', notes: '', done: false },
+      { id: 'bk7', title: 'Book Krabi→Phuket transport (ferry, speedboat or Phi Phi overnight)', deadline: 'By 31 Aug', urgency: 'medium', notes: '', done: false },
       { id: 'bk8', title: 'Book Bangkok→Krabi flight (16 Nov)', deadline: 'By 24 Aug', urgency: 'medium', notes: '07:40 early vs 19:40 evening — group decision needed', done: false },
       { id: 'bk9', title: 'Book Koh Phangan gap nights (22 Nov & 25–26 Nov)', deadline: 'By 24 Aug', urgency: 'medium', notes: 'Full Moon week fills fast', done: false },
       { id: 'bk10', title: 'Book Bangkok buffer night hotel (26–27 Nov)', deadline: 'By 24 Aug', urgency: 'medium', notes: 'Airport-adjacent', done: false },
@@ -322,6 +409,19 @@
 
   var URGENCY_RANK = { high: 0, medium: 1, low: 2 };
   var URGENCY_COLOR = { high: '#F0654A', medium: '#E8A33D', low: '#6FBF8C' };
+
+  function useCountdownTick() {
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function tick() {
+      var diff = Math.max(0, new Date(FLIGHT.target).getTime() - Date.now());
+      document.getElementById('cdDays').textContent = Math.floor(diff / 86400000);
+      document.getElementById('cdHours').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+      document.getElementById('cdMins').textContent = pad(Math.floor((diff % 3600000) / 60000));
+      document.getElementById('cdSecs').textContent = pad(Math.floor((diff % 60000) / 1000));
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
 
   var state = {
     items: seedItems(),
@@ -356,22 +456,50 @@
     }).catch(function () {
       // nothing saved yet — keep the seeded plan
     }).then(function () {
-      // Migration: return flight date is now confirmed (27 Nov), patch this in
-      // even if an earlier session already saved it as unresolved.
+      // Migration: return flight date confirmed (27 Nov)
       state.bookings = state.bookings.map(function (b) {
         return b.id === 'bk1'
           ? Object.assign({}, b, { done: true, deadline: 'Confirmed ✓', notes: 'Fri 27 Nov 2026, 18:55 BKK departure' })
           : b;
       });
-      // Migration: Bangkok accommodation price + who booked it, now known,
-      // patched in even if an earlier session already saved it without this.
+      // Migration: Bangkok accommodation total price + who booked it
       state.airbnbs = state.airbnbs.map(function (a) {
-        return a.id === 'ab-bkk' && a.priceGbp == null
+        return a.id === 'ab-bkk' && a.totalGbp == null
           ? Object.assign({}, a, {
-              priceGbp: 115.15, priceThb: 5182, bookedBy: a.bookedBy || 'Christopher',
-              note: 'Total £345.45 for 3 nights, split 3 ways (£201.12 paid 1 Jul, £144.33 due 29 Oct) — pay Christopher your share.'
+              totalGbp: 345.45, totalThb: null, bookedBy: a.bookedBy || 'Chris',
+              paid: Object.assign({ Chris: true }, a.paid || {}),
+              note: '£201.12 paid 1 Jul, £144.33 due 29 Oct. Private Airbnb listing — no public Google rating.'
             })
           : a;
+      });
+      // Migration: rename Christopher -> Chris everywhere it may have been saved
+      state.airbnbs = state.airbnbs.map(function (a) {
+        if (a.bookedBy === 'Christopher') a = Object.assign({}, a, { bookedBy: 'Chris' });
+        if (a.paid && a.paid.Christopher != null) {
+          var p = Object.assign({}, a.paid);
+          p.Chris = p.Christopher; delete p.Christopher;
+          a = Object.assign({}, a, { paid: p });
+        }
+        return a;
+      });
+      // Migration: backfill rating/placeId/tags fields for items saved before this feature existed
+      var freshItems = seedItems();
+      state.items = state.items.map(function (i) {
+        if (i.rating === undefined) {
+          var match = freshItems.find(function (f) { return f.id === i.id; });
+          if (match) return Object.assign({ rating: match.rating, ratingCount: match.ratingCount, placeId: match.placeId, tags: match.tags }, i);
+          return Object.assign({ rating: null, ratingCount: null, placeId: null, tags: [] }, i);
+        }
+        return i;
+      });
+      var freshAirbnbs = seedAirbnbs();
+      state.airbnbs = state.airbnbs.map(function (a) {
+        if (a.rating === undefined) {
+          var match = freshAirbnbs.find(function (f) { return f.id === a.id; });
+          if (match) return Object.assign({ rating: match.rating, ratingCount: match.ratingCount, placeId: match.placeId }, a);
+          return Object.assign({ rating: null, ratingCount: null, placeId: null }, a);
+        }
+        return a;
       });
       hasLoaded = true;
       renderAll();
@@ -390,8 +518,7 @@
   function moveItem(id, dir) {
     var item = state.items.find(function (i) { return i.id === id; });
     if (!item) return;
-    var siblings = state.items.filter(function (i) { return i.location === item.location; })
-      .sort(function (a, b) { return a.order - b.order; });
+    var siblings = state.items.filter(function (i) { return i.location === item.location; }).sort(function (a, b) { return a.order - b.order; });
     var idx = siblings.findIndex(function (i) { return i.id === id; });
     var swapIdx = dir === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= siblings.length) return;
@@ -410,7 +537,8 @@
       title: draft.title.trim(),
       cost: draft.cost ? (parseFloat(draft.cost) || 0) : 0,
       thb: null, notes: '', checked: false, description: '',
-      place: draft.place ? draft.place.trim() : ''
+      place: draft.place ? draft.place.trim() : '',
+      rating: null, ratingCount: null, placeId: null, tags: []
     });
     state.drafts[location] = { title: '', cost: '', place: '' };
     renderAll(); scheduleSave();
@@ -419,14 +547,16 @@
     var b = state.bookings.find(function (x) { return x.id === id; });
     if (b) { b.done = !b.done; renderAll(); scheduleSave(); }
   }
-  function toggleLocation(id) {
-    state.expandedLocations[id] = !state.expandedLocations[id];
-    renderAll();
+  function togglePaid(airbnbId, name) {
+    var ab = state.airbnbs.find(function (a) { return a.id === airbnbId; });
+    if (!ab) return;
+    if (name === ab.bookedBy) return;
+    ab.paid = ab.paid || {};
+    ab.paid[name] = !ab.paid[name];
+    renderAll(); scheduleSave();
   }
-  function toggleEdit(id) {
-    state.editOpen[id] = !state.editOpen[id];
-    renderAll();
-  }
+  function toggleLocation(id) { state.expandedLocations[id] = !state.expandedLocations[id]; renderAll(); }
+  function toggleEdit(id) { state.editOpen[id] = !state.editOpen[id]; renderAll(); }
 
   // ---------- render ----------
   function renderFlightCard() {
@@ -438,8 +568,7 @@
       '<div class="tp-flightdivider"></div>' +
       '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(r.route) + '</div><div class="tp-flightright">' + esc(r.conf) + '</div></div>' +
       '<div class="tp-flightmeta">' + esc(r.airline) + ' · ' + esc(r.when) + '</div>' +
-      '<div class="tp-flightmeta">' + esc(r.detail) + '</div>' +
-      '<div class="tp-flightmeta" style="color:#6FBF8C;margin-top:0.35rem;">✓ Both legs confirmed, matches the 26–27 Nov Bangkok buffer night</div>';
+      '<div class="tp-flightmeta">' + esc(r.detail) + '</div>';
   }
 
   function renderBookings() {
@@ -467,11 +596,26 @@
       '</div>';
   }
 
-  function airbnbPriceLine(a) {
-    if (a.priceGbp == null) return 'Price not added yet';
-    var thb = a.priceThb != null ? a.priceThb : Math.round((a.priceGbp * THB_RATE) / 10) * 10;
-    return fmtGBP(a.priceGbp) + 'pp · ' + (a.priceThb != null ? '' : '≈') + '฿' + fmtTHBNum(thb) + 'pp';
+  function partyFor(a) { return PARTY[a.locKey] || []; }
+  function perPersonGbp(a) {
+    var party = partyFor(a);
+    if (a.totalGbp == null || !party.length) return null;
+    return a.totalGbp / party.length;
   }
+  function perPersonThb(a) {
+    var party = partyFor(a);
+    if (!party.length) return null;
+    if (a.totalThb != null) return a.totalThb / party.length;
+    var pg = perPersonGbp(a);
+    return pg == null ? null : Math.round((pg * THB_RATE) / 10) * 10;
+  }
+  function airbnbPriceLine(a) {
+    var pg = perPersonGbp(a);
+    if (pg == null) return 'Total price not added yet';
+    var pt = perPersonThb(a);
+    return fmtGBP(pg) + 'pp · ' + (a.totalThb != null ? '' : '≈') + '฿' + fmtTHBNum(pt) + 'pp';
+  }
+  function isPaid(a, name) { return name === a.bookedBy ? true : !!(a.paid && a.paid[name]); }
 
   function renderAirbnbs() {
     var stubs = state.airbnbs.map(function (a) {
@@ -479,36 +623,54 @@
         ? '<span class="tp-badge" style="background:#6FBF8C;">Booked</span>'
         : '<span class="tp-badge" style="background:#E8A33D;">Under review</span>';
       var editing = !!state.editOpen[a.id];
-      var bottom;
-      if (editing) {
-        bottom = '<div class="tp-edit-panel">' +
-          '<div class="tp-edit-row">' +
-          '<div><span class="tp-edit-label">£ pp</span><input class="tp-input" type="number" step="0.5" min="0" data-role="ab-price-gbp" data-id="' + a.id + '" value="' + (a.priceGbp != null ? a.priceGbp : '') + '" /></div>' +
-          '<div><span class="tp-edit-label">฿ pp</span><input class="tp-input" type="number" step="10" min="0" placeholder="auto" data-role="ab-price-thb" data-id="' + a.id + '" value="' + (a.priceThb != null ? a.priceThb : '') + '" /></div>' +
-          '</div>' +
-          '<div><span class="tp-edit-label">Booked by</span><input class="tp-input" placeholder="Who paid for this?" data-role="ab-bookedby" data-id="' + a.id + '" value="' + esc(a.bookedBy || '') + '" /></div>' +
-          '<div><span class="tp-edit-label">Status</span><select class="tp-select" data-role="ab-status" data-id="' + a.id + '">' +
-          '<option value="confirmed"' + (a.status === 'confirmed' ? ' selected' : '') + '>Booked</option>' +
-          '<option value="review"' + (a.status === 'review' ? ' selected' : '') + '>Under review</option>' +
-          '</select></div>' +
-          '<div><span class="tp-edit-label">Note</span><textarea class="tp-notes-box" style="margin-top:0;" data-role="ab-note" data-id="' + a.id + '">' + esc(a.note || '') + '</textarea></div>' +
-          '<button class="tp-edit-done" data-action="toggle-edit" data-id="' + a.id + '">Done</button>' +
+      var party = partyFor(a);
+      var pg = perPersonGbp(a);
+      var pt = perPersonThb(a);
+
+      var editPanel = '<div class="tp-edit-panel">' +
+        '<div class="tp-edit-row">' +
+        '<div><span class="tp-edit-label">Total £</span><input class="tp-input" type="number" step="0.5" min="0" data-role="ab-total-gbp" data-id="' + a.id + '" value="' + (a.totalGbp != null ? a.totalGbp : '') + '" /></div>' +
+        '<div><span class="tp-edit-label">Total ฿</span><input class="tp-input" type="number" step="10" min="0" placeholder="auto" data-role="ab-total-thb" data-id="' + a.id + '" value="' + (a.totalThb != null ? a.totalThb : '') + '" /></div>' +
+        '</div>' +
+        '<div class="tp-edit-label" style="margin-bottom:-0.2rem;">Split ' + party.length + ' ways (' + esc(party.join(', ')) + ')</div>' +
+        '<div><span class="tp-edit-label">Booked by</span><input class="tp-input" placeholder="Who paid for this?" data-role="ab-bookedby" data-id="' + a.id + '" value="' + esc(a.bookedBy || '') + '" /></div>' +
+        '<div><span class="tp-edit-label">Status</span><select class="tp-select" data-role="ab-status" data-id="' + a.id + '">' +
+        '<option value="confirmed"' + (a.status === 'confirmed' ? ' selected' : '') + '>Booked</option>' +
+        '<option value="review"' + (a.status === 'review' ? ' selected' : '') + '>Under review</option>' +
+        '</select></div>' +
+        '<div><span class="tp-edit-label">Note</span><textarea class="tp-notes-box" style="margin-top:0;" data-role="ab-note" data-id="' + a.id + '">' + esc(a.note || '') + '</textarea></div>' +
+        '<button class="tp-edit-done" data-action="toggle-edit" data-id="' + a.id + '">Done</button>' +
+        '</div>';
+
+      var paidRows = party.map(function (name) {
+        var paid = isPaid(a, name);
+        var isBooker = name === a.bookedBy;
+        var owedText = isBooker ? 'booked this' : (pg == null ? 'amount TBD' : (paid ? 'settled up' : 'owes ' + fmtGBP(pg) + ' · ฿' + fmtTHBNum(pt)));
+        return '<div class="tp-booking-row" style="padding:0.4rem 0;">' +
+          '<button class="tp-check ' + (paid ? 'checked' : '') + '" ' + (isBooker ? 'disabled' : '') + ' data-action="toggle-paid" data-id="' + a.id + '" data-name="' + esc(name) + '" aria-label="Toggle paid">' + (paid ? '✓' : '') + '</button>' +
+          '<div style="flex:1;"><span class="tp-item-title">' + esc(name) + '</span> ' +
+          '<span class="tp-panel-sub" style="display:inline;">— ' + esc(owedText) + '</span></div>' +
           '</div>';
-      } else {
-        bottom =
-          '<div class="tp-stub-dates">' +
-          '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Check-in</div><div class="tp-stub-dateval">' + esc(a.checkin) + '</div></div>' +
-          '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Check-out</div><div class="tp-stub-dateval">' + esc(a.checkout) + '</div></div>' +
-          '</div>' +
-          '<div class="tp-item-meta" style="margin-top:0.5rem;">' +
-          '<span class="tp-item-cost">' + esc(airbnbPriceLine(a)) + '</span>' +
-          '<a class="tp-map-link" href="' + mapUrl(a.address) + '" target="_blank" rel="noopener noreferrer">📍 View on map</a>' +
-          '</div>' +
-          '<div class="tp-stub-note"' + (a.bookedBy ? '' : ' style="font-style:italic;"') + '>' +
-          (a.bookedBy ? 'Booked by ' + esc(a.bookedBy) : 'Booked by — not noted yet, tap ✎ to add') +
-          '</div>' +
-          (a.note ? '<div class="tp-stub-note">' + esc(a.note) + '</div>' : '');
-      }
+      }).join('');
+
+      var ratingLinks = ratingAndLinksHtml({ rating: a.rating, ratingCount: a.ratingCount, placeId: a.placeId, place: a.address });
+
+      var bottom = editing ? editPanel : (
+        '<div class="tp-stub-dates">' +
+        '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Check-in</div><div class="tp-stub-dateval">' + esc(a.checkin) + '</div></div>' +
+        '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Check-out</div><div class="tp-stub-dateval">' + esc(a.checkout) + '</div></div>' +
+        '</div>' +
+        '<div class="tp-item-meta" style="margin-top:0.5rem;">' +
+        '<span class="tp-item-cost">' + esc(airbnbPriceLine(a)) + ' <span style="color:#5f7f7c;">(' + party.length + '-way split)</span></span>' +
+        ratingLinks +
+        '</div>' +
+        '<div class="tp-stub-note"' + (a.bookedBy ? '' : ' style="font-style:italic;"') + '>' +
+        (a.bookedBy ? 'Booked by ' + esc(a.bookedBy) : 'Booked by — not noted yet, tap ✎ to add') +
+        '</div>' +
+        (a.note ? '<div class="tp-stub-note">' + esc(a.note) + '</div>' : '') +
+        '<div style="margin-top:0.5rem;border-top:1px solid rgba(232,163,61,0.1);">' + paidRows + '</div>'
+      );
+
       return '<div class="tp-stub">' +
         '<div class="tp-stub-top">' +
         '<div><div class="tp-stub-name">' + esc(a.location) + ' — ' + esc(a.name) + '</div>' +
@@ -520,13 +682,13 @@
         '</div>';
     }).join('');
 
-    var known = state.airbnbs.filter(function (a) { return a.priceGbp != null; });
-    var totalGbp = known.reduce(function (s, a) { return s + a.priceGbp; }, 0);
-    var totalThb = known.reduce(function (s, a) { return s + (a.priceThb != null ? a.priceThb : Math.round((a.priceGbp * THB_RATE) / 10) * 10); }, 0);
+    var known = state.airbnbs.filter(function (a) { return a.totalGbp != null; });
+    var totalGbp = known.reduce(function (s, a) { return s + a.totalGbp; }, 0);
+    var totalThb = known.reduce(function (s, a) { return s + (a.totalThb != null ? a.totalThb : Math.round((a.totalGbp * THB_RATE) / 10) * 10); }, 0);
     var missing = state.airbnbs.length - known.length;
     var summary = known.length
-      ? '<div class="tp-cost-caption" style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(232,163,61,0.12);">Accommodation booked so far (per person): <b style="color:#E8A33D;">' + fmtGBP(totalGbp) + ' · ฿' + fmtTHBNum(totalThb) + '</b>' +
-        (missing ? ' — ' + missing + ' still need' + (missing === 1 ? 's' : '') + ' a price added.' : '') + '</div>'
+      ? '<div class="tp-cost-caption" style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(232,163,61,0.12);">Accommodation booked so far (total): <b style="color:#E8A33D;">' + fmtGBP(totalGbp) + ' · ฿' + fmtTHBNum(totalThb) + '</b>' +
+        (missing ? ' — ' + missing + ' still need' + (missing === 1 ? 's' : '') + ' a total price added.' : '') + '</div>'
       : '';
 
     document.getElementById('airbnbPanel').innerHTML =
@@ -567,8 +729,7 @@
 
   function renderLocations() {
     var html = LOCATIONS.map(function (loc) {
-      var locItems = state.items.filter(function (i) { return i.location === loc.id; })
-        .sort(function (a, b) { return a.order - b.order; });
+      var locItems = state.items.filter(function (i) { return i.location === loc.id; }).sort(function (a, b) { return a.order - b.order; });
       var checkedCount = locItems.filter(function (i) { return i.checked; }).length;
       var open = !!state.expandedLocations[loc.id];
       var draft = state.drafts[loc.id] || { title: '', cost: '', place: '' };
@@ -596,6 +757,14 @@
                 '</div>' +
                 '<div><span class="tp-edit-label">Location (for map link)</span>' +
                 '<input class="tp-input" placeholder="e.g. venue name, area, Thailand" data-role="edit-place" data-id="' + item.id + '" value="' + esc(item.place || '') + '" /></div>' +
+                '<div class="tp-edit-row">' +
+                '<div><span class="tp-edit-label">Rating (0–5)</span>' +
+                '<input class="tp-input" type="number" step="0.1" min="0" max="5" placeholder="e.g. 4.5" data-role="edit-rating" data-id="' + item.id + '" value="' + (item.rating != null ? item.rating : '') + '" /></div>' +
+                '<div><span class="tp-edit-label"># Ratings</span>' +
+                '<input class="tp-input" type="number" step="1" min="0" placeholder="e.g. 1200" data-role="edit-rating-count" data-id="' + item.id + '" value="' + (item.ratingCount != null ? item.ratingCount : '') + '" /></div>' +
+                '</div>' +
+                '<div><span class="tp-edit-label">Good for (comma separated)</span>' +
+                '<input class="tp-input" placeholder="e.g. Thai food, live music" data-role="edit-tags" data-id="' + item.id + '" value="' + esc((item.tags || []).join(', ')) + '" /></div>' +
                 '<div><span class="tp-edit-label">Description</span>' +
                 '<input class="tp-input" placeholder="Short description…" data-role="edit-desc" data-id="' + item.id + '" value="' + esc(item.description || '') + '" /></div>' +
                 '<div><span class="tp-edit-label">Notes</span>' +
@@ -607,9 +776,10 @@
                 '<span class="tp-badge" style="background:' + (CATEGORY_COLORS[item.category] || CATEGORY_COLORS.Other) + ';margin-right:0.4rem;">' + esc(item.category) + '</span>' +
                 '<span class="tp-item-title ' + (item.checked ? 'checked' : '') + '">' + esc(item.title) + '</span>' +
                 (item.description ? '<div class="tp-item-desc">' + esc(item.description) + '</div>' : '') +
+                tagsRowHtml(item.tags) +
                 '<div class="tp-item-meta">' +
                 '<span class="tp-item-cost">' + esc(costLine(item)) + '</span>' +
-                (item.place ? '<a class="tp-map-link" href="' + mapUrl(item.place) + '" target="_blank" rel="noopener noreferrer">📍 View on map</a>' : '') +
+                ratingAndLinksHtml(item) +
                 '</div>';
             }
             return '<div class="tp-item-row">' +
@@ -650,20 +820,6 @@
     renderLocations();
   }
 
-  // ---------- countdown ----------
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function tickCountdown() {
-    var diff = Math.max(0, new Date(FLIGHT.target).getTime() - Date.now());
-    var days = Math.floor(diff / 86400000);
-    var hours = Math.floor((diff % 86400000) / 3600000);
-    var mins = Math.floor((diff % 3600000) / 60000);
-    var secs = Math.floor((diff % 60000) / 1000);
-    document.getElementById('cdDays').textContent = days;
-    document.getElementById('cdHours').textContent = pad(hours);
-    document.getElementById('cdMins').textContent = pad(mins);
-    document.getElementById('cdSecs').textContent = pad(secs);
-  }
-
   // ---------- events (delegated) ----------
   var app = document.getElementById('app');
   app.addEventListener('click', function (e) {
@@ -679,6 +835,7 @@
     else if (action === 'toggle-bookings') { state.bookingsOpen = !state.bookingsOpen; renderAll(); }
     else if (action === 'toggle-airbnbs') { state.airbnbsOpen = !state.airbnbsOpen; renderAll(); }
     else if (action === 'add-item') addItem(el.dataset.location);
+    else if (action === 'toggle-paid') togglePaid(id, el.dataset.name);
   });
 
   function findItem(id) { return state.items.find(function (i) { return i.id === id; }); }
@@ -702,14 +859,20 @@
       it = findItem(el.dataset.id); if (it) { it.thb = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
     } else if (role === 'edit-place') {
       it = findItem(el.dataset.id); if (it) { it.place = el.value; scheduleSave(); }
+    } else if (role === 'edit-rating') {
+      it = findItem(el.dataset.id); if (it) { it.rating = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
+    } else if (role === 'edit-rating-count') {
+      it = findItem(el.dataset.id); if (it) { it.ratingCount = el.value === '' ? null : (parseInt(el.value, 10) || 0); scheduleSave(); }
+    } else if (role === 'edit-tags') {
+      it = findItem(el.dataset.id); if (it) { it.tags = el.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean); scheduleSave(); }
     } else if (role === 'edit-desc') {
       it = findItem(el.dataset.id); if (it) { it.description = el.value; scheduleSave(); }
     } else if (role === 'edit-notes') {
       it = findItem(el.dataset.id); if (it) { it.notes = el.value; scheduleSave(); }
-    } else if (role === 'ab-price-gbp') {
-      ab = findAirbnb(el.dataset.id); if (ab) { ab.priceGbp = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
-    } else if (role === 'ab-price-thb') {
-      ab = findAirbnb(el.dataset.id); if (ab) { ab.priceThb = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
+    } else if (role === 'ab-total-gbp') {
+      ab = findAirbnb(el.dataset.id); if (ab) { ab.totalGbp = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
+    } else if (role === 'ab-total-thb') {
+      ab = findAirbnb(el.dataset.id); if (ab) { ab.totalThb = el.value === '' ? null : (parseFloat(el.value) || 0); scheduleSave(); }
     } else if (role === 'ab-bookedby') {
       ab = findAirbnb(el.dataset.id); if (ab) { ab.bookedBy = el.value; scheduleSave(); }
     } else if (role === 'ab-note') {
@@ -729,14 +892,13 @@
   });
 
   app.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && e.target.dataset.role && e.target.dataset.role.indexOf('draft-') === 0 && e.target.tagName !== 'TEXTAREA') {
+    if (e.key === 'Enter' && e.target.dataset.role && e.target.dataset.role.indexOf('draft-') === 0) {
       addItem(e.target.dataset.location);
     }
   });
 
   renderFlightCard();
-  tickCountdown();
-  setInterval(tickCountdown, 1000);
+  useCountdownTick();
   loadState();
 })();
 </script>
