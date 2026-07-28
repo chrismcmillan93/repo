@@ -107,6 +107,10 @@
   .ledger-total{
     font-family:'Fraunces', serif; font-size:0.95rem; color: var(--lemon); font-weight:600;
   }
+  .spend-total-display{
+    font-family:'Fraunces', serif; font-size:1.5rem; font-weight:600; color: var(--plaster); margin-top:2px;
+  }
+  .spend-total-sub{ font-size:0.75rem; color: rgba(252,250,244,0.45); margin-top:2px; }
   .paid-row{
     border-top:1px solid var(--line); padding:10px 0;
   }
@@ -184,6 +188,14 @@
   }
   .item-text{ display:block; font-size:0.9rem; line-height:1.4; margin-top:2px; }
   .item-price{ display:block; font-size:0.8rem; color: var(--lemon); margin-top:3px; font-weight:600; }
+  .item-estimate{ display:block; font-size:0.72rem; color: rgba(252,250,244,0.4); margin-top:3px; }
+  .item-spend-row{ display:flex; gap:8px; margin-top:6px; align-items:center; }
+  .item-spend-field{ display:flex; align-items:center; gap:4px; }
+  .item-spend-field span{ font-size:0.78rem; color: rgba(252,250,244,0.5); font-weight:600; }
+  .item-spend-input{
+    width:64px; font-family:'Inter',sans-serif; background: rgba(16,26,34,0.65); border:1px solid var(--line-strong);
+    border-radius:7px; color: var(--plaster); padding:4px 6px; font-size:0.8rem;
+  }
   .item-maps-link{
     display:inline-block; margin-top:3px; font-size:0.75rem; color: var(--majolica);
     border-bottom:1px dotted var(--majolica); cursor:pointer; font-weight:600;
@@ -306,6 +318,8 @@
 
   <section class="card" id="ledgerCard"></section>
 
+  <section class="card" id="spendTrackerCard"></section>
+
   <section class="card" id="placesCard"></section>
 
   <section id="daysContainer"></section>
@@ -320,7 +334,7 @@
 (function(){
   "use strict";
 
-  const STORAGE_KEY = 'naples-trip-dashboard-v4';
+  const STORAGE_KEY = 'naples-trip-dashboard-v5';
 
   // ---------------- supabase sync (checkbox states) ----------------
   const SUPABASE_URL = 'https://jyxtduvkmztexwurrjsf.supabase.co';
@@ -547,11 +561,12 @@
       done:{}, skipped:{},
       customItems:{ day1:[], day2:[], day3:[], day4:[] },
       notes:{},
+      itemCosts:{},
       paid:{ 'airbnb':false, 'winetour':true, 'ferry':true, 'flight-out':false, 'flight-in':false },
       paidDetails:{
-        'airbnb': { amount_gbp:'332.28', amount_eur:'', date:'2026-08-26', provider:'Airbnb — Accogliente appartamento nel Cuore della Città', ref:'', paidBy:'Chris (you)', notes:'Charged via Google Pay · 8–11 Sept stay' },
-        'winetour': { amount_gbp:'', amount_eur:'120', date:'', provider:'Cantina del Vesuvio', ref:'', paidBy:'Dave', notes:'€60 each, covers both of us' },
-        'ferry': { amount_gbp:'126.95', amount_eur:'', date:'', provider:'Ferryhopper (NLG Jet)', ref:'FH99ZV2924UE', paidBy:'Dave', notes:'Covers both passengers, round trip' }
+        'airbnb': { amount:'332.28', currency:'gbp', date:'2026-08-26', provider:'Airbnb — Accogliente appartamento nel Cuore della Città', ref:'', paidBy:'Chris (you)', notes:'Charged via Google Pay · 8–11 Sept stay' },
+        'winetour': { amount:'120', currency:'eur', date:'', provider:'Cantina del Vesuvio', ref:'', paidBy:'Dave', notes:'€60 each, covers both of us' },
+        'ferry': { amount:'126.95', currency:'gbp', date:'', provider:'Ferryhopper (NLG Jet)', ref:'FH99ZV2924UE', paidBy:'Dave', notes:'Covers both passengers, round trip' }
       },
       choices:{ 'day2-excursion':'pompeii' }
     };
@@ -587,6 +602,7 @@
           skipped: loaded.skipped||{},
           customItems: Object.assign(base.customItems, loaded.customItems||{}),
           notes: loaded.notes||{},
+          itemCosts: loaded.itemCosts||{},
           paid: Object.assign({}, base.paid, loaded.paid||{}),
           paidDetails: mergedPaidDetails,
           choices: Object.assign({}, base.choices, loaded.choices||{})
@@ -790,6 +806,35 @@
     }
   }
 
+  // ---------------- spend tracker ----------------
+  function computeItineraryTotal(){
+    let totalGbp = 0, totalEur = 0, countGbp = 0, countEur = 0;
+    Object.keys(state.itemCosts).forEach(function(id){
+      const c = state.itemCosts[id];
+      if(!c) return;
+      const g = parseFloat(c.gbp);
+      if(!isNaN(g) && c.gbp!==undefined && c.gbp!==''){ totalGbp += g; countGbp++; }
+      const e = parseFloat(c.eur);
+      if(!isNaN(e) && c.eur!==undefined && c.eur!==''){ totalEur += e; countEur++; }
+    });
+    return { totalGbp:totalGbp, totalEur:totalEur, countGbp:countGbp, countEur:countEur };
+  }
+  function renderSpendTracker(){
+    const el = document.getElementById('spendTrackerCard');
+    if(!el) return;
+    const t = computeItineraryTotal();
+    let html = '<h2 class="card-title">Trip Spend Tracker</h2>';
+    html += '<p style="font-size:0.75rem; color:rgba(252,250,244,0.45); margin:2px 0 10px;">Fill in what you actually spend on each itinerary item — this adds it up live</p>';
+    if(t.countGbp===0 && t.countEur===0){
+      html += '<div class="spend-total-display">£0.00 · €0.00</div>';
+      html += '<div class="spend-total-sub">Nothing logged yet — enter amounts on any item below</div>';
+    } else {
+      html += '<div class="spend-total-display">£'+t.totalGbp.toFixed(2)+' · €'+t.totalEur.toFixed(2)+'</div>';
+      html += '<div class="spend-total-sub">'+(t.countGbp+t.countEur)+' item'+((t.countGbp+t.countEur)===1?'':'s')+' logged (excludes pre-paid bookings, tracked separately above)</div>';
+    }
+    el.innerHTML = html;
+  }
+
   // ---------------- places ----------------
   function renderPlaces(){
     const el = document.getElementById('placesCard');
@@ -826,15 +871,15 @@
     let totalEur=0, settledEur=0, anyEur=false;
     PAID_ITEMS.forEach(function(p){
       const d = state.paidDetails[p.id] || {};
-      const amtG = parseFloat(d.amount_gbp);
-      if(!isNaN(amtG) && d.amount_gbp!==undefined && d.amount_gbp!==''){
-        anyGbp = true; totalGbp += amtG;
-        if(state.paid[p.id]) settledGbp += amtG;
-      }
-      const amtE = parseFloat(d.amount_eur);
-      if(!isNaN(amtE) && d.amount_eur!==undefined && d.amount_eur!==''){
-        anyEur = true; totalEur += amtE;
-        if(state.paid[p.id]) settledEur += amtE;
+      const amt = parseFloat(d.amount);
+      if(!isNaN(amt) && d.amount!==undefined && d.amount!==''){
+        if(d.currency==='eur'){
+          anyEur = true; totalEur += amt;
+          if(state.paid[p.id]) settledEur += amt;
+        } else {
+          anyGbp = true; totalGbp += amt;
+          if(state.paid[p.id]) settledGbp += amt;
+        }
       }
     });
     const paidCount = PAID_ITEMS.filter(function(p){ return state.paid[p.id]; }).length;
@@ -861,8 +906,8 @@
     const el = document.getElementById('ledgerCard');
     const totals = computeLedgerTotals();
     let headerParts = [];
-    if(totals.anyGbp) headerParts.push('£'+totals.settledGbp.toFixed(2)+' / £'+totals.totalGbp.toFixed(2));
-    if(totals.anyEur) headerParts.push('€'+totals.settledEur.toFixed(2)+' / €'+totals.totalEur.toFixed(2));
+    if(totals.anyGbp) headerParts.push('£'+totals.totalGbp.toFixed(2));
+    if(totals.anyEur) headerParts.push('€'+totals.totalEur.toFixed(2));
     const headerText = headerParts.length ? headerParts.join(' · ') : (totals.paidCount+'/'+PAID_ITEMS.length+' paid');
     let html = '<div class="ledger-header"><h2 class="card-title">Paid in advance</h2>';
     html += '<span class="ledger-total">'+headerText+'</span></div>';
@@ -870,10 +915,8 @@
       const d = state.paidDetails[p.id] || {};
       const isPaid = !!state.paid[p.id];
       const expanded = uiState.expandedPaid.has(p.id);
-      const amtParts = [];
-      if(d.amount_gbp!==undefined && d.amount_gbp!=='') amtParts.push('£'+parseFloat(d.amount_gbp).toFixed(2));
-      if(d.amount_eur!==undefined && d.amount_eur!=='') amtParts.push('€'+parseFloat(d.amount_eur).toFixed(2));
-      const amountDisplay = amtParts.length ? amtParts.join(' / ') : '—';
+      const currencySymbol = d.currency==='eur' ? '€' : '£';
+      const amountDisplay = (d.amount!==undefined && d.amount!=='') ? (currencySymbol+parseFloat(d.amount).toFixed(2)) : '—';
       html += '<div class="paid-row '+(isPaid?'is-paid':'')+'">';
       html += '  <div class="paid-row-header" data-action="toggle-paid-expand" data-id="'+p.id+'">';
       html += '    <label class="chk"><input type="checkbox" aria-label="Mark paid" data-action="toggle-paid" data-id="'+p.id+'" '+(isPaid?'checked':'')+'></label>';
@@ -883,8 +926,7 @@
       html += '  </div>';
       if(expanded){
         html += '  <div class="paid-details">';
-        html += '    <label>Amount (£)<input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount_gbp" value="'+escapeHtml(d.amount_gbp||'')+'"></label>';
-        html += '    <label>Amount (€)<input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount_eur" value="'+escapeHtml(d.amount_eur||'')+'"></label>';
+        html += '    <label>Amount<div style="display:flex; gap:6px;"><select class="pd-field" data-id="'+p.id+'" data-field="currency" style="flex:0 0 64px;"><option value="gbp"'+(d.currency!=='eur'?' selected':'')+'>£ GBP</option><option value="eur"'+(d.currency==='eur'?' selected':'')+'>€ EUR</option></select><input class="pd-field" type="number" step="0.01" data-id="'+p.id+'" data-field="amount" value="'+escapeHtml(d.amount||'')+'" style="flex:1;"></div></label>';
         html += '    <label>'+(isPaid?'Date paid':'Due date')+'<input class="pd-field" type="date" data-id="'+p.id+'" data-field="date" value="'+escapeHtml(d.date||'')+'"></label>';
         html += '    <label>Provider<input class="pd-field" type="text" data-id="'+p.id+'" data-field="provider" value="'+escapeHtml(d.provider||'')+'"></label>';
         html += '    <label>Booking ref<input class="pd-field" type="text" data-id="'+p.id+'" data-field="ref" value="'+escapeHtml(d.ref||'')+'"></label>';
@@ -1010,8 +1052,19 @@
           html += '  <div class="item-row-main">';
           html += '    <label class="chk"><input type="checkbox" aria-label="Mark done" data-action="toggle-done" data-id="'+id+'" '+(isDone?'checked':'')+'></label>';
           html += '    <div class="item-main"><span class="item-time">'+item.time+'</span><span class="item-text">'+(item.custom?escapeHtml(item.text):item.text)+'</span>';
-          if(item.price_gbp || item.price_eur){
-            html += '<span class="item-price">'+escapeHtml(item.price_gbp||'—')+' / '+escapeHtml(item.price_eur||'—')+'</span>';
+          const hasEstimate = (item.price_gbp && item.price_gbp!=='—') || (item.price_eur && item.price_eur!=='—');
+          const isIncluded = item.price_gbp==='Included' || item.price_eur==='Included';
+          if(isIncluded){
+            html += '<span class="item-price">Included in Paid in Advance</span>';
+          } else {
+            if(hasEstimate){
+              html += '<span class="item-estimate">est. '+escapeHtml(item.price_gbp||'—')+' / '+escapeHtml(item.price_eur||'—')+'</span>';
+            }
+            const cost = state.itemCosts[id] || {};
+            html += '  <div class="item-spend-row">';
+            html += '    <div class="item-spend-field"><span>£</span><input type="number" step="0.01" class="item-spend-input" data-id="'+id+'" data-currency="gbp" value="'+escapeHtml(cost.gbp||'')+'" placeholder="0.00"></div>';
+            html += '    <div class="item-spend-field"><span>€</span><input type="number" step="0.01" class="item-spend-input" data-id="'+id+'" data-currency="eur" value="'+escapeHtml(cost.eur||'')+'" placeholder="0.00"></div>';
+            html += '  </div>';
           }
           if(item.maps){
             html += '<div style="margin-top:3px;">'+formatRating(item.rating)+'<a class="item-maps-link" href="'+getMapsUrl(item.maps)+'" target="_blank" rel="noopener">🗺 Maps</a></div>';
@@ -1132,14 +1185,25 @@
   }
   function handleDaysNoteInput(e){
     const ta = e.target.closest('.note-textarea');
-    if(!ta) return;
-    state.notes[ta.dataset.id] = ta.value;
-    scheduleSave();
+    if(ta){
+      state.notes[ta.dataset.id] = ta.value;
+      scheduleSave();
+      return;
+    }
+    const spendInput = e.target.closest('.item-spend-input');
+    if(spendInput){
+      const id = spendInput.dataset.id, currency = spendInput.dataset.currency;
+      if(!state.itemCosts[id]) state.itemCosts[id] = {};
+      state.itemCosts[id][currency] = spendInput.value;
+      scheduleSave();
+    }
   }
   function handleDaysNoteBlur(e){
     const ta = e.target.closest('.note-textarea');
-    if(!ta) return;
+    const spendInput = e.target.closest('.item-spend-input');
+    if(!ta && !spendInput) return;
     renderDays();
+    renderSpendTracker();
   }
 
   // ---------------- init ----------------
@@ -1163,6 +1227,7 @@
     uiState.expandedDay = computeDefaultExpandedDay();
     document.getElementById('ledgerCard').addEventListener('click', handleLedgerClick);
     document.getElementById('ledgerCard').addEventListener('input', handleLedgerFieldInput);
+    document.getElementById('ledgerCard').addEventListener('change', handleLedgerFieldInput);
     document.getElementById('ledgerCard').addEventListener('focusout', handleLedgerFieldBlur);
     document.getElementById('daysContainer').addEventListener('click', handleDaysClick);
     document.getElementById('daysContainer').addEventListener('input', handleDaysNoteInput);
@@ -1171,6 +1236,7 @@
     renderStatusCard();
     initCoastline();
     renderLedger();
+    renderSpendTracker();
     renderPlaces();
     renderDays();
 
