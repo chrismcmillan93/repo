@@ -567,7 +567,7 @@
     color: var(--ink-faint);
     margin: 0 0 22px;
   }
-  #lock-form{ display: flex; flex-direction: column; gap: 10px; }
+  #auth-form{ display: flex; flex-direction: column; gap: 10px; }
   .lock-input{
     font-family: var(--font-mono);
     font-size: 15px;
@@ -585,6 +585,25 @@
     font-size: 12px;
     color: var(--rust);
     margin: 14px 0 0;
+  }
+
+  .footer-actions{ display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .lock-success{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--green-deep);
+    margin: 14px 0 8px;
+  }
+  .lock-retry{
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--tarn);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
   }
 
   /* ---------- Footer ---------- */
@@ -666,16 +685,23 @@
 </style>
 </head>
 <body>
-<div id="lock-screen" class="lock-screen">
+<div id="auth-screen" class="lock-screen">
   <div class="lock-card">
     <div class="lock-icon"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></div>
     <h1 class="lock-title">The Wainwrights</h1>
-    <p class="lock-sub">This tracker is passcode-protected for now.</p>
-    <form id="lock-form" autocomplete="off">
-      <input type="password" id="lock-input" class="lock-input" placeholder="Passcode" autocomplete="off">
-      <button type="submit" class="btn lock-btn">Unlock</button>
+    <p class="lock-sub" id="auth-sub">Sign in with your email to track your own progress.</p>
+
+    <form id="auth-form" autocomplete="off">
+      <input type="email" id="auth-email" class="lock-input" placeholder="you@example.com" autocomplete="email" required>
+      <button type="submit" class="btn lock-btn" id="auth-submit">Send magic link</button>
     </form>
-    <p class="lock-error" id="lock-error" style="display:none;">That's not it — try again.</p>
+
+    <p class="lock-error" id="auth-error" style="display:none;"></p>
+
+    <div id="auth-sent" style="display:none;">
+      <p class="lock-success">Check your inbox — click the link to sign in.</p>
+      <button type="button" class="lock-retry" id="auth-retry">Use a different email</button>
+    </div>
   </div>
 </div>
 
@@ -721,8 +747,11 @@
   <div class="areas" id="areas"></div>
 
   <div class="footer">
-    <p class="footer-note">Progress is saved automatically as you go — tick a box the moment you're back down.</p>
-    <button class="btn" id="export-btn">↓ Export as CSV</button>
+    <p class="footer-note">Signed in as <span id="auth-user-email"></span> — progress is saved automatically as you go.</p>
+    <div class="footer-actions">
+      <button class="btn" id="export-btn">↓ Export as CSV</button>
+      <button class="btn" id="logout-btn">Sign out</button>
+    </div>
   </div>
 
 </div>
@@ -777,7 +806,7 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
   }
 
   // load: spreadsheet baseline, overridden by anything already saved in Supabase
-  async function loadState(){
+  async function loadState(userId){
     const fallback = defaultState();
     if(!sb){
       showSyncStatus("offline", "Supabase not available — using local defaults only.");
@@ -787,7 +816,8 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
       const { data, error } = await sb
         .from(TABLE)
         .select("item_id,is_checked")
-        .eq("dashboard_id", DASHBOARD_ID);
+        .eq("dashboard_id", DASHBOARD_ID)
+        .eq("user_id", userId);
       if(error) throw error;
       const merged = Object.assign({}, fallback);
       (data || []).forEach(row=>{ merged[row.item_id] = !!row.is_checked; });
@@ -802,13 +832,13 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
 
   // save one fell's state the moment its checkbox changes
   async function upsertFell(name, checked){
-    if(!sb){ showSyncStatus("offline"); return; }
+    if(!sb || !currentUser){ showSyncStatus("offline"); return; }
     try{
       const { error } = await sb
         .from(TABLE)
         .upsert(
-          { dashboard_id: DASHBOARD_ID, item_id: name, is_checked: checked },
-          { onConflict: "dashboard_id,item_id" }
+          { dashboard_id: DASHBOARD_ID, item_id: name, is_checked: checked, user_id: currentUser.id },
+          { onConflict: "user_id,dashboard_id,item_id" }
         );
       if(error) throw error;
       flashSaved();
@@ -820,11 +850,11 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
   }
 
   // live sync: reflect ticks made elsewhere (another tab/device) immediately
-  function subscribeRealtime(){
+  function subscribeRealtime(userId){
     if(!sb) return;
-    sb.channel("checkbox_states_" + DASHBOARD_ID)
+    sb.channel("checkbox_states_" + userId)
       .on("postgres_changes",
-        { event: "*", schema: "public", table: TABLE, filter: "dashboard_id=eq." + DASHBOARD_ID },
+        { event: "*", schema: "public", table: TABLE, filter: "user_id=eq." + userId },
         (payload)=>{
           const row = (payload.eventType === "DELETE") ? payload.old : payload.new;
           if(!row || !row.item_id) return;
@@ -1095,65 +1125,124 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
     URL.revokeObjectURL(url);
   }
 
-  // ---------- passcode gate ----------
-  // Temporary measure until proper per-user auth is set up — not real security,
-  // the passcode is plainly visible in this file's source to anyone who looks.
+  // ---------- auth ----------
 
-  const PASSCODE = "climb";
-  const LOCK_KEY = "wainwrights-unlocked";
+  const REDIRECT_URL = "https://app.chris-mcmillan.co.uk/wainwrights/";
 
-  function isUnlocked(){
-    try{ return localStorage.getItem(LOCK_KEY) === "1"; }catch(e){ return false; }
-  }
-  function markUnlocked(){
-    try{ localStorage.setItem(LOCK_KEY, "1"); }catch(e){ /* best effort */ }
+  let currentUser = null;
+  let hasInitialized = false;
+
+  function showAuthScreen(){
+    document.getElementById("app-content").style.display = "none";
+    document.getElementById("auth-screen").style.display = "flex";
   }
 
-  function showApp(){
-    document.getElementById("lock-screen").style.display = "none";
+  function showApp(user){
+    document.getElementById("auth-screen").style.display = "none";
     document.getElementById("app-content").style.display = "";
-    init();
+    const emailEl = document.getElementById("auth-user-email");
+    if(emailEl) emailEl.textContent = user.email || "";
+    if(!hasInitialized){
+      hasInitialized = true;
+      init(user);
+    }
   }
 
-  function setupLockScreen(){
-    const form = document.getElementById("lock-form");
-    const input = document.getElementById("lock-input");
-    const error = document.getElementById("lock-error");
-    form.addEventListener("submit", function(e){
+  function handleSession(session){
+    if(session && session.user){
+      currentUser = session.user;
+      showApp(session.user);
+    } else {
+      currentUser = null;
+      showAuthScreen();
+    }
+  }
+
+  function setupAuthForm(){
+    const form = document.getElementById("auth-form");
+    const emailInput = document.getElementById("auth-email");
+    const errorEl = document.getElementById("auth-error");
+    const sentWrap = document.getElementById("auth-sent");
+    const submitBtn = document.getElementById("auth-submit");
+    const retryBtn = document.getElementById("auth-retry");
+
+    form.addEventListener("submit", async function(e){
       e.preventDefault();
-      if(input.value.trim().toLowerCase() === PASSCODE){
-        markUnlocked();
-        showApp();
-      } else {
-        error.style.display = "block";
-        input.value = "";
-        input.focus();
+      errorEl.style.display = "none";
+      if(!sb){
+        errorEl.textContent = "Couldn't reach Supabase — try again shortly.";
+        errorEl.style.display = "block";
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+      try{
+        const { error } = await sb.auth.signInWithOtp({
+          email: emailInput.value.trim(),
+          options: { emailRedirectTo: REDIRECT_URL }
+        });
+        if(error) throw error;
+        form.style.display = "none";
+        sentWrap.style.display = "block";
+      }catch(err){
+        errorEl.textContent = err.message || "Something went wrong sending that link.";
+        errorEl.style.display = "block";
+      }finally{
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Send magic link";
       }
     });
-    input.focus();
+
+    retryBtn.addEventListener("click", function(){
+      sentWrap.style.display = "none";
+      form.style.display = "flex";
+      emailInput.value = "";
+      emailInput.focus();
+    });
+  }
+
+  function setupLogout(){
+    const btn = document.getElementById("logout-btn");
+    if(!btn) return;
+    btn.onclick = async ()=>{
+      if(sb) await sb.auth.signOut();
+      window.location.reload();
+    };
   }
 
   // ---------- init ----------
 
-  async function init(){
-    state = await loadState();
+  async function init(user){
+    state = await loadState(user.id);
     renderAll();
     attachAreaEvents();
     attachSkylineEvents();
     attachSearchEvents();
     document.getElementById("export-btn").onclick = exportCsv;
-    subscribeRealtime();
+    subscribeRealtime(user.id);
 
     // re-attach skyline + area click handlers after any re-render triggered internally
     const observer = new MutationObserver(()=> attachSkylineEvents());
     observer.observe(document.getElementById("skyline"), { childList: true });
   }
 
-  if(isUnlocked()){
-    showApp();
-  } else {
-    setupLockScreen();
+  async function bootstrap(){
+    setupAuthForm();
+    setupLogout();
+
+    if(!sb){
+      document.getElementById("auth-sub").textContent = "Supabase isn't available right now — try reloading.";
+      showAuthScreen();
+      return;
+    }
+
+    sb.auth.onAuthStateChange((_event, session)=> handleSession(session));
+
+    const { data } = await sb.auth.getSession();
+    handleSession(data ? data.session : null);
   }
+
+  bootstrap();
 })();
 
 </script>
