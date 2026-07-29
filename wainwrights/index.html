@@ -1226,6 +1226,31 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
     observer.observe(document.getElementById("skyline"), { childList: true });
   }
 
+  // Supabase returns failures as params in the URL — in the hash fragment for the
+  // implicit flow, or the query string for PKCE. Surface them instead of silently
+  // dropping the user back on the login form with no explanation.
+  function readAuthErrorFromUrl(){
+    const out = {};
+    ["hash", "search"].forEach(part=>{
+      const raw = window.location[part];
+      if(!raw || raw.length < 2) return;
+      const params = new URLSearchParams(raw.substring(1));
+      ["error", "error_code", "error_description"].forEach(k=>{
+        if(params.get(k) && !out[k]) out[k] = params.get(k);
+      });
+    });
+    return (out.error || out.error_code) ? out : null;
+  }
+
+  function showAuthError(info){
+    const el = document.getElementById("auth-error");
+    if(!el) return;
+    const desc = (info.error_description || "").replace(/\+/g, " ");
+    const code = info.error_code || info.error || "";
+    el.textContent = desc ? (desc + " (" + code + ")") : ("Sign-in failed: " + code);
+    el.style.display = "block";
+  }
+
   async function bootstrap(){
     setupAuthForm();
     setupLogout();
@@ -1236,10 +1261,17 @@ const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"
       return;
     }
 
+    const urlError = readAuthErrorFromUrl();
+
     sb.auth.onAuthStateChange((_event, session)=> handleSession(session));
 
     const { data } = await sb.auth.getSession();
-    handleSession(data ? data.session : null);
+    const session = data ? data.session : null;
+    handleSession(session);
+
+    if(!session && urlError){
+      showAuthError(urlError);
+    }
   }
 
   bootstrap();
