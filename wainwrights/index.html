@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wainwrights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #e8e2d0;
+    --paper-deep: #ddd4bb;
+    --paper-card: #f1ecdd;
+    --ink: #262a1f;
+    --ink-soft: #5b5f4d;
+    --ink-faint: #8b8d78;
+    --green: #3c5a41;
+    --green-deep: #24392a;
+    --green-pale: #c9d3bd;
+    --heather: #6c5c79;
+    --heather-deep: #4f4159;
+    --rust: #9c6b3e;
+    --gold: #ac8a2e;
+    --tarn: #3e6b78;
+    --line: rgba(38,43,32,0.16);
+    --line-strong: rgba(38,43,32,0.30);
+    --shadow: 0 1px 2px rgba(38,43,32,0.08), 0 1px 1px rgba(38,43,32,0.06);
+    --radius: 3px;
+    --font-display: 'Fraunces', Georgia, 'Iowan Old Style', serif;
+    --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; overflow-x: hidden; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 34px 34px;
+    background-position: -1px -1px;
+    min-height: 100vh;
+  }
+
+  ::selection{ background: var(--green-pale); color: var(--green-deep); }
+
+  a{ color: var(--tarn); }
+
+  button{ font-family: inherit; }
+
+  :focus-visible{
+    outline: 2px solid var(--tarn);
+    outline-offset: 2px;
+  }
+
+  .wrap{
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* ---------- Hero ---------- */
+
+  .hero{
+    position: relative;
+    padding: 8px 0 28px;
+    border-bottom: 1px solid var(--line-strong);
+    margin-bottom: 28px;
+  }
+
+  .hero-title{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(32px, 5.4vw, 46px);
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+    color: var(--green-deep);
+  }
+
+  .hero-stats{
+    display: flex;
+    align-items: baseline;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+
+  .stat-big{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--green-deep);
+  }
+  .stat-big small{
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 20px;
+    color: var(--ink-faint);
+  }
+  .stat-label{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+  .stat-mini{ display:flex; flex-direction:column; gap:2px; }
+  .stat-mini .val{ font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--ink); }
+
+  /* Skyline / signature progress element */
+  .skyline-wrap{
+    position: relative;
+  }
+  .skyline{
+    display: flex;
+    align-items: flex-end;
+    height: 120px;
+    gap: 1px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 0;
+    position: relative;
+  }
+  .mountain-line{
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--rust);
+    pointer-events: none;
+  }
+  .mountain-line-label{
+    position: absolute;
+    right: 0;
+    top: -15px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    color: var(--rust);
+    background: var(--paper);
+    padding: 0 4px 0 6px;
+    white-space: nowrap;
+  }
+  .peak{
+    flex: 1 1 0;
+    min-width: 1.5px;
+    background: var(--paper-deep);
+    border-top: 1px solid var(--line-strong);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+    transform-origin: bottom;
+  }
+  @media (max-width: 640px){
+    .skyline{ gap: 0; }
+    .peak{ min-width: 0.5px; border-top: none; }
+  }
+  .peak.is-climbed{
+    background: linear-gradient(180deg, var(--green) 0%, var(--green-deep) 100%);
+    border-top: 1px solid var(--green-deep);
+  }
+  .peak:hover{ background: var(--gold); transform: scaleY(1.03); }
+  .peak.is-climbed:hover{ background: var(--gold); }
+
+  .skyline-divisions{
+    display:flex;
+    margin-top: 6px;
+  }
+  .division{
+    flex: 1 1 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    border-left: 1px dashed var(--line-strong);
+    padding-top: 2px;
+  }
+  .division:first-child{ border-left: none; }
+
+  .skyline-caption{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 10px;
+  }
+
+  /* ---------- Section headings ---------- */
+  .section-heading{
+    display:flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 44px 0 14px;
+  }
+  .section-heading h2{
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--green-deep);
+  }
+  .section-heading .rule{
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 8px);
+  }
+
+  /* ---------- Charts ---------- */
+  .charts{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 640px){
+    .charts{ grid-template-columns: 1fr; }
+  }
+  .chart-card{
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 18px 18px 14px;
+    box-shadow: var(--shadow);
+  }
+  .chart-title{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+  .chart-bars{
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 110px;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 22px;
+    background-position: bottom;
+  }
+  .chart-col{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    min-width: 0;
+  }
+  .chart-count{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 3px;
+  }
+  .chart-bar{
+    width: 100%;
+    max-width: 34px;
+    background: var(--heather);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+  }
+  .chart-col-label{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    white-space: nowrap;
+  }
+  .chart-empty{
+    height: 110px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color: var(--ink-faint);
+    font-size: 13px;
+    padding: 0 10px;
+  }
+  .chart-note{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    margin: 12px 0 0;
+  }
+
+  .region-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 8px 6px;
+  }
+  .region-card{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px 8px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .region-card:hover{ background: rgba(38,43,32,0.035); transform: translateY(-2px); }
+
+  .ring-wrap{ position: relative; width: 100px; height: 100px; }
+  .ring{ width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  .ring-tick{ fill: var(--ink-faint); }
+  .ring-track{ fill: none; stroke: var(--paper-deep); stroke-width: 8; }
+  .ring-fill{
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+  .region-card.is-complete .ring-fill{ stroke: var(--gold); }
+  .ring-center{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring-percent{
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 21px;
+    color: var(--green-deep);
+    letter-spacing: -0.02em;
+  }
+  .region-card.is-complete .ring-percent{ color: var(--gold); }
+  .ring-count{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
+  .region-label{ margin-top: 10px; }
+  .region-label .num{
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+  .region-label .name{
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.25;
+    color: var(--ink);
+    margin-top: 3px;
+  }
+  @media (max-width: 640px){
+    .region-grid{ grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+    .ring-wrap{ width: 82px; height: 82px; }
+    .ring-percent{ font-size: 17px; }
+  }
+
+  /* ---------- Search ---------- */
+  .search-row{
+    margin: 44px 0 16px;
+  }
+  .search-input{
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 11px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--paper-card);
+    color: var(--ink);
+  }
+  .search-input::placeholder{ color: var(--ink-faint); }
+
+  /* ---------- Areas / Accordion ---------- */
+  .areas{ display: flex; flex-direction: column; gap: 10px; }
+
+  .area{
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .area-header{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 34px 1fr auto 120px 20px;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+  }
+  .area-header:hover{ background: rgba(38,43,32,0.03); }
+
+  .area-num{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    width: 30px;
+    height: 24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .area-name-wrap{ min-width: 0; }
+  .area-name{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .area-year{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .area-progress-wrap{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .bar-track{
+    width: 110px;
+    height: 6px;
+    background: var(--paper-deep);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill{
+    height: 100%;
+    background: var(--green);
+    border-radius: 3px;
+  }
+  .area-count{
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .chevron{
+    font-size: 12px;
+    color: var(--ink-faint);
+    transition: transform 0.15s ease;
+    justify-self: end;
+  }
+  .area.is-open .chevron{ transform: rotate(180deg); }
+
+  .area-body{
+    border-top: 1px solid var(--line);
+  }
+  .area-body[hidden]{ display: none; }
+
+  .fell-table{
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .fell-row{
+    border-top: 1px solid var(--line);
+  }
+  .fell-row:first-child{ border-top: none; }
+  .fell-row.is-hidden{ display: none; }
+
+  .fell-row td{
+    padding: 9px 16px;
+    vertical-align: middle;
+  }
+
+  .cell-check{ width: 34px; padding-right: 0 !important; }
+  .cell-check input{
+    width: 18px;
+    height: 18px;
+    accent-color: var(--green-deep);
+    cursor: pointer;
+  }
+
+  .cell-name{
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  .fell-row.is-climbed .cell-name{ color: var(--green-deep); font-weight: 600; }
+  .mtn-badge{
+    display: inline-flex;
+    align-items: center;
+    margin-right: 4px;
+    vertical-align: -1px;
+  }
+  .mtn-badge svg{
+    width: 13px;
+    height: 10px;
+    fill: var(--rust);
+  }
+
+  .cell-height{
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    text-align: right;
+  }
+  .cell-height .ft{ color: var(--ink-faint); margin-left: 4px; }
+
+  .area-empty-search{
+    padding: 16px;
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  /* ---------- Lock screen ---------- */
+  .lock-screen{
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .lock-card{
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 28px 30px;
+  }
+  .lock-icon{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    margin-bottom: 16px;
+  }
+  .lock-icon svg{ width: 17px; height: 13px; fill: var(--rust); }
+  .lock-title{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 22px;
+    margin: 0 0 6px;
+    color: var(--green-deep);
+  }
+  .lock-sub{
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin: 0 0 22px;
+  }
+  #lock-form{ display: flex; flex-direction: column; gap: 10px; }
+  .lock-input{
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+    letter-spacing: 0.06em;
+    padding: 11px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .lock-btn{ width: 100%; padding: 11px 14px; }
+  .lock-error{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--rust);
+    margin: 14px 0 0;
+  }
+
+  /* ---------- Footer ---------- */
+  .footer{
+    margin-top: 50px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line-strong);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .footer-note{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    max-width: 480px;
+  }
+  .btn{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 9px 14px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .btn:hover{ background: var(--paper-deep); }
+
+  .save-flash{
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--green-deep);
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    padding: 6px 10px;
+    border-radius: 3px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+  }
+  .save-flash.show{ opacity: 1; transform: translateY(0); }
+
+  #sync-status{
+    background: var(--paper-card);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+  }
+  #sync-status.is-error, #sync-status.is-offline{
+    color: var(--rust);
+    border-color: var(--rust);
+  }
+
+  @media (max-width: 640px){
+    .area-header{
+      grid-template-columns: 26px 1fr 20px;
+      grid-template-areas: "num name chev" "prog prog prog";
+      row-gap: 8px;
+    }
+    .area-num{ grid-area: num; }
+    .area-name-wrap{ grid-area: name; }
+    .chevron{ grid-area: chev; }
+    .area-progress-wrap{ grid-area: prog; }
+    .bar-track{ width: 100%; }
+    .stat-big{ font-size: 42px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="lock-screen" class="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></div>
+    <h1 class="lock-title">The Wainwrights</h1>
+    <p class="lock-sub">This tracker is passcode-protected for now.</p>
+    <form id="lock-form" autocomplete="off">
+      <input type="password" id="lock-input" class="lock-input" placeholder="Passcode" autocomplete="off">
+      <button type="submit" class="btn lock-btn">Unlock</button>
+    </form>
+    <p class="lock-error" id="lock-error" style="display:none;">That's not it — try again.</p>
+  </div>
+</div>
+
+<div id="app-content" style="display:none;">
+<div class="wrap">
+
+  <div class="hero">
+    <h1 class="hero-title">The Wainwrights</h1>
+
+    <div class="hero-stats">
+      <div>
+        <div class="stat-big" id="stat-climbed">0<small> / 214</small></div>
+        <div class="stat-label">Fells climbed</div>
+      </div>
+      <div class="stat-mini">
+        <div class="val" id="stat-remaining">214</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+      <div class="stat-mini">
+        <div class="val" id="stat-percent">0%</div>
+        <div class="stat-label">Complete</div>
+      </div>
+    </div>
+
+    <div class="skyline-wrap">
+      <div class="skyline" id="skyline"></div>
+      <div class="skyline-divisions" id="skyline-divisions"></div>
+    </div>
+    <p class="skyline-caption">Every summit in the seven regions, drawn to height, left to right. Filled peaks are climbed — click one to jump to it.</p>
+  </div>
+
+  <div class="section-heading"><h2>Progress by region</h2><div class="rule"></div></div>
+  <div class="chart-card book-chart-card">
+    <p class="chart-title">Which region you're furthest through</p>
+    <div id="chart-books"></div>
+  </div>
+
+  <div class="section-heading"><h2>The seven regions</h2><div class="rule"></div></div>
+  <div class="search-row">
+    <input type="text" class="search-input" id="search" placeholder="Search a fell by name…">
+  </div>
+  <p class="chart-note" id="mountain-legend"><span class="mtn-badge"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></span> marks a summit of 2,000ft (610m) or higher — the conventional line between a hill and a mountain in England.</p>
+  <div class="areas" id="areas"></div>
+
+  <div class="footer">
+    <p class="footer-note">Progress is saved automatically as you go — tick a box the moment you're back down.</p>
+    <button class="btn" id="export-btn">↓ Export as CSV</button>
+  </div>
+
+</div>
+</div>
+
+<p class="chart-note" id="sync-status" style="display:none; text-align:center; margin: -8px 0 18px;"></p>
+
+<div class="save-flash" id="save-flash">Saved</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const FELLS_DATA = [{"book":1,"year":1955,"name":"The Eastern Fells","fells":[{"name":"Helvellyn","m":950,"ft":3117,"climbed":true,"date":null},{"name":"Nethermost Pike","m":891,"ft":2923,"climbed":false,"date":null},{"name":"Catstycam","m":890,"ft":2920,"climbed":false,"date":null},{"name":"Raise","m":883,"ft":2897,"climbed":false,"date":null},{"name":"Fairfield","m":873,"ft":2864,"climbed":false,"date":null},{"name":"White Side","m":863,"ft":2832,"climbed":false,"date":null},{"name":"Dollywaggon Pike","m":858,"ft":2815,"climbed":false,"date":null},{"name":"Great Dodd","m":857,"ft":2812,"climbed":false,"date":null},{"name":"Stybarrow Dodd","m":843,"ft":2766,"climbed":false,"date":null},{"name":"Saint Sunday Crag","m":841,"ft":2759,"climbed":true,"date":null},{"name":"Hart Crag","m":822,"ft":2697,"climbed":false,"date":null},{"name":"Dove Crag","m":792,"ft":2598,"climbed":false,"date":null},{"name":"Watson's Dodd","m":789,"ft":2589,"climbed":false,"date":null},{"name":"Red Screes","m":776,"ft":2546,"climbed":false,"date":null},{"name":"Great Rigg","m":766,"ft":2513,"climbed":false,"date":null},{"name":"Hart Side","m":756,"ft":2480,"climbed":false,"date":null},{"name":"Seat Sandal","m":736,"ft":2415,"climbed":false,"date":null},{"name":"Clough Head","m":726,"ft":2382,"climbed":false,"date":null},{"name":"Birkhouse Moor","m":718,"ft":2356,"climbed":true,"date":null},{"name":"Sheffield Pike","m":675,"ft":2215,"climbed":true,"date":null},{"name":"High Pike (Scandale)","m":656,"ft":2152,"climbed":false,"date":null},{"name":"Middle Dodd","m":654,"ft":2146,"climbed":false,"date":null},{"name":"Little Hart Crag","m":637,"ft":2090,"climbed":false,"date":null},{"name":"Birks","m":622,"ft":2041,"climbed":false,"date":null},{"name":"Heron Pike","m":612,"ft":2008,"climbed":false,"date":null},{"name":"Hartsop Above How","m":580,"ft":1903,"climbed":false,"date":null},{"name":"Great Mell Fell","m":537,"ft":1762,"climbed":true,"date":null},{"name":"High Hartsop Dodd","m":519,"ft":1703,"climbed":false,"date":null},{"name":"Low Pike","m":508,"ft":1667,"climbed":false,"date":null},{"name":"Little Mell Fell","m":505,"ft":1657,"climbed":false,"date":null},{"name":"Stone Arthur","m":500,"ft":1640,"climbed":false,"date":null},{"name":"Gowbarrow Fell","m":481,"ft":1578,"climbed":false,"date":null},{"name":"Glenridding Dodd","m":442,"ft":1450,"climbed":true,"date":null},{"name":"Nab Scar","m":440,"ft":1444,"climbed":false,"date":null},{"name":"Arnison Crag","m":433,"ft":1421,"climbed":true,"date":null}]},{"book":2,"year":1957,"name":"The Far Eastern Fells","fells":[{"name":"High Street","m":828,"ft":2717,"climbed":false,"date":null},{"name":"High Raise (Martindale)","m":802,"ft":2631,"climbed":false,"date":null},{"name":"Rampsgill Head","m":792,"ft":2598,"climbed":false,"date":null},{"name":"Thornthwaite Crag","m":784,"ft":2572,"climbed":false,"date":null},{"name":"Kidsty Pike","m":780,"ft":2559,"climbed":false,"date":null},{"name":"Harter Fell (Mardale)","m":778,"ft":2552,"climbed":false,"date":null},{"name":"Caudale Moor","m":763,"ft":2503,"climbed":false,"date":null},{"name":"Mardale Ill Bell","m":760,"ft":2493,"climbed":false,"date":null},{"name":"Ill Bell","m":757,"ft":2484,"climbed":false,"date":null},{"name":"The Knott","m":739,"ft":2425,"climbed":false,"date":null},{"name":"Kentmere Pike","m":730,"ft":2395,"climbed":false,"date":null},{"name":"Froswick","m":720,"ft":2362,"climbed":false,"date":null},{"name":"Branstree","m":713,"ft":2339,"climbed":false,"date":null},{"name":"Yoke","m":706,"ft":2316,"climbed":false,"date":null},{"name":"Gray Crag","m":699,"ft":2293,"climbed":false,"date":null},{"name":"Rest Dodd","m":696,"ft":2283,"climbed":false,"date":null},{"name":"Loadpot Hill","m":671,"ft":2201,"climbed":false,"date":null},{"name":"Wether Hill","m":670,"ft":2198,"climbed":true,"date":"2024-08-17"},{"name":"Tarn Crag (Longsleddale)","m":664,"ft":2178,"climbed":false,"date":null},{"name":"Place Fell","m":657,"ft":2156,"climbed":false,"date":null},{"name":"Selside Pike","m":655,"ft":2149,"climbed":false,"date":null},{"name":"Grey Crag","m":638,"ft":2093,"climbed":false,"date":null},{"name":"Hartsop Dodd","m":618,"ft":2028,"climbed":false,"date":null},{"name":"Shipman Knotts","m":587,"ft":1926,"climbed":false,"date":null},{"name":"The Nab","m":576,"ft":1890,"climbed":false,"date":null},{"name":"Angletarn Pikes","m":567,"ft":1860,"climbed":false,"date":null},{"name":"Brock Crags","m":561,"ft":1841,"climbed":false,"date":null},{"name":"Arthur's Pike","m":532,"ft":1745,"climbed":true,"date":"2024-08-17"},{"name":"Bonscale Pike","m":524,"ft":1719,"climbed":false,"date":null},{"name":"Sallows","m":516,"ft":1693,"climbed":false,"date":null},{"name":"Beda Fell","m":509,"ft":1670,"climbed":false,"date":null},{"name":"Wansfell","m":487,"ft":1598,"climbed":false,"date":null},{"name":"Sour Howes","m":483,"ft":1585,"climbed":false,"date":null},{"name":"Steel Knotts","m":432,"ft":1417,"climbed":true,"date":"2024-08-17"},{"name":"Hallin Fell","m":388,"ft":1273,"climbed":false,"date":null},{"name":"Troutbeck Tongue","m":364,"ft":1194,"climbed":false,"date":null}]},{"book":3,"year":1958,"name":"The Central Fells","fells":[{"name":"High Raise (Langdale)","m":762,"ft":2500,"climbed":true,"date":null},{"name":"Harrison Stickle","m":736,"ft":2415,"climbed":true,"date":null},{"name":"Sergeant Man","m":730,"ft":2395,"climbed":true,"date":null},{"name":"Ullscarf","m":726,"ft":2382,"climbed":false,"date":null},{"name":"Thunacar Knott","m":723,"ft":2372,"climbed":true,"date":null},{"name":"Pike O'Stickle","m":709,"ft":2326,"climbed":true,"date":null},{"name":"Pavey Ark","m":700,"ft":2297,"climbed":false,"date":null},{"name":"Loft Crag","m":680,"ft":2231,"climbed":true,"date":null},{"name":"High Seat","m":608,"ft":1995,"climbed":false,"date":null},{"name":"Bleaberry Fell","m":590,"ft":1936,"climbed":false,"date":null},{"name":"Sergeant's Crag","m":571,"ft":1873,"climbed":false,"date":null},{"name":"Steel Fell","m":553,"ft":1814,"climbed":false,"date":null},{"name":"Tarn Crag (Easedale)","m":550,"ft":1804,"climbed":false,"date":null},{"name":"Blea Rigg","m":541,"ft":1775,"climbed":true,"date":null},{"name":"Calf Crag","m":537,"ft":1762,"climbed":false,"date":null},{"name":"Eagle Crag","m":520,"ft":1706,"climbed":false,"date":null},{"name":"High Tove","m":515,"ft":1690,"climbed":false,"date":null},{"name":"Armboth Fell","m":479,"ft":1572,"climbed":false,"date":null},{"name":"Raven Crag","m":461,"ft":1512,"climbed":false,"date":null},{"name":"Great Crag","m":440,"ft":1444,"climbed":false,"date":null},{"name":"Gibson Knott","m":420,"ft":1378,"climbed":false,"date":null},{"name":"Grange Fell","m":410,"ft":1345,"climbed":false,"date":null},{"name":"Helm Crag","m":405,"ft":1329,"climbed":true,"date":null},{"name":"Silver How","m":394,"ft":1293,"climbed":false,"date":null},{"name":"Walla Crag","m":379,"ft":1243,"climbed":false,"date":null},{"name":"High Rigg","m":354,"ft":1161,"climbed":false,"date":null},{"name":"Loughrigg Fell","m":335,"ft":1099,"climbed":true,"date":null}]},{"book":4,"year":1960,"name":"The Southern Fells","fells":[{"name":"Scafell Pike","m":978,"ft":3209,"climbed":true,"date":null},{"name":"Scafell","m":964,"ft":3163,"climbed":true,"date":null},{"name":"Great End","m":910,"ft":2986,"climbed":false,"date":null},{"name":"Bowfell","m":902,"ft":2959,"climbed":false,"date":null},{"name":"Esk Pike","m":885,"ft":2904,"climbed":false,"date":null},{"name":"Crinkle Crags","m":859,"ft":2818,"climbed":false,"date":null},{"name":"Coniston Old Man","m":803,"ft":2635,"climbed":true,"date":null},{"name":"Swirl How","m":802,"ft":2631,"climbed":false,"date":null},{"name":"Lingmell","m":800,"ft":2625,"climbed":false,"date":null},{"name":"Brim Fell","m":796,"ft":2612,"climbed":true,"date":null},{"name":"Allen Crags","m":785,"ft":2575,"climbed":false,"date":null},{"name":"Glaramara","m":783,"ft":2569,"climbed":false,"date":null},{"name":"Great Carrs","m":780,"ft":2559,"climbed":false,"date":null},{"name":"Dow Crag","m":778,"ft":2552,"climbed":false,"date":null},{"name":"Grey Friar","m":770,"ft":2526,"climbed":false,"date":null},{"name":"Wetherlam","m":762,"ft":2500,"climbed":false,"date":null},{"name":"Slight Side","m":762,"ft":2500,"climbed":false,"date":null},{"name":"Pike O' Blisco","m":705,"ft":2313,"climbed":false,"date":null},{"name":"Cold Pike","m":701,"ft":2300,"climbed":false,"date":null},{"name":"Harter Fell (Eskdale)","m":653,"ft":2142,"climbed":false,"date":null},{"name":"Rossett Pike","m":650,"ft":2133,"climbed":false,"date":null},{"name":"Seathwaite Fell","m":632,"ft":2073,"climbed":false,"date":null},{"name":"Illgill Head","m":609,"ft":1998,"climbed":false,"date":null},{"name":"Rosthwaite Fell (Bessyboot)","m":550,"ft":1807,"climbed":false,"date":null},{"name":"Hard Knott","m":549,"ft":1801,"climbed":false,"date":null},{"name":"Whin Rigg","m":535,"ft":1755,"climbed":false,"date":null},{"name":"Green Crag","m":489,"ft":1604,"climbed":false,"date":null},{"name":"Lingmoor Fell","m":469,"ft":1539,"climbed":false,"date":null},{"name":"Black Fell","m":323,"ft":1060,"climbed":false,"date":null},{"name":"Holme Fell","m":317,"ft":1040,"climbed":false,"date":null}]},{"book":5,"year":1962,"name":"The Northern Fells","fells":[{"name":"Skiddaw","m":931,"ft":3054,"climbed":false,"date":null},{"name":"Blencathra","m":868,"ft":2848,"climbed":true,"date":null},{"name":"Skiddaw Little Man","m":865,"ft":2838,"climbed":false,"date":null},{"name":"Carl Side","m":746,"ft":2448,"climbed":true,"date":null},{"name":"Long Side","m":734,"ft":2408,"climbed":true,"date":null},{"name":"Lonscale Fell","m":715,"ft":2346,"climbed":false,"date":null},{"name":"Knott","m":710,"ft":2329,"climbed":false,"date":null},{"name":"Bowscale Fell","m":702,"ft":2303,"climbed":false,"date":null},{"name":"Great Calva","m":690,"ft":2264,"climbed":false,"date":null},{"name":"Bannerdale Crags","m":683,"ft":2241,"climbed":false,"date":null},{"name":"Ullock Pike","m":680,"ft":2231,"climbed":true,"date":null},{"name":"Bakestall","m":673,"ft":2208,"climbed":false,"date":null},{"name":"Carrock Fell","m":660,"ft":2165,"climbed":false,"date":null},{"name":"High Pike (Caldbeck)","m":658,"ft":2159,"climbed":false,"date":null},{"name":"Great Scafell","m":651,"ft":2136,"climbed":false,"date":null},{"name":"Mungrisdale Common","m":633,"ft":2077,"climbed":false,"date":null},{"name":"Brae Fell","m":586,"ft":1923,"climbed":false,"date":null},{"name":"Meal Fell","m":550,"ft":1804,"climbed":false,"date":null},{"name":"Great Cockup","m":526,"ft":1726,"climbed":false,"date":null},{"name":"Souther Fell","m":522,"ft":1713,"climbed":false,"date":null},{"name":"Dodd","m":502,"ft":1647,"climbed":false,"date":null},{"name":"Longlands Fell","m":483,"ft":1585,"climbed":false,"date":null},{"name":"Binsey","m":447,"ft":1467,"climbed":false,"date":null},{"name":"Latrigg","m":368,"ft":1207,"climbed":false,"date":null}]},{"book":6,"year":1964,"name":"The North Western Fells","fells":[{"name":"Grasmoor","m":852,"ft":2759,"climbed":false,"date":null},{"name":"Eel Crag (Crag Hill)","m":839,"ft":2753,"climbed":true,"date":null},{"name":"Grisedale Pike","m":791,"ft":2595,"climbed":false,"date":null},{"name":"Sail","m":773,"ft":2536,"climbed":true,"date":null},{"name":"Wandope","m":772,"ft":2533,"climbed":true,"date":null},{"name":"Hopegill Head","m":770,"ft":2526,"climbed":false,"date":null},{"name":"Dale Head","m":753,"ft":2470,"climbed":true,"date":null},{"name":"Robinson","m":737,"ft":2418,"climbed":true,"date":null},{"name":"Hindscarth","m":727,"ft":2385,"climbed":false,"date":null},{"name":"Whiteside","m":707,"ft":2320,"climbed":false,"date":null},{"name":"Scar Crags","m":672,"ft":2205,"climbed":false,"date":null},{"name":"Whiteless Pike","m":660,"ft":2165,"climbed":true,"date":null},{"name":"High Spy","m":653,"ft":2142,"climbed":true,"date":null},{"name":"Causey Pike","m":637,"ft":2090,"climbed":true,"date":null},{"name":"Ard Crags","m":581,"ft":1906,"climbed":false,"date":null},{"name":"Maiden Moor","m":576,"ft":1890,"climbed":true,"date":null},{"name":"Outerside","m":568,"ft":1864,"climbed":false,"date":null},{"name":"Knott Rigg","m":556,"ft":1824,"climbed":false,"date":null},{"name":"Lord's Seat","m":552,"ft":1811,"climbed":false,"date":null},{"name":"Whinlatter","m":525,"ft":1722,"climbed":false,"date":null},{"name":"Broom Fell","m":511,"ft":1677,"climbed":false,"date":null},{"name":"Barf","m":468,"ft":1535,"climbed":false,"date":null},{"name":"Graystones","m":456,"ft":1496,"climbed":false,"date":null},{"name":"Barrow","m":455,"ft":1493,"climbed":false,"date":null},{"name":"Catbells","m":451,"ft":1480,"climbed":true,"date":null},{"name":"Ling Fell","m":373,"ft":1224,"climbed":false,"date":null},{"name":"Sale Fell","m":359,"ft":1178,"climbed":false,"date":null},{"name":"Rannerdale Knotts","m":355,"ft":1165,"climbed":false,"date":null},{"name":"Castle Crag","m":290,"ft":951,"climbed":false,"date":null}]},{"book":7,"year":1966,"name":"The Western Fells","fells":[{"name":"Great Gable","m":899,"ft":2949,"climbed":false,"date":null},{"name":"Pillar","m":892,"ft":2927,"climbed":false,"date":null},{"name":"Scoat Fell","m":841,"ft":2759,"climbed":false,"date":null},{"name":"Red Pike (Wasdale)","m":826,"ft":2710,"climbed":false,"date":null},{"name":"Steeple","m":819,"ft":2687,"climbed":false,"date":null},{"name":"High Stile","m":807,"ft":2648,"climbed":false,"date":null},{"name":"Kirk Fell","m":802,"ft":2631,"climbed":false,"date":null},{"name":"Green Gable","m":801,"ft":2628,"climbed":false,"date":null},{"name":"Haycock","m":797,"ft":2615,"climbed":false,"date":null},{"name":"Red Pike (Buttermere)","m":755,"ft":2477,"climbed":true,"date":null},{"name":"High Crag","m":744,"ft":2441,"climbed":true,"date":null},{"name":"Brandreth","m":715,"ft":2346,"climbed":false,"date":null},{"name":"Grey Knotts","m":697,"ft":2287,"climbed":false,"date":null},{"name":"Seatallan","m":692,"ft":2270,"climbed":false,"date":null},{"name":"Caw Fell","m":690,"ft":2264,"climbed":false,"date":null},{"name":"Fleetwith Pike","m":648,"ft":2126,"climbed":false,"date":null},{"name":"Base Brown","m":646,"ft":2119,"climbed":false,"date":null},{"name":"Starling Dodd","m":633,"ft":2077,"climbed":false,"date":null},{"name":"Yewbarrow","m":628,"ft":2060,"climbed":false,"date":null},{"name":"Great Borne","m":616,"ft":2021,"climbed":false,"date":null},{"name":"Haystacks","m":597,"ft":1959,"climbed":true,"date":null},{"name":"Middle Fell","m":582,"ft":1909,"climbed":false,"date":null},{"name":"Blake Fell","m":573,"ft":1880,"climbed":false,"date":null},{"name":"Lank Rigg","m":541,"ft":1775,"climbed":false,"date":null},{"name":"Gavel Fell","m":526,"ft":1726,"climbed":true,"date":null},{"name":"Crag Fell","m":523,"ft":1716,"climbed":false,"date":null},{"name":"Mellbreak","m":512,"ft":1680,"climbed":false,"date":null},{"name":"Hen Comb","m":509,"ft":1670,"climbed":false,"date":null},{"name":"Grike","m":488,"ft":1601,"climbed":false,"date":null},{"name":"Burnbank Fell","m":475,"ft":1558,"climbed":false,"date":null},{"name":"Low Fell","m":423,"ft":1388,"climbed":false,"date":null},{"name":"Buckbarrow","m":420,"ft":1378,"climbed":false,"date":null},{"name":"Fellbarrow","m":416,"ft":1365,"climbed":false,"date":null}]}];
+</script>
+<script>
+(function(){
+  "use strict";
+
+  const SUPABASE_URL = "https://jyxtduvkmztexwurrjsf.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_KY9uqIN4zqY0WYmDJoCe3A_dr-YwArX";
+  const DASHBOARD_ID = "wainwrights";
+  const TABLE = "checkbox_states";
+
+  const TOTAL = FELLS_DATA.reduce((n,a)=>n+a.fells.length,0);
+  const ROMAN = ["I","II","III","IV","V","VI","VII"];
+  const MOUNTAIN_M = 610; // 2,000ft — conventional England hill/mountain line
+  const MTN_ICON = '<svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg>';
+
+  const sb = (typeof window.supabase !== "undefined" && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  // state: { "<fell name>": true|false }
+  let state = {};
+  let expandedAreas = new Set();
+  let searchQuery = "";
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(ch){
+      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[ch];
+    });
+  }
+
+  function defaultState(){
+    const s = {};
+    FELLS_DATA.forEach(area=>{
+      area.fells.forEach(f=>{
+        s[f.name] = !!f.climbed;
+      });
+    });
+    return s;
+  }
+
+  // load: spreadsheet baseline, overridden by anything already saved in Supabase
+  async function loadState(){
+    const fallback = defaultState();
+    if(!sb){
+      showSyncStatus("offline", "Supabase not available — using local defaults only.");
+      return fallback;
+    }
+    try{
+      const { data, error } = await sb
+        .from(TABLE)
+        .select("item_id,is_checked")
+        .eq("dashboard_id", DASHBOARD_ID);
+      if(error) throw error;
+      const merged = Object.assign({}, fallback);
+      (data || []).forEach(row=>{ merged[row.item_id] = !!row.is_checked; });
+      showSyncStatus("ok");
+      return merged;
+    }catch(e){
+      console.error("Supabase load failed", e);
+      showSyncStatus("error", "Couldn't reach Supabase — showing your last known state.");
+      return fallback;
+    }
+  }
+
+  // save one fell's state the moment its checkbox changes
+  async function upsertFell(name, checked){
+    if(!sb){ showSyncStatus("offline"); return; }
+    try{
+      const { error } = await sb
+        .from(TABLE)
+        .upsert(
+          { dashboard_id: DASHBOARD_ID, item_id: name, is_checked: checked },
+          { onConflict: "dashboard_id,item_id" }
+        );
+      if(error) throw error;
+      flashSaved();
+      showSyncStatus("ok");
+    }catch(e){
+      console.error("Supabase save failed", e);
+      showSyncStatus("error", "Couldn't save that tick to Supabase — it'll stay local for now.");
+    }
+  }
+
+  // live sync: reflect ticks made elsewhere (another tab/device) immediately
+  function subscribeRealtime(){
+    if(!sb) return;
+    sb.channel("checkbox_states_" + DASHBOARD_ID)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: TABLE, filter: "dashboard_id=eq." + DASHBOARD_ID },
+        (payload)=>{
+          const row = (payload.eventType === "DELETE") ? payload.old : payload.new;
+          if(!row || !row.item_id) return;
+          const checked = (payload.eventType === "DELETE") ? false : !!row.is_checked;
+          if(state[row.item_id] !== checked){
+            state[row.item_id] = checked;
+            renderAll();
+          }
+        })
+      .subscribe();
+  }
+
+  function showSyncStatus(kind, msg){
+    const el = document.getElementById("sync-status");
+    if(!el) return;
+    el.classList.toggle("is-error", kind === "error");
+    el.classList.toggle("is-offline", kind === "offline");
+    el.textContent = msg || (kind === "ok" ? "" : "");
+    el.style.display = msg ? "block" : "none";
+  }
+
+  function flashSaved(){
+    const el = document.getElementById("save-flash");
+    el.classList.add("show");
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(()=> el.classList.remove("show"), 1200);
+  }
+
+  // ---------- computed stats ----------
+
+  function computeCounts(){
+    let climbed = 0;
+    FELLS_DATA.forEach(area=> area.fells.forEach(f=>{
+      if(state[f.name]) climbed++;
+    }));
+    return { climbed, remaining: TOTAL - climbed, percent: Math.round((climbed/TOTAL)*100) };
+  }
+
+  function computeAreaCounts(area){
+    let climbed = 0;
+    area.fells.forEach(f=>{ if(state[f.name]) climbed++; });
+    return { climbed, total: area.fells.length, percent: area.fells.length ? Math.round((climbed/area.fells.length)*100) : 0 };
+  }
+
+  // ---------- render: hero ----------
+
+  function renderHero(){
+    const { climbed, remaining, percent } = computeCounts();
+    document.getElementById("stat-climbed").innerHTML = climbed + "<small> / " + TOTAL + "</small>";
+    document.getElementById("stat-remaining").textContent = remaining;
+    document.getElementById("stat-percent").textContent = percent + "%";
+  }
+
+  function renderSkyline(){
+    const wrap = document.getElementById("skyline");
+    const divWrap = document.getElementById("skyline-divisions");
+    const allHeights = [];
+    FELLS_DATA.forEach(a=> a.fells.forEach(f=> allHeights.push(f.m)));
+    const maxH = Math.max.apply(null, allHeights);
+    const minH = Math.min.apply(null, allHeights);
+
+    let html = "";
+    FELLS_DATA.forEach((area, ai)=>{
+      area.fells.forEach((f, fi)=>{
+        const pct = 18 + ((f.m - minH) / (maxH - minH)) * 82; // keep a visible baseline
+        const climbed = !!state[f.name];
+        html += '<div class="peak' + (climbed ? ' is-climbed' : '') +
+          '" style="height:' + pct.toFixed(1) + '%" data-area="' + ai + '" data-fell="' + fi +
+          '" title="' + escapeHtml(f.name) + ' · ' + f.m + 'm · ' + (climbed ? 'climbed' : 'not yet') + '"></div>';
+      });
+    });
+    wrap.innerHTML = html;
+
+    const thresholdPct = 18 + ((MOUNTAIN_M - minH) / (maxH - minH)) * 82;
+    const line = document.createElement("div");
+    line.className = "mountain-line";
+    line.style.bottom = thresholdPct.toFixed(1) + "%";
+    line.title = "2,000ft / 610m — the conventional line between a hill and a mountain in England";
+    const label = document.createElement("span");
+    label.className = "mountain-line-label";
+    label.textContent = "2,000ft";
+    line.appendChild(label);
+    wrap.appendChild(line);
+
+    let divHtml = "";
+    FELLS_DATA.forEach((area, ai)=>{
+      divHtml += '<div class="division" style="flex:' + area.fells.length + '">' + ROMAN[ai] + '</div>';
+    });
+    divWrap.innerHTML = divHtml;
+  }
+
+  // ---------- render: charts ----------
+
+  const RING_R = 44;
+  const RING_C = 2 * Math.PI * RING_R;
+
+  function renderCharts(){
+    const el = document.getElementById("chart-books");
+    let html = '<div class="region-grid">';
+    FELLS_DATA.forEach((area, ai)=>{
+      const c = computeAreaCounts(area);
+      const offset = RING_C * (1 - c.percent/100);
+      const complete = c.percent === 100;
+      html += '<div class="region-card' + (complete ? ' is-complete' : '') + '" data-area="' + ai + '">';
+      html += '  <div class="ring-wrap">';
+      html += '    <svg class="ring" viewBox="0 0 100 100">';
+      html += '      <circle class="ring-track" cx="50" cy="50" r="' + RING_R + '"></circle>';
+      html += '      <circle class="ring-fill" cx="50" cy="50" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(2) + '" stroke-dashoffset="' + offset.toFixed(2) + '"></circle>';
+      html += '    </svg>';
+      html += '    <div class="ring-center"><div class="ring-percent">' + c.percent + '%</div><div class="ring-count">' + c.climbed + ' / ' + c.total + '</div></div>';
+      html += '  </div>';
+      html += '  <div class="region-label"><span class="num">' + ROMAN[ai] + '</span><span class="name">' + escapeHtml(area.name.replace(/^The /,'')) + '</span></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll(".region-card").forEach(card=>{
+      card.onclick = ()=> jumpToArea(parseInt(card.dataset.area,10));
+    });
+  }
+
+  // ---------- render: areas ----------
+
+  function fellMatchesSearch(f){
+    if(!searchQuery) return true;
+    return f.name.toLowerCase().indexOf(searchQuery) !== -1;
+  }
+
+  function renderAreas(){
+    const container = document.getElementById("areas");
+    let html = "";
+
+    FELLS_DATA.forEach((area, ai)=>{
+      const counts = computeAreaCounts(area);
+      const matches = area.fells.filter(fellMatchesSearch);
+      const searching = searchQuery.length > 0;
+      const isOpen = searching ? matches.length > 0 : expandedAreas.has(ai);
+      if(searching && matches.length === 0) return;
+
+      html += '<section class="area' + (isOpen ? ' is-open' : '') + '" data-area-idx="' + ai + '">';
+      html += '<button class="area-header" data-toggle="' + ai + '" aria-expanded="' + isOpen + '">';
+      html += '  <span class="area-num">' + ROMAN[ai] + '</span>';
+      html += '  <span class="area-name-wrap"><span class="area-name">' + escapeHtml(area.name) + '</span> <span class="area-year">' + area.year + '</span></span>';
+      html += '  <span class="area-progress-wrap"><span class="bar-track"><span class="bar-fill" style="width:' + counts.percent + '%"></span></span></span>';
+      html += '  <span class="area-count">' + counts.climbed + ' / ' + counts.total + '</span>';
+      html += '  <span class="chevron">▾</span>';
+      html += '</button>';
+
+      html += '<div class="area-body" id="area-body-' + ai + '"' + (isOpen ? '' : ' hidden') + '>';
+      if(matches.length === 0){
+        html += '<div class="area-empty-search">No fells match “' + escapeHtml(searchQuery) + '” in this region.</div>';
+      } else {
+        html += '<table class="fell-table"><tbody>';
+        area.fells.forEach((f, fi)=>{
+          const climbed = !!state[f.name];
+          const visible = fellMatchesSearch(f);
+          const isMountain = f.m >= MOUNTAIN_M;
+          html += '<tr class="fell-row' + (climbed ? ' is-climbed' : '') + (visible ? '' : ' is-hidden') + '" data-area="' + ai + '" data-fell="' + fi + '">';
+          html += '  <td class="cell-check"><input type="checkbox" ' + (climbed ? 'checked' : '') + ' aria-label="Mark ' + escapeHtml(f.name) + ' as climbed"></td>';
+          html += '  <td class="cell-name">' + (isMountain ? '<span class="mtn-badge" title="Mountain — 2,000ft / 610m or higher">' + MTN_ICON + '</span>' : '') + escapeHtml(f.name) + '</td>';
+          html += '  <td class="cell-height">' + f.m + 'm<span class="ft">' + f.ft + 'ft</span></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+      html += '</section>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderAll(){
+    renderHero();
+    renderSkyline();
+    renderCharts();
+    renderAreas();
+    attachAreaEvents();
+  }
+
+  // ---------- interactions ----------
+
+  function toggleFell(ai, fi, checked){
+    const f = FELLS_DATA[ai].fells[fi];
+    state[f.name] = checked;
+    renderAll();
+    upsertFell(f.name, checked);
+  }
+
+  function toggleArea(ai){
+    if(expandedAreas.has(ai)) expandedAreas.delete(ai);
+    else expandedAreas.add(ai);
+    renderAreas();
+    attachAreaEvents();
+  }
+
+  function jumpToArea(ai){
+    expandedAreas.add(ai);
+    document.getElementById("search").value = "";
+    searchQuery = "";
+    renderAreas();
+    attachAreaEvents();
+    const section = document.querySelector('.area[data-area-idx="' + ai + '"]');
+    if(section){
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function jumpToPeak(ai, fi){
+    expandedAreas.add(ai);
+    document.getElementById("search").value = "";
+    searchQuery = "";
+    renderAreas();
+    attachAreaEvents();
+    const row = document.querySelector('.fell-row[data-area="' + ai + '"][data-fell="' + fi + '"]');
+    if(row){
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.style.background = "var(--gold)";
+      setTimeout(()=>{ row.style.transition = "background 0.8s ease"; row.style.background = ""; }, 60);
+    }
+  }
+
+  function attachAreaEvents(){
+    document.querySelectorAll(".area-header").forEach(btn=>{
+      btn.onclick = ()=> toggleArea(parseInt(btn.dataset.toggle,10));
+    });
+    document.querySelectorAll(".fell-row input[type=checkbox]").forEach(cb=>{
+      const row = cb.closest(".fell-row");
+      cb.onchange = ()=> toggleFell(parseInt(row.dataset.area,10), parseInt(row.dataset.fell,10), cb.checked);
+    });
+  }
+
+  function attachSkylineEvents(){
+    document.querySelectorAll(".peak").forEach(p=>{
+      p.onclick = ()=> jumpToPeak(parseInt(p.dataset.area,10), parseInt(p.dataset.fell,10));
+    });
+  }
+
+  function attachSearchEvents(){
+    const input = document.getElementById("search");
+    input.oninput = ()=>{
+      searchQuery = input.value.trim().toLowerCase();
+      renderAreas();
+      attachAreaEvents();
+    };
+  }
+
+  function exportCsv(){
+    let rows = [["No.","Region","Fell","Height (m)","Height (ft)","Climbed"]];
+    FELLS_DATA.forEach((area, ai)=>{
+      area.fells.forEach(f=>{
+        rows.push([ROMAN[ai], area.name, f.name, f.m, f.ft, state[f.name] ? "Yes" : "No"]);
+      });
+    });
+    const csv = rows.map(r => r.map(cell=>{
+      const v = String(cell);
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+    }).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "wainwrights-progress.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- passcode gate ----------
+  // Temporary measure until proper per-user auth is set up — not real security,
+  // the passcode is plainly visible in this file's source to anyone who looks.
+
+  const PASSCODE = "climb";
+  const LOCK_KEY = "wainwrights-unlocked";
+
+  function isUnlocked(){
+    try{ return localStorage.getItem(LOCK_KEY) === "1"; }catch(e){ return false; }
+  }
+  function markUnlocked(){
+    try{ localStorage.setItem(LOCK_KEY, "1"); }catch(e){ /* best effort */ }
+  }
+
+  function showApp(){
+    document.getElementById("lock-screen").style.display = "none";
+    document.getElementById("app-content").style.display = "";
+    init();
+  }
+
+  function setupLockScreen(){
+    const form = document.getElementById("lock-form");
+    const input = document.getElementById("lock-input");
+    const error = document.getElementById("lock-error");
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      if(input.value.trim().toLowerCase() === PASSCODE){
+        markUnlocked();
+        showApp();
+      } else {
+        error.style.display = "block";
+        input.value = "";
+        input.focus();
+      }
+    });
+    input.focus();
+  }
+
+  // ---------- init ----------
+
+  async function init(){
+    state = await loadState();
+    renderAll();
+    attachAreaEvents();
+    attachSkylineEvents();
+    attachSearchEvents();
+    document.getElementById("export-btn").onclick = exportCsv;
+    subscribeRealtime();
+
+    // re-attach skyline + area click handlers after any re-render triggered internally
+    const observer = new MutationObserver(()=> attachSkylineEvents());
+    observer.observe(document.getElementById("skyline"), { childList: true });
+  }
+
+  if(isUnlocked()){
+    showApp();
+  } else {
+    setupLockScreen();
+  }
+})();
+
+</script>
+</body>
+</html>
