@@ -707,12 +707,11 @@
     <p class="lock-error" id="auth-error" style="display:none;"></p>
 
     <div id="auth-sent" style="display:none;">
-      <p class="lock-success">Check your inbox — click the link, or enter the code below.</p>
-      <form id="code-form" autocomplete="off">
-        <input type="text" id="auth-code" class="lock-input" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+      <p class="lock-success">Check your inbox — click the link, or enter the code below.</p>      <form id="code-form" autocomplete="off">
+        <input type="text" id="auth-code" class="lock-input" placeholder="Enter code" inputmode="numeric" autocomplete="one-time-code" maxlength="10">
         <button type="submit" class="btn lock-btn" id="code-submit">Verify code</button>
       </form>
-      <p class="lock-hint">If your email has link protection (Mimecast, Proofpoint), use the code — the link won't work.</p>
+      <p class="lock-hint">If your email has link protection, use the code — the link won't work.</p>
       <button type="button" class="lock-retry" id="auth-retry">Use a different email</button>
     </div>
   </div>
