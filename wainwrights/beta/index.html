@@ -909,6 +909,10 @@
         <div class="val" id="stat-percent">0%</div>
         <div class="stat-label">Complete</div>
       </div>
+      <div class="stat-mini">
+        <div class="val" id="stat-elevation">0m</div>
+        <div class="stat-label">Elevation climbed</div>
+      </div>
     </div>
 
     <div class="skyline-wrap">
@@ -942,6 +946,7 @@
       <div class="lb-toggle">
         <button type="button" class="lb-toggle-btn is-active" id="lb-mode-count" data-mode="count">Total</button>
         <button type="button" class="lb-toggle-btn" id="lb-mode-pct" data-mode="pct">Percent</button>
+        <button type="button" class="lb-toggle-btn" id="lb-mode-elev" data-mode="elev">Elevation</button>
       </div>
     </div>
     <div id="lb-list"></div>
@@ -1102,11 +1107,11 @@ const MAP_W=1000, MAP_H=925;
   // ---------- computed stats ----------
 
   function computeCounts(){
-    let climbed = 0;
+    let climbed = 0, elevation = 0;
     FELLS_DATA.forEach(area=> area.fells.forEach(f=>{
-      if(state[f.name]) climbed++;
+      if(state[f.name]){ climbed++; elevation += f.m; }
     }));
-    return { climbed, remaining: TOTAL - climbed, percent: Math.round((climbed/TOTAL)*100) };
+    return { climbed, remaining: TOTAL - climbed, percent: Math.round((climbed/TOTAL)*100), elevation };
   }
 
   function computeAreaCounts(area){
@@ -1118,10 +1123,11 @@ const MAP_W=1000, MAP_H=925;
   // ---------- render: hero ----------
 
   function renderHero(){
-    const { climbed, remaining, percent } = computeCounts();
+    const { climbed, remaining, percent, elevation } = computeCounts();
     document.getElementById("stat-climbed").innerHTML = climbed + "<small> / " + TOTAL + "</small>";
     document.getElementById("stat-remaining").textContent = remaining;
     document.getElementById("stat-percent").textContent = percent + "%";
+    document.getElementById("stat-elevation").textContent = elevation.toLocaleString() + "m";
   }
 
   function renderSkyline(){
@@ -1562,6 +1568,8 @@ const MAP_W=1000, MAP_H=925;
     const leaveBtn = document.getElementById("lb-leave");
     const countBtn = document.getElementById("lb-mode-count");
     const pctBtn = document.getElementById("lb-mode-pct");
+    const elevBtn = document.getElementById("lb-mode-elev");
+    const modeBtns = [countBtn, pctBtn, elevBtn];
 
     if(!sb) return;
 
@@ -1620,16 +1628,14 @@ const MAP_W=1000, MAP_H=925;
       nameInput.value = "";
     };
 
-    countBtn.onclick = ()=>{
-      lbMode = "count";
-      countBtn.classList.add("is-active"); pctBtn.classList.remove("is-active");
+    function setMode(mode, btn){
+      lbMode = mode;
+      modeBtns.forEach(b=> b.classList.toggle("is-active", b === btn));
       refreshLeaderboard(user.id);
-    };
-    pctBtn.onclick = ()=>{
-      lbMode = "pct";
-      pctBtn.classList.add("is-active"); countBtn.classList.remove("is-active");
-      refreshLeaderboard(user.id);
-    };
+    }
+    countBtn.onclick = ()=> setMode("count", countBtn);
+    pctBtn.onclick = ()=> setMode("pct", pctBtn);
+    elevBtn.onclick = ()=> setMode("elev", elevBtn);
   }
 
   async function refreshLeaderboard(myUserId){
@@ -1638,7 +1644,8 @@ const MAP_W=1000, MAP_H=925;
     try{
       const { data, error } = await sb.rpc("wainwright_leaderboard");
       if(error) throw error;
-      const rows = (data || []).slice().sort((a,b)=> b.climbed_count - a.climbed_count);
+      const sortKey = lbMode === "elev" ? "elevation_m" : "climbed_count";
+      const rows = (data || []).slice().sort((a,b)=> b[sortKey] - a[sortKey]);
       if(rows.length === 0){
         list.innerHTML = '<p class="lb-empty">No one\'s joined yet — you\'re the first.</p>';
         return;
@@ -1646,9 +1653,10 @@ const MAP_W=1000, MAP_H=925;
       let html = "";
       rows.forEach((r, i)=>{
         const isMe = r.user_id === myUserId;
-        const value = lbMode === "pct"
-          ? Math.round((r.climbed_count / TOTAL) * 100) + "%"
-          : r.climbed_count + " / " + TOTAL;
+        let value;
+        if(lbMode === "pct") value = Math.round((r.climbed_count / TOTAL) * 100) + "%";
+        else if(lbMode === "elev") value = Number(r.elevation_m || 0).toLocaleString() + "m";
+        else value = r.climbed_count + " / " + TOTAL;
         html += '<div class="lb-row' + (isMe ? ' is-me' : '') + '">';
         html += '  <span class="rank">' + (i+1) + '</span>';
         html += '  <span class="lb-name">' + escapeHtml(r.display_name) + '</span>';
