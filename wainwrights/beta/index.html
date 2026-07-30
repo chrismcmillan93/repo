@@ -702,6 +702,91 @@
     text-align: center;
   }
 
+  /* ---------- Leaderboard ---------- */
+  .beta-tag{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rust);
+    border: 1px solid var(--rust);
+    border-radius: 3px;
+    padding: 1px 6px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .lb-intro{
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    margin: 0 0 16px;
+  }
+  .lb-optin-form{ display: flex; gap: 8px; flex-wrap: wrap; }
+  .lb-optin-form .lock-input{ flex: 1; min-width: 160px; text-align: left; letter-spacing: normal; }
+  .lb-optin-form .lock-btn{ width: auto; white-space: nowrap; }
+
+  .lb-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .lb-toggle{ display: flex; border: 1px solid var(--line-strong); border-radius: 3px; overflow: hidden; }
+  .lb-toggle-btn{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--paper-card);
+    border: none;
+    padding: 6px 12px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .lb-toggle-btn + .lb-toggle-btn{ border-left: 1px solid var(--line-strong); }
+  .lb-toggle-btn.is-active{ background: var(--green); color: var(--paper-card); }
+
+  .lb-row{
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+  }
+  .lb-row:first-child{ border-top: none; }
+  .lb-row .rank{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+  .lb-row.is-me{ background: rgba(60,90,65,0.07); border-radius: 2px; }
+  .lb-row .lb-name{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .lb-row.is-me .lb-name::after{
+    content: " (you)";
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 10.5px;
+    color: var(--green-deep);
+  }
+  .lb-row .lb-value{
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .lb-row:nth-child(1) .rank{ color: var(--gold); font-weight: 700; }
+  .lb-empty{
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 10px 0;
+  }
+
   /* ---------- Footer ---------- */
   .footer{
     margin-top: 50px;
@@ -837,6 +922,30 @@
   <div class="map-card">
     <svg id="fell-map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the 214 Wainwright fells"></svg>
     <p class="map-caption">Every summit at its true position. Ticked fells are inked in — tap one to jump to it in the list.</p>
+  </div>
+
+  <div class="section-heading"><h2>Leaderboard <span class="beta-tag">beta</span></h2><div class="rule"></div></div>
+
+  <div class="chart-card" id="leaderboard-optin" style="display:none;">
+    <p class="chart-title">Compare progress with others</p>
+    <p class="lb-intro">Opt in to show up on the leaderboard by everyone else who's joined. Only your name and your total count are visible — not which fells you've done.</p>
+    <form id="lb-optin-form" class="lb-optin-form">
+      <input type="text" id="lb-name" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+      <button type="submit" class="btn lock-btn" id="lb-join-btn">Join leaderboard</button>
+    </form>
+    <p class="lock-error" id="lb-optin-error" style="display:none;"></p>
+  </div>
+
+  <div class="chart-card" id="leaderboard-panel" style="display:none;">
+    <div class="lb-header">
+      <p class="chart-title" style="margin:0;">Where everyone stands</p>
+      <div class="lb-toggle">
+        <button type="button" class="lb-toggle-btn is-active" id="lb-mode-count" data-mode="count">Total</button>
+        <button type="button" class="lb-toggle-btn" id="lb-mode-pct" data-mode="pct">Percent</button>
+      </div>
+    </div>
+    <div id="lb-list"></div>
+    <button type="button" class="lock-retry" id="lb-leave">Leave leaderboard</button>
   </div>
 
   <div class="section-heading"><h2>Progress by region</h2><div class="rule"></div></div>
@@ -1120,7 +1229,11 @@ const MAP_W=1000, MAP_H=925;
           const climbed = !!state[f.name];
           const visible = fellMatchesSearch(f);
           const isMountain = f.m >= MOUNTAIN_M;
-          const at = "https://www.alltrails.com/search?q=" + encodeURIComponent(f.name + " Lake District");
+          // Routed via Google rather than linking alltrails.com directly: the
+          // AllTrails app claims its own domain but drops the search query,
+          // stranding mobile users on its home screen.
+          const at = "https://www.google.com/search?q="
+                   + encodeURIComponent("alltrails " + f.name + " Lake District walk");
           const osm = "https://www.openstreetmap.org/?mlat=" + f.lat + "&mlon=" + f.lng
                     + "#map=15/" + f.lat + "/" + f.lng;
           html += '<tr class="fell-row' + (climbed ? ' is-climbed' : '') + (visible ? '' : ' is-hidden') + '" data-area="' + ai + '" data-fell="' + fi + '">';
@@ -1311,7 +1424,7 @@ const MAP_W=1000, MAP_H=925;
 
   // ---------- auth ----------
 
-  const REDIRECT_URL = "https://app.chris-mcmillan.co.uk/wainwrights/";
+  const REDIRECT_URL = "https://app.chris-mcmillan.co.uk/wainwrights/beta/";
 
   let currentUser = null;
   let hasInitialized = false;
@@ -1435,6 +1548,120 @@ const MAP_W=1000, MAP_H=925;
 
   // ---------- init ----------
 
+  // ---------- leaderboard ----------
+
+  let lbMode = "count"; // "count" | "pct"
+
+  async function setupLeaderboard(user){
+    const optinCard = document.getElementById("leaderboard-optin");
+    const panelCard = document.getElementById("leaderboard-panel");
+    const form = document.getElementById("lb-optin-form");
+    const nameInput = document.getElementById("lb-name");
+    const errorEl = document.getElementById("lb-optin-error");
+    const joinBtn = document.getElementById("lb-join-btn");
+    const leaveBtn = document.getElementById("lb-leave");
+    const countBtn = document.getElementById("lb-mode-count");
+    const pctBtn = document.getElementById("lb-mode-pct");
+
+    if(!sb) return;
+
+    let mine = null;
+    try{
+      const { data, error } = await sb
+        .from("leaderboard_opt_in")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if(error) throw error;
+      mine = data;
+    }catch(e){
+      console.error("Leaderboard opt-in lookup failed", e);
+    }
+
+    if(mine){
+      optinCard.style.display = "none";
+      panelCard.style.display = "block";
+      await refreshLeaderboard(user.id);
+    } else {
+      optinCard.style.display = "block";
+      panelCard.style.display = "none";
+    }
+
+    form.onsubmit = async (e)=>{
+      e.preventDefault();
+      errorEl.style.display = "none";
+      const name = nameInput.value.trim();
+      if(!name){ return; }
+      joinBtn.disabled = true;
+      joinBtn.textContent = "Joining…";
+      try{
+        const { error } = await sb
+          .from("leaderboard_opt_in")
+          .upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+        if(error) throw error;
+        optinCard.style.display = "none";
+        panelCard.style.display = "block";
+        await refreshLeaderboard(user.id);
+      }catch(err){
+        errorEl.textContent = err.message || "Couldn't join the leaderboard.";
+        errorEl.style.display = "block";
+      }finally{
+        joinBtn.disabled = false;
+        joinBtn.textContent = "Join leaderboard";
+      }
+    };
+
+    leaveBtn.onclick = async ()=>{
+      try{
+        await sb.from("leaderboard_opt_in").delete().eq("user_id", user.id);
+      }catch(e){ console.error("Leave leaderboard failed", e); }
+      panelCard.style.display = "none";
+      optinCard.style.display = "block";
+      nameInput.value = "";
+    };
+
+    countBtn.onclick = ()=>{
+      lbMode = "count";
+      countBtn.classList.add("is-active"); pctBtn.classList.remove("is-active");
+      refreshLeaderboard(user.id);
+    };
+    pctBtn.onclick = ()=>{
+      lbMode = "pct";
+      pctBtn.classList.add("is-active"); countBtn.classList.remove("is-active");
+      refreshLeaderboard(user.id);
+    };
+  }
+
+  async function refreshLeaderboard(myUserId){
+    const list = document.getElementById("lb-list");
+    if(!sb || !list) return;
+    try{
+      const { data, error } = await sb.rpc("wainwright_leaderboard");
+      if(error) throw error;
+      const rows = (data || []).slice().sort((a,b)=> b.climbed_count - a.climbed_count);
+      if(rows.length === 0){
+        list.innerHTML = '<p class="lb-empty">No one\'s joined yet — you\'re the first.</p>';
+        return;
+      }
+      let html = "";
+      rows.forEach((r, i)=>{
+        const isMe = r.user_id === myUserId;
+        const value = lbMode === "pct"
+          ? Math.round((r.climbed_count / TOTAL) * 100) + "%"
+          : r.climbed_count + " / " + TOTAL;
+        html += '<div class="lb-row' + (isMe ? ' is-me' : '') + '">';
+        html += '  <span class="rank">' + (i+1) + '</span>';
+        html += '  <span class="lb-name">' + escapeHtml(r.display_name) + '</span>';
+        html += '  <span class="lb-value">' + value + '</span>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    }catch(e){
+      console.error("Leaderboard fetch failed", e);
+      list.innerHTML = '<p class="lb-empty">Couldn\'t load the leaderboard right now.</p>';
+    }
+  }
+
   async function init(user){
     state = await loadState(user.id);
     renderAll();
@@ -1443,6 +1670,7 @@ const MAP_W=1000, MAP_H=925;
     attachSearchEvents();
     document.getElementById("export-btn").onclick = exportCsv;
     subscribeRealtime(user.id);
+    setupLeaderboard(user);
 
     // re-attach skyline + area click handlers after any re-render triggered internally
     const observer = new MutationObserver(()=> attachSkylineEvents());
