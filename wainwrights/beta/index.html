@@ -810,6 +810,11 @@
   }
   .lb-toggle-btn + .lb-toggle-btn{ border-left: 1px solid var(--line-strong); }
   .lb-toggle-btn.is-active{ background: var(--green); color: var(--paper-card); }
+  @media (max-width: 640px){
+    .lb-header{ flex-direction: column; align-items: stretch; }
+    .lb-toggle{ width: 100%; }
+    .lb-toggle-btn{ flex: 1; padding: 8px 4px; text-align: center; }
+  }
 
   .lb-row{
     display: grid;
@@ -840,6 +845,17 @@
     font-size: 10.5px;
     color: var(--green-deep);
   }
+  .lb-row .lb-insta{
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--tarn);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(62,107,120,0.35);
+    width: fit-content;
+    margin-top: 1px;
+  }
+  .lb-row .lb-insta:hover{ color: var(--rust); border-bottom-color: var(--rust); }
   .lb-row .lb-value{
     font-family: var(--font-mono);
     font-size: 13px;
@@ -851,6 +867,12 @@
     color: var(--ink-faint);
     text-align: center;
     padding: 10px 0;
+  }
+  .lb-actions{
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 6px;
   }
 
   /* ---------- Footer ---------- */
@@ -1001,6 +1023,7 @@
     <p class="lb-intro">Opt in to show up on the leaderboard by everyone else who's joined. Only your name and your total count are visible — not which fells you've done.</p>
     <form id="lb-optin-form" class="lb-optin-form">
       <input type="text" id="lb-name" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+      <input type="text" id="lb-insta" class="lock-input" placeholder="Instagram (optional)" maxlength="30" autocomplete="off">
       <label class="terms-check">
         <input type="checkbox" id="lb-terms-check">
         <span>I've read and accept the <button type="button" class="terms-link" id="terms-open">Terms &amp; Conditions</button></span>
@@ -1021,10 +1044,23 @@
           <li>This is a personal, non-commercial feature built for friends and family using this tracker. It isn't a registered service and comes with no guarantees about uptime, accuracy, or data retention.</li>
           <li>You can leave the leaderboard at any time with the "Leave leaderboard" button, which removes your display name and stops your progress being shown to others.</li>
           <li>Please don't use a display name that could identify someone else, or anything offensive — entries may be removed at the discretion of whoever runs this tracker.</li>
+          <li>If you add an Instagram handle, it will show as a public, tappable link to that profile next to your name. Make sure it's genuinely your own account — don't add someone else's handle.</li>
           <li>Data is stored via Supabase. Use the usual sensible judgement — don't put anything in your display name beyond what you're happy for others using this tracker to see.</li>
         </ul>
       </div>
       <button type="button" class="btn" id="terms-close">Close</button>
+    </div>
+  </div>
+
+  <div id="name-prompt" class="terms-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="name-prompt-title">
+    <div class="terms-card">
+      <h3 id="name-prompt-title">What should we call you?</h3>
+      <p class="terms-body">This is just saved for later — if you join the leaderboard, it'll already be filled in for you. You can skip this and set it anytime.</p>
+      <form id="name-prompt-form" class="lb-optin-form" style="margin-top: 14px;">
+        <input type="text" id="name-prompt-input" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+        <button type="submit" class="btn lock-btn">Save</button>
+      </form>
+      <button type="button" class="terms-link" id="name-prompt-skip" style="margin-top: 12px;">Skip for now</button>
     </div>
   </div>
 
@@ -1034,11 +1070,20 @@
       <div class="lb-toggle">
         <button type="button" class="lb-toggle-btn is-active" id="lb-mode-count" data-mode="count">Total</button>
         <button type="button" class="lb-toggle-btn" id="lb-mode-pct" data-mode="pct">Percent</button>
-        <button type="button" class="lb-toggle-btn" id="lb-mode-elev" data-mode="elev">Elevation</button>
+        <button type="button" class="lb-toggle-btn" id="lb-mode-elev" data-mode="elev">Elev</button>
       </div>
     </div>
     <div id="lb-list"></div>
-    <button type="button" class="lock-retry" id="lb-leave">Leave leaderboard</button>
+    <div class="lb-actions">
+      <button type="button" class="lock-retry" id="lb-edit-toggle">Edit name / Instagram</button>
+      <button type="button" class="lock-retry" id="lb-leave">Leave leaderboard</button>
+    </div>
+    <form id="lb-edit-form" class="lb-optin-form" style="display:none; margin-top: 12px;">
+      <input type="text" id="lb-edit-name" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+      <input type="text" id="lb-edit-insta" class="lock-input" placeholder="Instagram (optional)" maxlength="30" autocomplete="off">
+      <button type="submit" class="btn lock-btn">Save changes</button>
+    </form>
+    <p class="lock-error" id="lb-edit-error" style="display:none;"></p>
   </div>
 
   <div class="section-heading"><h2>Progress by region</h2><div class="rule"></div></div>
@@ -1644,13 +1689,69 @@ const MAP_W=1000, MAP_H=925;
 
   // ---------- leaderboard ----------
 
-  let lbMode = "count"; // "count" | "pct"
+  let lbMode = "count"; // "count" | "pct" | "elev"
 
-  async function setupLeaderboard(user){
+  // Instagram handles: letters, numbers, periods, underscores, 1-30 chars.
+  // Strips a leading @ since people will naturally type it that way.
+  function normalizeInstaHandle(raw){
+    const trimmed = raw.trim().replace(/^@/, "");
+    if(!trimmed) return { value: null, error: null };
+    if(!/^[A-Za-z0-9._]{1,30}$/.test(trimmed)){
+      return { value: null, error: "Instagram handle can only contain letters, numbers, periods and underscores." };
+    }
+    return { value: trimmed, error: null };
+  }
+
+  async function loadProfile(userId){
+    if(!sb) return null;
+    try{
+      const { data, error } = await sb
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if(error) throw error;
+      return data;
+    }catch(e){
+      console.error("Profile lookup failed", e);
+      return null;
+    }
+  }
+
+  function setupNamePrompt(user, profile){
+    const modal = document.getElementById("name-prompt");
+    const form = document.getElementById("name-prompt-form");
+    const input = document.getElementById("name-prompt-input");
+    const skipBtn = document.getElementById("name-prompt-skip");
+
+    if(!sb || profile){ return; } // already have a saved name — nothing to ask
+
+    modal.style.display = "flex";
+
+    form.onsubmit = async (e)=>{
+      e.preventDefault();
+      const name = input.value.trim();
+      if(!name) return;
+      try{
+        await sb.from("profiles").upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+      }catch(err){
+        console.error("Saving display name failed", err);
+      }
+      // carry the name straight into the leaderboard form if it's still empty
+      const lbNameInput = document.getElementById("lb-name");
+      if(lbNameInput && !lbNameInput.value) lbNameInput.value = name;
+      modal.style.display = "none";
+    };
+
+    skipBtn.onclick = ()=>{ modal.style.display = "none"; };
+  }
+
+  async function setupLeaderboard(user, profile){
     const optinCard = document.getElementById("leaderboard-optin");
     const panelCard = document.getElementById("leaderboard-panel");
     const form = document.getElementById("lb-optin-form");
     const nameInput = document.getElementById("lb-name");
+    const instaInput = document.getElementById("lb-insta");
     const errorEl = document.getElementById("lb-optin-error");
     const joinBtn = document.getElementById("lb-join-btn");
     const leaveBtn = document.getElementById("lb-leave");
@@ -1662,6 +1763,11 @@ const MAP_W=1000, MAP_H=925;
     const termsOpen = document.getElementById("terms-open");
     const termsClose = document.getElementById("terms-close");
     const termsModal = document.getElementById("terms-modal");
+    const editToggle = document.getElementById("lb-edit-toggle");
+    const editForm = document.getElementById("lb-edit-form");
+    const editName = document.getElementById("lb-edit-name");
+    const editInsta = document.getElementById("lb-edit-insta");
+    const editError = document.getElementById("lb-edit-error");
 
     if(!sb) return;
 
@@ -1670,11 +1776,15 @@ const MAP_W=1000, MAP_H=925;
     termsModal.onclick = (e)=>{ if(e.target === termsModal) termsModal.style.display = "none"; };
     termsCheck.onchange = ()=>{ joinBtn.disabled = !termsCheck.checked; };
 
+    if(profile && profile.display_name && !nameInput.value){
+      nameInput.value = profile.display_name;
+    }
+
     let mine = null;
     try{
       const { data, error } = await sb
         .from("leaderboard_opt_in")
-        .select("display_name")
+        .select("display_name, instagram_handle")
         .eq("user_id", user.id)
         .maybeSingle();
       if(error) throw error;
@@ -1702,13 +1812,21 @@ const MAP_W=1000, MAP_H=925;
         errorEl.style.display = "block";
         return;
       }
+      const insta = normalizeInstaHandle(instaInput.value);
+      if(insta.error){
+        errorEl.textContent = insta.error;
+        errorEl.style.display = "block";
+        return;
+      }
       joinBtn.disabled = true;
       joinBtn.textContent = "Joining…";
       try{
         const { error } = await sb
           .from("leaderboard_opt_in")
-          .upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+          .upsert({ user_id: user.id, display_name: name, instagram_handle: insta.value }, { onConflict: "user_id" });
         if(error) throw error;
+        // keep the reusable profile name in sync with whatever they just joined under
+        await sb.from("profiles").upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
         optinCard.style.display = "none";
         panelCard.style.display = "block";
         await refreshLeaderboard(user.id);
@@ -1728,8 +1846,59 @@ const MAP_W=1000, MAP_H=925;
       panelCard.style.display = "none";
       optinCard.style.display = "block";
       nameInput.value = "";
+      instaInput.value = "";
       termsCheck.checked = false;
       joinBtn.disabled = true;
+      editForm.style.display = "none";
+    };
+
+    editToggle.onclick = async ()=>{
+      const showing = editForm.style.display !== "none";
+      if(showing){
+        editForm.style.display = "none";
+        return;
+      }
+      editError.style.display = "none";
+      // re-fetch current values so the edit form always starts accurate
+      try{
+        const { data } = await sb
+          .from("leaderboard_opt_in")
+          .select("display_name, instagram_handle")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        editName.value = data ? (data.display_name || "") : "";
+        editInsta.value = data && data.instagram_handle ? data.instagram_handle : "";
+      }catch(e){ console.error("Could not load current details", e); }
+      editForm.style.display = "flex";
+    };
+
+    editForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      editError.style.display = "none";
+      const name = editName.value.trim();
+      if(!name){
+        editError.textContent = "Display name can't be empty.";
+        editError.style.display = "block";
+        return;
+      }
+      const insta = normalizeInstaHandle(editInsta.value);
+      if(insta.error){
+        editError.textContent = insta.error;
+        editError.style.display = "block";
+        return;
+      }
+      try{
+        await sb.from("leaderboard_opt_in")
+          .update({ display_name: name, instagram_handle: insta.value })
+          .eq("user_id", user.id);
+        await sb.from("profiles")
+          .upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+        editForm.style.display = "none";
+        await refreshLeaderboard(user.id);
+      }catch(err){
+        editError.textContent = err.message || "Couldn't save those changes.";
+        editError.style.display = "block";
+      }
     };
 
     function setMode(mode, btn){
@@ -1761,9 +1930,12 @@ const MAP_W=1000, MAP_H=925;
         if(lbMode === "pct") value = Math.round((r.climbed_count / TOTAL) * 100) + "%";
         else if(lbMode === "elev") value = Number(r.elevation_m || 0).toLocaleString() + "m";
         else value = r.climbed_count + " / " + TOTAL;
+        const instaLink = r.instagram_handle
+          ? '<a class="lb-insta" href="https://instagram.com/' + encodeURIComponent(r.instagram_handle) + '" target="_blank" rel="noopener noreferrer">@' + escapeHtml(r.instagram_handle) + '</a>'
+          : '';
         html += '<div class="lb-row' + (isMe ? ' is-me' : '') + '">';
         html += '  <span class="rank">' + (i+1) + '</span>';
-        html += '  <span class="lb-name">' + escapeHtml(r.display_name) + '</span>';
+        html += '  <span><span class="lb-name">' + escapeHtml(r.display_name) + '</span>' + instaLink + '</span>';
         html += '  <span class="lb-value">' + value + '</span>';
         html += '</div>';
       });
@@ -1782,7 +1954,10 @@ const MAP_W=1000, MAP_H=925;
     attachSearchEvents();
     document.getElementById("export-btn").onclick = exportCsv;
     subscribeRealtime(user.id);
-    setupLeaderboard(user);
+
+    const profile = await loadProfile(user.id);
+    setupNamePrompt(user, profile);
+    setupLeaderboard(user, profile);
 
     // re-attach skyline + area click handlers after any re-render triggered internally
     const observer = new MutationObserver(()=> attachSkylineEvents());
