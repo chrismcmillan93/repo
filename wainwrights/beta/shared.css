@@ -157,6 +157,7 @@
     border-bottom: 2px solid var(--ink);
     padding-bottom: 0;
     position: relative;
+    touch-action: none;
   }
   .mountain-line{
     position: absolute;
@@ -231,6 +232,54 @@
     font-size: 11px;
     color: var(--ink-faint);
     margin-top: 10px;
+  }
+
+  /* Touch-scrub preview label — shown while dragging a thumb across the
+     skyline or map, before release, so the fell name and climbed status
+     are visible ahead of committing to a jump. */
+  .touch-label{
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, calc(-100% - 10px));
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 6px 10px;
+    background: var(--ink);
+    border-radius: var(--radius);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+    box-shadow: var(--shadow);
+  }
+  .touch-label::after{
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--ink);
+  }
+  .touch-label-name{
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--paper);
+    line-height: 1.2;
+  }
+  .touch-label-status{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--paper-deep);
+  }
+  .touch-label-status.is-climbed{
+    color: var(--green-pale);
   }
 
   /* ---------- Section headings ---------- */
@@ -769,6 +818,8 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 10px 10px 12px;
+    position: relative;
+    touch-action: none;
   }
   #fell-map{ width: 100%; height: auto; display: block; }
 

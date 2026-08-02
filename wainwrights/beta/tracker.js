@@ -463,6 +463,82 @@
     });
   }
 
+  // ---------- touch-scrub preview (skyline + map) ----------
+  //
+  // On touch devices, dragging a thumb across the skyline or map shows a
+  // floating label with the fell's name and climbed status above whatever
+  // peak is currently under the finger — the jump only happens on release,
+  // over whichever peak the finger ends on. We take full manual control of
+  // this gesture (rather than relying on the native synthetic click after
+  // touchend, whose target is pinned to wherever the touch *started*, not
+  // where it ends) so drag-to-release lands on the right fell.
+
+  function positionTouchLabel(label, containerEl, targetEl, f){
+    const climbed = !!state[f.name];
+    label.querySelector(".touch-label-name").textContent = f.name;
+    const statusEl = label.querySelector(".touch-label-status");
+    statusEl.textContent = climbed ? "Climbed" : "Not yet";
+    statusEl.classList.toggle("is-climbed", climbed);
+
+    const tRect = targetEl.getBoundingClientRect();
+    const cRect = containerEl.getBoundingClientRect();
+    let x = tRect.left + tRect.width / 2 - cRect.left;
+    const y = tRect.top - cRect.top;
+    const margin = 56; // keep the label from overflowing the container's edges
+    x = Math.max(margin, Math.min(cRect.width - margin, x));
+    label.style.left = x + "px";
+    label.style.top = Math.max(0, y) + "px";
+    label.style.display = "flex";
+  }
+
+  function hideTouchLabel(label){
+    label.style.display = "none";
+  }
+
+  function setupChartTouchPreview(containerEl, peakSelector, label){
+    if(!containerEl || !label) return;
+
+    function peakInfoFromPoint(x, y){
+      const el = document.elementFromPoint(x, y);
+      const target = el && el.closest ? el.closest(peakSelector) : null;
+      if(!target || !containerEl.contains(target)) return null;
+      const ai = parseInt(target.dataset.area, 10), fi = parseInt(target.dataset.fell, 10);
+      const f = FELLS_DATA[ai] && FELLS_DATA[ai].fells[fi];
+      if(!f) return null;
+      return { target, ai, fi, f };
+    }
+
+    containerEl.addEventListener("touchstart", (e)=>{
+      const t = e.touches[0];
+      const info = peakInfoFromPoint(t.clientX, t.clientY);
+      if(info) positionTouchLabel(label, containerEl, info.target, info.f);
+      else hideTouchLabel(label);
+    }, { passive: true });
+
+    containerEl.addEventListener("touchmove", (e)=>{
+      const t = e.touches[0];
+      const info = peakInfoFromPoint(t.clientX, t.clientY);
+      if(info){
+        positionTouchLabel(label, containerEl, info.target, info.f);
+        e.preventDefault(); // lock the scrub in place, stop the page scrolling underneath
+      } else {
+        hideTouchLabel(label);
+      }
+    }, { passive: false });
+
+    containerEl.addEventListener("touchend", (e)=>{
+      const t = e.changedTouches[0];
+      const info = peakInfoFromPoint(t.clientX, t.clientY);
+      hideTouchLabel(label);
+      if(info){
+        e.preventDefault(); // suppress the native synthetic click so we don't double-jump
+        jumpToPeak(info.ai, info.fi);
+      }
+    }, { passive: false });
+
+    containerEl.addEventListener("touchcancel", ()=> hideTouchLabel(label));
+  }
+
   function attachSearchEvents(){
     const input = document.getElementById("search");
     input.oninput = ()=>{
@@ -546,6 +622,8 @@
     attachSkylineEvents();
     attachSearchEvents();
     setupChallengeModal();
+    setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
+    setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
     subscribeRealtime(user.id);
 
