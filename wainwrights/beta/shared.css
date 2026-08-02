@@ -920,6 +920,15 @@
   .terms-body{ font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
   .terms-body ul{ margin: 8px 0 0; padding-left: 20px; }
   .terms-body li{ margin-bottom: 10px; }
+  .chal-modal-tag{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 10px;
+  }
   .terms-card .btn{ margin-top: 18px; }
 
   .lb-header{

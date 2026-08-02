@@ -95,17 +95,16 @@
     const modal = document.getElementById("challenge-modal");
     const title = document.getElementById("challenge-modal-title");
     const body = document.getElementById("challenge-modal-body");
-    title.textContent = fellName + " is part of:";
+    title.textContent = fellName;
+
+    const fell = CHALLENGE_FELLS.find(f=> f.name === fellName);
+    const labels = keys.map(k=> CHALLENGES[k] ? CHALLENGES[k].label : null).filter(Boolean);
+
     let html = "";
-    keys.forEach(k=>{
-      const c = CHALLENGES[k];
-      if(!c) return;
-      html += '<div class="chal-entry">';
-      html += '  <h4>' + escapeHtml(c.label) + '</h4>';
-      html += '  <p>' + escapeHtml(c.blurb) + '</p>';
-      html += '  <a href="' + c.url + '" target="_blank" rel="noopener noreferrer">More about this challenge →</a>';
-      html += '</div>';
-    });
+    if(labels.length){
+      html += '<p class="chal-modal-tag">Part of ' + escapeHtml(labels.join(", ")) + '</p>';
+    }
+    html += '<p>' + escapeHtml(fell && fell.desc ? fell.desc : "No description available.") + '</p>';
     body.innerHTML = html;
     modal.style.display = "flex";
   }
