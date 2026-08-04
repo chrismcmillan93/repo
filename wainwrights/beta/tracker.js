@@ -39,6 +39,78 @@
       label: "The Glaramara Ridge",
       blurb: "A ridge walk above Borrowdale linking Glaramara with its neighbouring tops, popular as a there-and-back or extended towards Esk Hause.",
       url: "https://www.walklakes.co.uk/walk_165.html"
+    },
+
+    // Eastern Fells
+    fairfield_horseshoe: {
+      label: "The Fairfield Horseshoe",
+      blurb: "A classic ridge circuit from Ambleside — out along Low Pike and High Pike to Fairfield, then back via Great Rigg, Heron Pike and Nab Scar above Rydal.",
+      url: "https://www.walklakes.co.uk/walk_42.html"
+    },
+    helvellyn_striding_edge: {
+      label: "Helvellyn via Striding Edge",
+      blurb: "England's most famous ridge scramble, climbing to Helvellyn's summit with Red Tarn below, usually completed with a descent over Catstycam via Swirral Edge.",
+      url: "https://www.walkinginthewild.co.uk/walks/helvellyn-via-striding-edge-1"
+    },
+    dodds_traverse: {
+      label: "The Helvellyn Range",
+      blurb: "A long end-to-end ridge traverse from Clough Head in the north over the Dodds and Raise to Helvellyn and on to Dollywaggon Pike, rarely dropping below 620m.",
+      url: "https://www.thegreatoutdoorsmag.com/spot/helvellyn-range-traverse-route-guide/"
+    },
+
+    // Far Eastern Fells
+    kentmere_horseshoe: {
+      label: "The Kentmere Horseshoe",
+      blurb: "A long circuit around the head of the Kentmere valley, taking in Yoke, Ill Bell, Froswick and Thornthwaite Crag before returning via Mardale Ill Bell, Harter Fell, Kentmere Pike and Shipman Knotts.",
+      url: "https://www.walklakes.co.uk/walk_14.html"
+    },
+
+    // Central Fells
+    langdale_pikes: {
+      label: "The Langdale Pikes",
+      blurb: "The unmistakable skyline above Great Langdale — a rocky circuit of Harrison Stickle, Pike O'Stickle, Loft Crag, Pavey Ark and Thunacar Knott above Stickle Tarn.",
+      url: "https://www.walklakes.co.uk/walk_63.html"
+    },
+
+    // Northern Fells
+    skiddaw_horseshoe: {
+      label: "The Skiddaw Horseshoe",
+      blurb: "The scenic way up England's fourth-highest mountain, via the ridge of Ullock Pike and Long Side and back down over Bakestall, avoiding the direct tourist path.",
+      url: "https://www.bigwalks.com/skiddaw-horseshoe.html"
+    },
+    mungrisdale_round: {
+      label: "The Mungrisdale Round",
+      blurb: "A quieter circuit from Mungrisdale over Souther Fell and Blencathra's northern side to Bannerdale Crags and Bowscale Fell.",
+      url: "https://www.paulbeal.com/bannerdale-crags/"
+    },
+
+    // North Western Fells
+    coledale_round: {
+      label: "The Coledale Round",
+      blurb: "A horseshoe of high summits around the Coledale valley above Braithwaite — Grisedale Pike, Hopegill Head, Eel Crag and Sail, with Wainwright's favourite ridge walk on to Scar Crags and Causey Pike.",
+      url: "https://where2walk.co.uk/walk/coledale-round/"
+    },
+    newlands_round: {
+      label: "The Newlands Round",
+      blurb: "A classic circuit above the Newlands valley — Catbells, Maiden Moor and High Spy, then over Dale Head, Hindscarth and Robinson.",
+      url: "https://where2walk.co.uk/walk/newlands-round/"
+    },
+
+    // Western Fells
+    buttermere_horseshoe: {
+      label: "The Buttermere Horseshoe",
+      blurb: "The ridge dividing Buttermere and Ennerdale — Red Pike, High Stile and High Crag, commonly extended to Wainwright's favourite fell, Haystacks.",
+      url: "https://fabulousnorth.com/walks/red-pike-high-stile-high-crag-and-haystacks/"
+    },
+    mosedale_horseshoe: {
+      label: "The Mosedale Horseshoe",
+      blurb: "A remote, rugged circuit of the Mosedale valley from Wasdale Head, taking in Pillar, Scoat Fell, Steeple, Red Pike, Yewbarrow and Kirk Fell.",
+      url: "https://www.walkwainwrights.co.uk/2021/12/maximum-mosedale.html"
+    },
+    great_gable_group: {
+      label: "The Great Gable Group",
+      blurb: "The fells at the head of Ennerdale and Borrowdale surrounding Great Gable — usually combined with Green Gable, and often Brandreth and Grey Knotts from Honister.",
+      url: "https://www.walkingbritain.co.uk/walk-1112-description"
     }
   };
 
