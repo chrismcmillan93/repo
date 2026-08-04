@@ -17,23 +17,28 @@
   const ROUTES = {
     coniston_horseshoe: {
       label: "Coniston Fells Horseshoe",
-      blurb: "A popular circuit from Coniston taking in the Old Man and its neighbouring summits above Levers Water and Goat's Water, often extended to Wetherlam or Grey Friar."
+      blurb: "A popular circuit from Coniston taking in the Old Man and its neighbouring summits above Levers Water and Goat's Water, often extended to Wetherlam or Grey Friar.",
+      url: "https://www.mudandroutes.com/routes/the-coniston-round/"
     },
     bowfell_crinkles: {
       label: "Bowfell & Crinkle Crags Round",
-      blurb: "A classic Langdale horseshoe linking Bowfell, Esk Pike and Crinkle Crags via The Band and the Climbers' Traverse, usually completed from Great Langdale."
+      blurb: "A classic Langdale horseshoe linking Bowfell, Esk Pike and Crinkle Crags via The Band and the Climbers' Traverse, usually completed from Great Langdale.",
+      url: "https://www.walkupscafellpike.co.uk/lake-district-walk/classic-lake-district-walks-bowfell-and-crinkle-crags-from-great-langdale/"
     },
     scafell_traverse: {
       label: "Scafell Massif Traverse",
-      blurb: "A serious high-level round of England's two highest summits and their neighbours, usually approached from Wasdale or via the Corridor Route from Borrowdale."
+      blurb: "A serious high-level round of England's two highest summits and their neighbours, usually approached from Wasdale or via the Corridor Route from Borrowdale.",
+      url: "https://where2walk.co.uk/walk/scafell-from-wasdale-head/"
     },
     wasdale_screes: {
       label: "The Wasdale Screes",
-      blurb: "Illgill Head and Whin Rigg together form the ridge above the famous Screes on Wastwater's southern shore, usually walked as one there-and-back or circular route."
+      blurb: "Illgill Head and Whin Rigg together form the ridge above the famous Screes on Wastwater's southern shore, usually walked as one there-and-back or circular route.",
+      url: "https://www.walklakes.co.uk/walk_62.html"
     },
     glaramara_ridge: {
       label: "The Glaramara Ridge",
-      blurb: "A ridge walk above Borrowdale linking Glaramara with its neighbouring tops, popular as a there-and-back or extended towards Esk Hause."
+      blurb: "A ridge walk above Borrowdale linking Glaramara with its neighbouring tops, popular as a there-and-back or extended towards Esk Hause.",
+      url: "https://www.walklakes.co.uk/walk_165.html"
     }
   };
 
@@ -523,9 +528,18 @@
         .flatMap(area=> area.fells)
         .filter(f=> f.routes && f.routes.indexOf(key) !== -1);
 
+      const routeAt = "https://www.google.com/search?q="
+                     + encodeURIComponent("alltrails " + route.label + " Lake District walk");
+
       html += '<div class="route-modal-section">';
       html += '  <p class="route-modal-label">' + escapeHtml(route.label) + '</p>';
       html += '  <p>' + escapeHtml(route.blurb) + '</p>';
+      html += '  <div class="route-modal-links">';
+      if(route.url){
+        html += '    <a href="' + route.url + '" target="_blank" rel="noopener noreferrer">Route guide →</a>';
+      }
+      html += '    <a href="' + routeAt + '" target="_blank" rel="noopener noreferrer">AllTrails →</a>';
+      html += '  </div>';
       html += '  <p class="route-modal-label" style="margin-top:12px;">Often climbed with</p>';
       html += '  <div class="route-fell-list">';
       companions.forEach(c=>{
