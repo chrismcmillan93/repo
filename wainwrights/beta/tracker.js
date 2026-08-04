@@ -9,6 +9,33 @@
   const MOUNTAIN_M = 610; // 2,000ft — conventional England hill/mountain line
   const MTN_ICON = '<svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg>';
   const FLAG_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1 L3 13" stroke="currentColor" stroke-width="1.3" fill="none"></path><path d="M3 2 L11 4.3 L3 6.6 Z"></path></svg>';
+  const ROUTE_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 9.5 Q7 7 9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.3"></path><circle cx="3" cy="11" r="1.8"></circle><circle cx="11" cy="3" r="1.8"></circle></svg>';
+
+  // Real, well-documented classic route/horseshoe groupings — deliberately
+  // conservative. Only fells genuinely, commonly combined in one walk are
+  // tagged; being geographically close isn't enough on its own.
+  const ROUTES = {
+    coniston_horseshoe: {
+      label: "Coniston Fells Horseshoe",
+      blurb: "A popular circuit from Coniston taking in the Old Man and its neighbouring summits above Levers Water and Goat's Water, often extended to Wetherlam or Grey Friar."
+    },
+    bowfell_crinkles: {
+      label: "Bowfell & Crinkle Crags Round",
+      blurb: "A classic Langdale horseshoe linking Bowfell, Esk Pike and Crinkle Crags via The Band and the Climbers' Traverse, usually completed from Great Langdale."
+    },
+    scafell_traverse: {
+      label: "Scafell Massif Traverse",
+      blurb: "A serious high-level round of England's two highest summits and their neighbours, usually approached from Wasdale or via the Corridor Route from Borrowdale."
+    },
+    wasdale_screes: {
+      label: "The Wasdale Screes",
+      blurb: "Illgill Head and Whin Rigg together form the ridge above the famous Screes on Wastwater's southern shore, usually walked as one there-and-back or circular route."
+    },
+    glaramara_ridge: {
+      label: "The Glaramara Ridge",
+      blurb: "A ridge walk above Borrowdale linking Glaramara with its neighbouring tops, popular as a there-and-back or extended towards Esk Hause."
+    }
+  };
 
   const CHALLENGES = {
     three_peaks: {
@@ -269,11 +296,15 @@
           const challengeBadge = (f.challenges && f.challenges.length)
             ? '<span class="chal-badge" data-challenges="' + f.challenges.join(",") + '" title="Part of a known challenge — tap for details">' + FLAG_ICON + '</span>'
             : '';
+          const routeBadge = (f.routes && f.routes.length)
+            ? '<span class="route-badge" data-fell="' + escapeHtml(f.name) + '" title="Often climbed with other fells — tap for details">' + ROUTE_ICON + '</span>'
+            : '';
           html += '<tr class="fell-row' + (climbed ? ' is-climbed' : '') + (visible ? '' : ' is-hidden') + '" data-area="' + ai + '" data-fell="' + fi + '">';
           html += '  <td class="cell-check"><input type="checkbox" ' + (climbed ? 'checked' : '') + ' aria-label="Mark ' + escapeHtml(f.name) + ' as climbed"></td>';
           html += '  <td class="cell-name">'
                + (isMountain ? '<span class="mtn-badge" title="Mountain — 2,000ft / 610m or higher">' + MTN_ICON + '</span>' : '')
                + challengeBadge
+               + routeBadge
                + escapeHtml(f.name)
                + '<span class="fell-links">'
                + '<a href="' + osm + '" target="_blank" rel="noopener noreferrer">Map</a>'
@@ -429,6 +460,12 @@
         showChallengeModal(f.name, keys);
       };
     });
+    document.querySelectorAll(".route-badge").forEach(badge=>{
+      badge.onclick = (e)=>{
+        e.stopPropagation();
+        showRouteModal(badge.dataset.fell);
+      };
+    });
   }
 
   function showChallengeModal(fellName, keys){
@@ -453,6 +490,67 @@
   function setupChallengeModal(){
     const modal = document.getElementById("challenge-modal");
     const closeBtn = document.getElementById("challenge-modal-close");
+    closeBtn.onclick = ()=>{ modal.style.display = "none"; };
+    modal.onclick = (e)=>{ if(e.target === modal) modal.style.display = "none"; };
+  }
+
+  // ---------- "often climbed with" route modal ----------
+
+  function getFellByName(name){
+    for(let ai=0; ai<FELLS_DATA.length; ai++){
+      const fells = FELLS_DATA[ai].fells;
+      for(let fi=0; fi<fells.length; fi++){
+        if(fells[fi].name === name) return fells[fi];
+      }
+    }
+    return null;
+  }
+
+  function showRouteModal(fellName){
+    const modal = document.getElementById("route-modal");
+    const title = document.getElementById("route-modal-title");
+    const body = document.getElementById("route-modal-body");
+    const fell = getFellByName(fellName);
+    if(!fell || !fell.routes || !fell.routes.length) return;
+
+    title.textContent = fellName;
+
+    let html = "";
+    fell.routes.forEach(key=>{
+      const route = ROUTES[key];
+      if(!route) return;
+      const companions = FELLS_DATA
+        .flatMap(area=> area.fells)
+        .filter(f=> f.routes && f.routes.indexOf(key) !== -1);
+
+      html += '<div class="route-modal-section">';
+      html += '  <p class="route-modal-label">' + escapeHtml(route.label) + '</p>';
+      html += '  <p>' + escapeHtml(route.blurb) + '</p>';
+      html += '  <p class="route-modal-label" style="margin-top:12px;">Often climbed with</p>';
+      html += '  <div class="route-fell-list">';
+      companions.forEach(c=>{
+        if(c.name === fellName){
+          html += '<span class="route-chip is-current" title="This fell">' + escapeHtml(c.name) + '</span>';
+        } else {
+          const climbed = !!state[c.name];
+          html += '<span class="route-chip' + (climbed ? ' is-climbed' : '') + '" data-fell="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</span>';
+        }
+      });
+      html += '  </div>';
+      html += '</div>';
+    });
+    body.innerHTML = html;
+
+    body.querySelectorAll(".route-chip[data-fell]").forEach(chip=>{
+      chip.onclick = ()=> showRouteModal(chip.dataset.fell);
+    });
+
+    modal.style.display = "flex";
+  }
+
+  function setupRouteModal(){
+    const modal = document.getElementById("route-modal");
+    const closeBtn = document.getElementById("route-modal-close");
     closeBtn.onclick = ()=>{ modal.style.display = "none"; };
     modal.onclick = (e)=>{ if(e.target === modal) modal.style.display = "none"; };
   }
@@ -622,6 +720,7 @@
     attachSkylineEvents();
     attachSearchEvents();
     setupChallengeModal();
+    setupRouteModal();
     setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
