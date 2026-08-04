@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wainwrights — Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div id="auth-screen" class="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></div>
+    <h1 class="lock-title">The Wainwrights</h1>
+    <p class="lock-sub" id="auth-sub">Sign in with your email to track your own progress.</p>
+
+    <form id="auth-form" autocomplete="off">
+      <input type="email" id="auth-email" class="lock-input" placeholder="you@example.com" autocomplete="email" required>
+      <button type="submit" class="btn lock-btn" id="auth-submit">Send magic link</button>
+    </form>
+    <p class="lock-hint">Your email is only used to sign you in and save your own progress.</p>
+
+    <p class="lock-error" id="auth-error" style="display:none;"></p>
+
+    <div id="auth-sent" style="display:none;">
+      <p class="lock-success">Check your inbox — click the link, or enter the code below.</p>      <form id="code-form" autocomplete="off">
+        <input type="text" id="auth-code" class="lock-input" placeholder="Enter code" inputmode="numeric" autocomplete="one-time-code" maxlength="10">
+        <button type="submit" class="btn lock-btn" id="code-submit">Verify code</button>
+      </form>
+      <p class="lock-hint">If your email has link protection, use the code — the link won't work.</p>
+      <button type="button" class="lock-retry" id="auth-retry">Use a different email</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-content" style="display:none;">
+<div class="wrap">
+
+  <div class="topnav">
+    <span class="topnav-word">The Wainwrights</span>
+    <nav class="topnav-links">
+      <a href="index.html">Tracker</a>
+      <a href="leaderboard.html" class="is-active">Leaderboard</a>
+      <a href="challenges.html">Challenges</a>
+    </nav>
+  </div>
+
+  <div class="section-heading"><h2>Leaderboard <span class="beta-tag">beta</span></h2><div class="rule"></div></div>
+
+  <div class="chart-card" id="leaderboard-optin" style="display:none;">
+    <p class="chart-title">Compare progress with others</p>
+    <p class="lb-intro">Opt in to show up on the leaderboard by everyone else who's joined. Only your name and your total count are visible — not which fells you've done.</p>
+    <form id="lb-optin-form" class="lb-optin-form">
+      <input type="text" id="lb-name" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+      <div class="insta-field">
+        <span class="insta-at" aria-hidden="true">@</span>
+        <input type="text" id="lb-insta" class="lock-input" placeholder="Instagram (optional)" maxlength="30" autocomplete="off">
+      </div>
+      <label class="terms-check">
+        <input type="checkbox" id="lb-terms-check">
+        <span>I've read and accept the <button type="button" class="terms-link" id="terms-open">Terms &amp; Conditions</button></span>
+      </label>
+      <button type="submit" class="btn lock-btn" id="lb-join-btn" disabled>Join leaderboard</button>
+    </form>
+    <p class="lock-error" id="lb-optin-error" style="display:none;"></p>
+  </div>
+
+  <div id="terms-modal" class="terms-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+    <div class="terms-card">
+      <h3 id="terms-title">Leaderboard — Terms &amp; Conditions</h3>
+      <div class="terms-body">
+        <p>By joining the leaderboard, you agree to the following:</p>
+        <ul>
+          <li>Your chosen display name and your Wainwright progress (total fells climbed, completion percentage, and total elevation climbed) will be visible to anyone else signed in to this tracker.</li>
+          <li>The specific fells you've climbed are <strong>not</strong> shared — only these totals.</li>
+          <li>This is a personal, non-commercial feature built for friends and family using this tracker. It isn't a registered service and comes with no guarantees about uptime, accuracy, or data retention.</li>
+          <li>You can leave the leaderboard at any time with the "Leave leaderboard" button, which removes your display name and stops your progress being shown to others.</li>
+          <li>Please don't use a display name that could identify someone else, or anything offensive — entries may be removed at the discretion of whoever runs this tracker.</li>
+          <li>If you add an Instagram handle, it will show as a public, tappable link to that profile next to your name. Make sure it's genuinely your own account — don't add someone else's handle.</li>
+          <li>Data is stored via Supabase. Use the usual sensible judgement — don't put anything in your display name beyond what you're happy for others using this tracker to see.</li>
+        </ul>
+      </div>
+      <button type="button" class="btn" id="terms-close">Close</button>
+    </div>
+  </div>
+
+  <div class="chart-card" id="leaderboard-panel" style="display:none;">
+    <div class="lb-header">
+      <p class="chart-title" style="margin:0;">Where everyone stands</p>
+      <div class="lb-toggle">
+        <button type="button" class="lb-toggle-btn is-active" id="lb-mode-count" data-mode="count">Total</button>
+        <button type="button" class="lb-toggle-btn" id="lb-mode-pct" data-mode="pct">Percent</button>
+        <button type="button" class="lb-toggle-btn" id="lb-mode-elev" data-mode="elev">Elev</button>
+      </div>
+    </div>
+    <div id="lb-list"></div>
+    <div class="lb-actions">
+      <button type="button" class="lock-retry" id="lb-edit-toggle">Edit name / Instagram</button>
+      <button type="button" class="lock-retry" id="lb-leave">Leave leaderboard</button>
+    </div>
+    <form id="lb-edit-form" class="lb-optin-form" style="display:none; margin-top: 12px;">
+      <input type="text" id="lb-edit-name" class="lock-input" placeholder="Display name" maxlength="24" autocomplete="off">
+      <div class="insta-field">
+        <span class="insta-at" aria-hidden="true">@</span>
+        <input type="text" id="lb-edit-insta" class="lock-input" placeholder="Instagram (optional)" maxlength="30" autocomplete="off">
+      </div>
+      <button type="submit" class="btn lock-btn">Save changes</button>
+    </form>
+    <p class="lock-error" id="lb-edit-error" style="display:none;"></p>
+  </div>
+
+  <div class="footer">
+    <p class="footer-note">Signed in as <span id="auth-user-email"></span></p>
+    <div class="footer-actions">
+      <button class="btn" id="logout-btn">Sign out</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared-auth.js"></script>
+<script src="leaderboard.js"></script>
+</body>
+</html>
