@@ -564,25 +564,80 @@
     };
   }
 
+  let teamsLbMode = "count"; // "count" | "pct" | "elev"
+
+  async function loadTeamsLeaderboard(myTeamId){
+    const list = document.getElementById("teams-lb-list");
+    if(!WW.sb) return;
+    try{
+      const { data, error } = await WW.sb.rpc("teams_leaderboard");
+      if(error) throw error;
+      if(!data || data.length === 0){
+        list.innerHTML = '<p class="lb-empty">No public teams yet — create one and let others find it.</p>';
+        return;
+      }
+      const sortKey = teamsLbMode === "elev" ? "total_elevation_m" : "union_climbed_count";
+      const rows = data.slice().sort((a,b)=> b[sortKey] - a[sortKey]);
+      let html = "";
+      rows.forEach((t,i)=>{
+        let value;
+        if(teamsLbMode === "pct") value = Math.round((t.union_climbed_count / TOTAL) * 100) + "%";
+        else if(teamsLbMode === "elev") value = Number(t.total_elevation_m || 0).toLocaleString() + "m";
+        else value = t.union_climbed_count + " / " + TOTAL;
+        html += '<div class="team-lb-row' + (t.is_mine ? ' is-mine' : '') + '">';
+        html += '  <span class="rank">' + (i+1) + '</span>';
+        html += '  <span><span class="lb-name">' + escapeHtml(t.name) + '</span><span class="lb-sub">' + t.member_count + ' member' + (t.member_count === 1 ? '' : 's') + '</span></span>';
+        html += '  <span class="lb-value">' + value + '</span>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    }catch(e){
+      console.error("Teams leaderboard fetch failed", e);
+      list.innerHTML = '<p class="lb-empty">Couldn\'t load the teams leaderboard right now.</p>';
+    }
+  }
+
+  function setupTeamsLbModeToggle(){
+    const btns = {
+      count: document.getElementById("teams-mode-count"),
+      pct: document.getElementById("teams-mode-pct"),
+      elev: document.getElementById("teams-mode-elev")
+    };
+    Object.keys(btns).forEach(mode=>{
+      btns[mode].onclick = ()=>{
+        teamsLbMode = mode;
+        Object.keys(btns).forEach(m=> btns[m].classList.toggle("is-active", m === mode));
+        loadTeamsLeaderboard();
+      };
+    });
+  }
+
   function setupScopeToggle(user){
     const globalBtn = document.getElementById("scope-global-btn");
+    const teamsBtn = document.getElementById("scope-teams-btn");
     const teamBtn = document.getElementById("scope-team-btn");
     const globalPane = document.getElementById("scope-global");
+    const teamsPane = document.getElementById("scope-teams");
     const teamPane = document.getElementById("scope-team");
 
     function setScope(scope){
       globalBtn.classList.toggle("is-active", scope === "global");
+      teamsBtn.classList.toggle("is-active", scope === "teams");
       teamBtn.classList.toggle("is-active", scope === "team");
       globalPane.style.display = (scope === "global") ? "block" : "none";
+      teamsPane.style.display = (scope === "teams") ? "block" : "none";
       teamPane.style.display = (scope === "team") ? "block" : "none";
+      if(scope === "teams") loadTeamsLeaderboard();
       if(scope === "team") refreshTeamState(user);
     }
     globalBtn.onclick = ()=> setScope("global");
+    teamsBtn.onclick = ()=> setScope("teams");
     teamBtn.onclick = ()=> setScope("team");
   }
 
   function setupTeams(user){
     setupScopeToggle(user);
+    setupTeamsLbModeToggle();
     setupTeamEntryButtons();
     setupTeamCreateForm(user);
     setupTeamJoinForm(user);

@@ -51,7 +51,23 @@
 
   <div class="lb-scope-toggle">
     <button type="button" class="lb-scope-btn is-active" id="scope-global-btn" data-scope="global">Global</button>
+    <button type="button" class="lb-scope-btn" id="scope-teams-btn" data-scope="teams">Teams</button>
     <button type="button" class="lb-scope-btn" id="scope-team-btn" data-scope="team">My Team</button>
+  </div>
+
+  <div id="scope-teams" style="display:none;">
+    <div class="chart-card">
+      <div class="lb-header">
+        <p class="chart-title" style="margin:0;">Teams leaderboard</p>
+        <div class="lb-toggle">
+          <button type="button" class="lb-toggle-btn is-active" id="teams-mode-count" data-mode="count">Total</button>
+          <button type="button" class="lb-toggle-btn" id="teams-mode-pct" data-mode="pct">Percent</button>
+          <button type="button" class="lb-toggle-btn" id="teams-mode-elev" data-mode="elev">Elev</button>
+        </div>
+      </div>
+      <p class="lb-intro">Public teams ranked by fells climbed between all their members combined. Private teams don't appear here.</p>
+      <div id="teams-lb-list"></div>
+    </div>
   </div>
 
   <div id="scope-global">
