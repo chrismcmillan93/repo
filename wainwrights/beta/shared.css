@@ -1130,6 +1130,115 @@
     margin-top: 6px;
   }
 
+  /* ---------- Teams ---------- */
+  .lb-scope-toggle{
+    display: flex;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    overflow: hidden;
+    width: fit-content;
+    margin-bottom: 18px;
+  }
+  .lb-scope-btn{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--paper-card);
+    border: none;
+    padding: 8px 18px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .lb-scope-btn + .lb-scope-btn{ border-left: 1px solid var(--line-strong); }
+  .lb-scope-btn.is-active{ background: var(--green-deep); color: var(--paper-card); }
+  @media (max-width: 640px){
+    .lb-scope-toggle{ width: 100%; }
+    .lb-scope-btn{ flex: 1; text-align: center; }
+  }
+
+  .team-none-actions{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .team-none-actions .btn{ flex: 1; min-width: 140px; }
+
+  .team-consent-note{
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin: 2px 0 4px;
+    flex-basis: 100%;
+  }
+
+  .team-invite-btn{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    padding: 6px 10px;
+    color: var(--ink);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+  }
+  .team-invite-btn:hover{ border-color: var(--tarn); color: var(--tarn); }
+  .team-invite-btn.copied{ border-color: var(--green); color: var(--green-deep); background: var(--green-pale); }
+
+  .team-stats-row{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 6px;
+    text-align: center;
+  }
+  .team-stats-row .val{
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--green-deep);
+  }
+  .team-stats-row .stat-label{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  .team-request-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+  }
+  .team-request-row:first-child{ border-top: none; }
+  .team-request-row .req-name{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .team-request-actions{ display: flex; gap: 8px; }
+  .team-request-actions button{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-radius: 3px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .team-req-approve{ background: var(--green); border: 1px solid var(--green-deep); color: var(--paper-card); }
+  .team-req-deny{ background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink-soft); }
+
+  .team-browse-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+  }
+  .team-browse-row:first-child{ border-top: none; }
+  .team-browse-row .btn{ padding: 6px 12px; font-size: 12px; }
+
   /* ---------- Footer ---------- */
   .footer{
     margin-top: 50px;
