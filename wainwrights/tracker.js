@@ -9,6 +9,110 @@
   const MOUNTAIN_M = 610; // 2,000ft — conventional England hill/mountain line
   const MTN_ICON = '<svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg>';
   const FLAG_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1 L3 13" stroke="currentColor" stroke-width="1.3" fill="none"></path><path d="M3 2 L11 4.3 L3 6.6 Z"></path></svg>';
+  const ROUTE_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 9.5 Q7 7 9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.3"></path><circle cx="3" cy="11" r="1.8"></circle><circle cx="11" cy="3" r="1.8"></circle></svg>';
+
+  // Real, well-documented classic route/horseshoe groupings — deliberately
+  // conservative. Only fells genuinely, commonly combined in one walk are
+  // tagged; being geographically close isn't enough on its own.
+  const ROUTES = {
+    coniston_horseshoe: {
+      label: "Coniston Fells Horseshoe",
+      blurb: "A popular circuit from Coniston taking in the Old Man and its neighbouring summits above Levers Water and Goat's Water, often extended to Wetherlam or Grey Friar.",
+      url: "https://www.mudandroutes.com/routes/the-coniston-round/"
+    },
+    bowfell_crinkles: {
+      label: "Bowfell & Crinkle Crags Round",
+      blurb: "A classic Langdale horseshoe linking Bowfell, Esk Pike and Crinkle Crags via The Band and the Climbers' Traverse, usually completed from Great Langdale.",
+      url: "https://www.walkupscafellpike.co.uk/lake-district-walk/classic-lake-district-walks-bowfell-and-crinkle-crags-from-great-langdale/"
+    },
+    scafell_traverse: {
+      label: "Scafell Massif Traverse",
+      blurb: "A serious high-level round of England's two highest summits and their neighbours, usually approached from Wasdale or via the Corridor Route from Borrowdale.",
+      url: "https://where2walk.co.uk/walk/scafell-from-wasdale-head/"
+    },
+    wasdale_screes: {
+      label: "The Wasdale Screes",
+      blurb: "Illgill Head and Whin Rigg together form the ridge above the famous Screes on Wastwater's southern shore, usually walked as one there-and-back or circular route.",
+      url: "https://www.walklakes.co.uk/walk_62.html"
+    },
+    glaramara_ridge: {
+      label: "The Glaramara Ridge",
+      blurb: "A ridge walk above Borrowdale linking Glaramara with its neighbouring tops, popular as a there-and-back or extended towards Esk Hause.",
+      url: "https://www.walklakes.co.uk/walk_165.html"
+    },
+
+    // Eastern Fells
+    fairfield_horseshoe: {
+      label: "The Fairfield Horseshoe",
+      blurb: "A classic ridge circuit from Ambleside — out along Low Pike and High Pike to Fairfield, then back via Great Rigg, Heron Pike and Nab Scar above Rydal.",
+      url: "https://www.walklakes.co.uk/walk_42.html"
+    },
+    helvellyn_striding_edge: {
+      label: "Helvellyn via Striding Edge",
+      blurb: "England's most famous ridge scramble, climbing to Helvellyn's summit with Red Tarn below, usually completed with a descent over Catstycam via Swirral Edge.",
+      url: "https://www.walkinginthewild.co.uk/walks/helvellyn-via-striding-edge-1"
+    },
+    dodds_traverse: {
+      label: "The Helvellyn Range",
+      blurb: "A long end-to-end ridge traverse from Clough Head in the north over the Dodds and Raise to Helvellyn and on to Dollywaggon Pike, rarely dropping below 620m.",
+      url: "https://www.thegreatoutdoorsmag.com/spot/helvellyn-range-traverse-route-guide/"
+    },
+
+    // Far Eastern Fells
+    kentmere_horseshoe: {
+      label: "The Kentmere Horseshoe",
+      blurb: "A long circuit around the head of the Kentmere valley, taking in Yoke, Ill Bell, Froswick and Thornthwaite Crag before returning via Mardale Ill Bell, Harter Fell, Kentmere Pike and Shipman Knotts.",
+      url: "https://www.walklakes.co.uk/walk_14.html"
+    },
+
+    // Central Fells
+    langdale_pikes: {
+      label: "The Langdale Pikes",
+      blurb: "The unmistakable skyline above Great Langdale — a rocky circuit of Harrison Stickle, Pike O'Stickle, Loft Crag, Pavey Ark and Thunacar Knott above Stickle Tarn.",
+      url: "https://www.walklakes.co.uk/walk_63.html"
+    },
+
+    // Northern Fells
+    skiddaw_horseshoe: {
+      label: "The Skiddaw Horseshoe",
+      blurb: "The scenic way up England's fourth-highest mountain, via the ridge of Ullock Pike and Long Side and back down over Bakestall, avoiding the direct tourist path.",
+      url: "https://www.bigwalks.com/skiddaw-horseshoe.html"
+    },
+    mungrisdale_round: {
+      label: "The Mungrisdale Round",
+      blurb: "A quieter circuit from Mungrisdale over Souther Fell and Blencathra's northern side to Bannerdale Crags and Bowscale Fell.",
+      url: "https://www.paulbeal.com/bannerdale-crags/"
+    },
+
+    // North Western Fells
+    coledale_round: {
+      label: "The Coledale Round",
+      blurb: "A horseshoe of high summits around the Coledale valley above Braithwaite — Grisedale Pike, Hopegill Head, Eel Crag and Sail, with Wainwright's favourite ridge walk on to Scar Crags and Causey Pike.",
+      url: "https://where2walk.co.uk/walk/coledale-round/"
+    },
+    newlands_round: {
+      label: "The Newlands Round",
+      blurb: "A classic circuit above the Newlands valley — Catbells, Maiden Moor and High Spy, then over Dale Head, Hindscarth and Robinson.",
+      url: "https://where2walk.co.uk/walk/newlands-round/"
+    },
+
+    // Western Fells
+    buttermere_horseshoe: {
+      label: "The Buttermere Horseshoe",
+      blurb: "The ridge dividing Buttermere and Ennerdale — Red Pike, High Stile and High Crag, commonly extended to Wainwright's favourite fell, Haystacks.",
+      url: "https://fabulousnorth.com/walks/red-pike-high-stile-high-crag-and-haystacks/"
+    },
+    mosedale_horseshoe: {
+      label: "The Mosedale Horseshoe",
+      blurb: "A remote, rugged circuit of the Mosedale valley from Wasdale Head, taking in Pillar, Scoat Fell, Steeple, Red Pike, Yewbarrow and Kirk Fell.",
+      url: "https://www.walkwainwrights.co.uk/2021/12/maximum-mosedale.html"
+    },
+    great_gable_group: {
+      label: "The Great Gable Group",
+      blurb: "The fells at the head of Ennerdale and Borrowdale surrounding Great Gable — usually combined with Green Gable, and often Brandreth and Grey Knotts from Honister.",
+      url: "https://www.walkingbritain.co.uk/walk-1112-description"
+    }
+  };
 
   const CHALLENGES = {
     three_peaks: {
@@ -269,11 +373,15 @@
           const challengeBadge = (f.challenges && f.challenges.length)
             ? '<span class="chal-badge" data-challenges="' + f.challenges.join(",") + '" title="Part of a known challenge — tap for details">' + FLAG_ICON + '</span>'
             : '';
+          const routeBadge = (f.routes && f.routes.length)
+            ? '<span class="route-badge" data-fell="' + escapeHtml(f.name) + '" title="Often climbed with other fells — tap for details">' + ROUTE_ICON + '</span>'
+            : '';
           html += '<tr class="fell-row' + (climbed ? ' is-climbed' : '') + (visible ? '' : ' is-hidden') + '" data-area="' + ai + '" data-fell="' + fi + '">';
           html += '  <td class="cell-check"><input type="checkbox" ' + (climbed ? 'checked' : '') + ' aria-label="Mark ' + escapeHtml(f.name) + ' as climbed"></td>';
           html += '  <td class="cell-name">'
                + (isMountain ? '<span class="mtn-badge" title="Mountain — 2,000ft / 610m or higher">' + MTN_ICON + '</span>' : '')
                + challengeBadge
+               + routeBadge
                + escapeHtml(f.name)
                + '<span class="fell-links">'
                + '<a href="' + osm + '" target="_blank" rel="noopener noreferrer">Map</a>'
@@ -429,6 +537,12 @@
         showChallengeModal(f.name, keys);
       };
     });
+    document.querySelectorAll(".route-badge").forEach(badge=>{
+      badge.onclick = (e)=>{
+        e.stopPropagation();
+        showRouteModal(badge.dataset.fell);
+      };
+    });
   }
 
   function showChallengeModal(fellName, keys){
@@ -453,6 +567,76 @@
   function setupChallengeModal(){
     const modal = document.getElementById("challenge-modal");
     const closeBtn = document.getElementById("challenge-modal-close");
+    closeBtn.onclick = ()=>{ modal.style.display = "none"; };
+    modal.onclick = (e)=>{ if(e.target === modal) modal.style.display = "none"; };
+  }
+
+  // ---------- "often climbed with" route modal ----------
+
+  function getFellByName(name){
+    for(let ai=0; ai<FELLS_DATA.length; ai++){
+      const fells = FELLS_DATA[ai].fells;
+      for(let fi=0; fi<fells.length; fi++){
+        if(fells[fi].name === name) return fells[fi];
+      }
+    }
+    return null;
+  }
+
+  function showRouteModal(fellName){
+    const modal = document.getElementById("route-modal");
+    const title = document.getElementById("route-modal-title");
+    const body = document.getElementById("route-modal-body");
+    const fell = getFellByName(fellName);
+    if(!fell || !fell.routes || !fell.routes.length) return;
+
+    title.textContent = fellName;
+
+    let html = "";
+    fell.routes.forEach(key=>{
+      const route = ROUTES[key];
+      if(!route) return;
+      const companions = FELLS_DATA
+        .flatMap(area=> area.fells)
+        .filter(f=> f.routes && f.routes.indexOf(key) !== -1);
+
+      const routeAt = "https://www.google.com/search?q="
+                     + encodeURIComponent("alltrails " + route.label + " Lake District walk");
+
+      html += '<div class="route-modal-section">';
+      html += '  <p class="route-modal-label">' + escapeHtml(route.label) + '</p>';
+      html += '  <p>' + escapeHtml(route.blurb) + '</p>';
+      html += '  <div class="route-modal-links">';
+      if(route.url){
+        html += '    <a href="' + route.url + '" target="_blank" rel="noopener noreferrer">Route guide →</a>';
+      }
+      html += '    <a href="' + routeAt + '" target="_blank" rel="noopener noreferrer">AllTrails →</a>';
+      html += '  </div>';
+      html += '  <p class="route-modal-label" style="margin-top:12px;">Often climbed with</p>';
+      html += '  <div class="route-fell-list">';
+      companions.forEach(c=>{
+        if(c.name === fellName){
+          html += '<span class="route-chip is-current" title="This fell">' + escapeHtml(c.name) + '</span>';
+        } else {
+          const climbed = !!state[c.name];
+          html += '<span class="route-chip' + (climbed ? ' is-climbed' : '') + '" data-fell="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</span>';
+        }
+      });
+      html += '  </div>';
+      html += '</div>';
+    });
+    body.innerHTML = html;
+
+    body.querySelectorAll(".route-chip[data-fell]").forEach(chip=>{
+      chip.onclick = ()=> showRouteModal(chip.dataset.fell);
+    });
+
+    modal.style.display = "flex";
+  }
+
+  function setupRouteModal(){
+    const modal = document.getElementById("route-modal");
+    const closeBtn = document.getElementById("route-modal-close");
     closeBtn.onclick = ()=>{ modal.style.display = "none"; };
     modal.onclick = (e)=>{ if(e.target === modal) modal.style.display = "none"; };
   }
@@ -622,6 +806,7 @@
     attachSkylineEvents();
     attachSearchEvents();
     setupChallengeModal();
+    setupRouteModal();
     setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
