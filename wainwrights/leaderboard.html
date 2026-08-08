@@ -49,6 +49,29 @@
 
   <div class="section-heading"><h2>Leaderboard <span class="beta-tag">beta</span></h2><div class="rule"></div></div>
 
+  <div class="lb-scope-toggle">
+    <button type="button" class="lb-scope-btn is-active" id="scope-global-btn" data-scope="global">Global</button>
+    <button type="button" class="lb-scope-btn" id="scope-teams-btn" data-scope="teams">Teams</button>
+    <button type="button" class="lb-scope-btn" id="scope-team-btn" data-scope="team">My Team</button>
+  </div>
+
+  <div id="scope-teams" style="display:none;">
+    <div class="chart-card">
+      <div class="lb-header">
+        <p class="chart-title" style="margin:0;">Teams leaderboard</p>
+        <div class="lb-toggle">
+          <button type="button" class="lb-toggle-btn is-active" id="teams-mode-count" data-mode="count">Total</button>
+          <button type="button" class="lb-toggle-btn" id="teams-mode-pct" data-mode="pct">Percent</button>
+          <button type="button" class="lb-toggle-btn" id="teams-mode-elev" data-mode="elev">Elev</button>
+        </div>
+      </div>
+      <p class="lb-intro">Public teams ranked by fells climbed between all their members combined. Private teams don't appear here.</p>
+      <div id="teams-lb-list"></div>
+    </div>
+  </div>
+
+  <div id="scope-global">
+
   <div class="chart-card" id="leaderboard-optin" style="display:none;">
     <p class="chart-title">Compare progress with others</p>
     <p class="lb-intro">Opt in to show up on the leaderboard by everyone else who's joined. Only your name and your total count are visible — not which fells you've done.</p>
@@ -109,6 +132,98 @@
       <button type="submit" class="btn lock-btn">Save changes</button>
     </form>
     <p class="lock-error" id="lb-edit-error" style="display:none;"></p>
+  </div>
+
+  </div>
+
+  <div id="scope-team" style="display:none;">
+
+    <!-- No team yet -->
+    <div class="chart-card" id="team-none">
+      <p class="chart-title">Track progress as a group</p>
+      <p class="lb-intro">Create a team and invite others, or join one that's already going. Team members can see each other's names and totals — not which individual fells anyone's done.</p>
+      <div class="team-none-actions">
+        <button type="button" class="btn lock-btn" id="team-show-create">Create a team</button>
+        <button type="button" class="btn" id="team-show-join">Join a team</button>
+      </div>
+    </div>
+
+    <!-- Create form -->
+    <div class="chart-card" id="team-create" style="display:none;">
+      <p class="chart-title">Create a team</p>
+      <form id="team-create-form" class="lb-optin-form">
+        <input type="text" id="team-create-name" class="lock-input" placeholder="Team name" maxlength="40" autocomplete="off">
+        <label class="terms-check">
+          <input type="checkbox" id="team-create-public">
+          <span>Let others find and request to join this team</span>
+        </label>
+        <p class="team-consent-note">Teammates will see your name and your fell/elevation totals — not which individual fells you've done.</p>
+        <button type="submit" class="btn lock-btn" id="team-create-submit">Create team</button>
+      </form>
+      <button type="button" class="terms-link" id="team-create-back">Back</button>
+      <p class="lock-error" id="team-create-error" style="display:none;"></p>
+    </div>
+
+    <!-- Join form: code + browse -->
+    <div class="chart-card" id="team-join" style="display:none;">
+      <p class="chart-title">Join a team</p>
+      <form id="team-code-form" class="lb-optin-form">
+        <input type="text" id="team-code-input" class="lock-input" placeholder="Invite code" maxlength="6" autocomplete="off" style="text-transform:uppercase;">
+        <p class="team-consent-note">Teammates will see your name and your fell/elevation totals — not which individual fells you've done.</p>
+        <button type="submit" class="btn lock-btn" id="team-code-submit">Join with code</button>
+      </form>
+      <p class="lock-error" id="team-join-error" style="display:none;"></p>
+
+      <p class="lb-header" style="margin-top:22px;"><span class="chart-title" style="margin:0;">Or browse public teams</span></p>
+      <div id="team-browse-list"></div>
+
+      <button type="button" class="terms-link" id="team-join-back">Back</button>
+    </div>
+
+    <!-- Pending request -->
+    <div class="chart-card" id="team-pending" style="display:none;">
+      <p class="chart-title">Request sent</p>
+      <p class="lb-intro">Your request to join <strong id="team-pending-name"></strong> is waiting for the team admin to approve it.</p>
+      <button type="button" class="lock-retry" id="team-pending-cancel">Cancel request</button>
+    </div>
+
+    <!-- Active team -->
+    <div id="team-active" style="display:none;">
+      <div class="chart-card" id="team-summary-card">
+        <div class="lb-header">
+          <p class="chart-title" style="margin:0;" id="team-active-name">Team</p>
+          <button type="button" class="team-invite-btn" id="team-invite-copy">Code: <span id="team-invite-code">——————</span></button>
+        </div>
+        <div class="team-stats-row">
+          <div><div class="val" id="team-stat-percent">0%</div><div class="stat-label">Team complete</div></div>
+          <div><div class="val" id="team-stat-elev">0m</div><div class="stat-label">Combined elevation</div></div>
+          <div><div class="val" id="team-stat-members">0</div><div class="stat-label">Members</div></div>
+        </div>
+        <p class="chart-note" style="margin-top:10px;">Team complete counts any fell climbed by <em>anyone</em> on the team — combined elevation is a simple sum across members.</p>
+      </div>
+
+      <div class="chart-card" id="team-requests-card" style="display:none;">
+        <p class="chart-title">Join requests</p>
+        <div id="team-requests-list"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="lb-header">
+          <p class="chart-title" style="margin:0;">By member</p>
+          <div class="lb-toggle">
+            <button type="button" class="lb-toggle-btn is-active" id="team-mode-count" data-mode="count">Total</button>
+            <button type="button" class="lb-toggle-btn" id="team-mode-pct" data-mode="pct">Percent</button>
+            <button type="button" class="lb-toggle-btn" id="team-mode-elev" data-mode="elev">Elev</button>
+          </div>
+        </div>
+        <div id="team-member-list"></div>
+      </div>
+
+      <div class="lb-actions">
+        <button type="button" class="lock-retry" id="team-leave-btn">Leave team</button>
+      </div>
+    </div>
+
   </div>
 
   <div class="footer">
