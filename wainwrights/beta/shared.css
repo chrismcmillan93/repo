@@ -381,6 +381,13 @@
     margin: 12px 0 0;
   }
 
+  .share-row{
+    display: flex;
+    justify-content: center;
+    margin: 18px 0 8px;
+  }
+  .share-row .btn{ min-width: 220px; }
+
   .region-grid{
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));

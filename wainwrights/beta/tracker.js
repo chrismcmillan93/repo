@@ -754,6 +754,233 @@
     URL.revokeObjectURL(url);
   }
 
+  // ---------- share card ----------
+  //
+  // Renders a portrait (1080x1920) image matching the app's own look -- same
+  // grid-paper background, same map, same region rings -- for sharing to
+  // Instagram Stories via the Web Share API. Runs entirely client-side.
+  //
+  // The map is the page's real <svg id="fell-map">, cloned and rasterised via
+  // a blob-image data URL. That isolated image-decode context has no access
+  // to shared.css or the page's CSS custom properties, so the clone needs a
+  // fully self-contained <style> block with colours resolved to literal hex
+  // values and generic font fallbacks (Georgia/monospace) rather than the
+  // webfonts -- those aren't reliably available in that context either.
+  // Canvas text elsewhere on the card (wordmark, stats, ring labels) draws in
+  // the normal document font context, so the real Fraunces/JetBrains Mono
+  // webfonts apply there without issue.
+
+  const SHARE_CARD_W = 1080, SHARE_CARD_H = 1920, SHARE_MARGIN = 56;
+  const SHARE_COLORS = {
+    paper: "#e8e2d0", paperCard: "#f1ecdd", paperDeep: "#ddd4bb",
+    ink: "#262a1f", inkSoft: "#5b5f4d", inkFaint: "#8b8d78",
+    green: "#3c5a41", greenDeep: "#24392a"
+  };
+
+  function drawSpacedText(ctx, text, cx, y, spacing){
+    // canvas has no letter-spacing; measure and hand-space short caps/mono labels
+    const widths = Array.from(text).map(ch=> ctx.measureText(ch).width);
+    const totalW = widths.reduce((a,b)=>a+b, 0) + spacing * (text.length - 1);
+    let x = cx - totalW / 2;
+    const prevAlign = ctx.textAlign;
+    ctx.textAlign = "left";
+    Array.from(text).forEach((ch, i)=>{
+      ctx.fillText(ch, x, y);
+      x += widths[i] + spacing;
+    });
+    ctx.textAlign = prevAlign;
+  }
+
+  function drawShareGridBackground(ctx){
+    ctx.fillStyle = SHARE_COLORS.paper;
+    ctx.fillRect(0, 0, SHARE_CARD_W, SHARE_CARD_H);
+    ctx.strokeStyle = "#c9c5b4";
+    ctx.lineWidth = 1;
+    const step = 34;
+    for(let x = -1; x < SHARE_CARD_W; x += step){
+      ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, SHARE_CARD_H); ctx.stroke();
+    }
+    for(let yy = -1; yy < SHARE_CARD_H; yy += step){
+      ctx.beginPath(); ctx.moveTo(0, yy + 0.5); ctx.lineTo(SHARE_CARD_W, yy + 0.5); ctx.stroke();
+    }
+  }
+
+  function svgToImage(svgEl, selfContainedStyle){
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute("width", MAP_W);
+    clone.setAttribute("height", MAP_H);
+    const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    styleEl.textContent = selfContainedStyle;
+    clone.insertBefore(styleEl, clone.firstChild);
+    const xml = new XMLSerializer().serializeToString(clone);
+    const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=> resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  async function drawShareMap(ctx, y){
+    const c = SHARE_COLORS;
+    const mapStyle = `
+      .map-frame-outer{ fill:none; stroke:${c.ink}; stroke-width:2.5; }
+      .map-frame-inner{ fill:none; stroke:${c.ink}; stroke-width:0.8; }
+      .map-region-label{ font-family:Georgia,serif; font-size:17px; font-style:italic; fill:${c.inkFaint}; text-anchor:middle; letter-spacing:0.04em; }
+      .map-title{ font-family:Georgia,serif; font-size:26px; font-weight:600; fill:${c.greenDeep}; text-anchor:middle; letter-spacing:0.06em; }
+      .map-sub{ font-family:monospace; font-size:11px; fill:${c.inkFaint}; text-anchor:middle; letter-spacing:0.16em; }
+      .peak-mark .body{ fill:none; stroke:${c.inkFaint}; stroke-width:1.1; stroke-linejoin:round; }
+      .peak-mark .hatch{ stroke:${c.greenDeep}; stroke-width:0.9; opacity:0; }
+      .peak-mark.done .body{ fill:${c.green}; stroke:${c.greenDeep}; stroke-width:1.2; }
+      .peak-mark.done .hatch{ opacity:0.45; stroke:${c.paperCard}; }
+      .compass{ fill:${c.inkFaint}; }
+      .compass-ring{ fill:none; stroke:${c.inkFaint}; stroke-width:0.9; }
+      .compass-n{ font-family:Georgia,serif; font-size:13px; fill:${c.ink}; text-anchor:middle; }
+    `;
+    const mapSvg = document.getElementById("fell-map");
+    const img = await svgToImage(mapSvg, mapStyle);
+    const w = SHARE_CARD_W - SHARE_MARGIN * 2;
+    const h = w * (MAP_H / MAP_W);
+    ctx.fillStyle = c.paperCard;
+    ctx.fillRect(SHARE_MARGIN - 8, y - 8, w + 16, h + 16);
+    ctx.drawImage(img, SHARE_MARGIN, y, w, h);
+    return h;
+  }
+
+  function drawShareRings(ctx, y){
+    const c = SHARE_COLORS;
+    const n = FELLS_DATA.length;
+    const ringD = 132;
+    const gap = (SHARE_CARD_W - SHARE_MARGIN * 2 - ringD * n) / (n - 1);
+    const r = ringD / 2 - 8;
+    FELLS_DATA.forEach((area, i)=>{
+      const cx = SHARE_MARGIN + ringD / 2 + i * (ringD + gap);
+      const cy = y + ringD / 2;
+      const counts = computeAreaCounts(area);
+
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = c.paperDeep;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      if(counts.percent > 0){
+        ctx.strokeStyle = c.green;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (counts.percent / 100) * Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = c.greenDeep;
+      ctx.font = "700 30px 'Fraunces', Georgia, serif";
+      ctx.fillText(counts.percent + "%", cx, cy - 2);
+      ctx.font = "400 15px 'JetBrains Mono', monospace";
+      ctx.fillStyle = c.inkFaint;
+      ctx.fillText(counts.climbed + " / " + counts.total, cx, cy + 24);
+      ctx.font = "600 16px Georgia, serif";
+      ctx.fillStyle = c.ink;
+      const label = area.name.replace(/^The /, "").replace(/ Fells$/, "");
+      const words = label.split(" ");
+      if(words.length > 1){
+        ctx.fillText(words.slice(0, -1).join(" "), cx, cy + ringD / 2 + 26);
+        ctx.fillText(words[words.length - 1], cx, cy + ringD / 2 + 46);
+      } else {
+        ctx.fillText(label, cx, cy + ringD / 2 + 26);
+      }
+    });
+    return ringD + 50;
+  }
+
+  async function buildShareCard(){
+    if(document.fonts && document.fonts.load){
+      try{
+        await Promise.all([
+          document.fonts.load("700 26px 'JetBrains Mono'"),
+          document.fonts.load("400 22px 'JetBrains Mono'"),
+          document.fonts.load("700 72px 'Fraunces'"),
+          document.fonts.load("700 30px 'Fraunces'")
+        ]);
+      }catch(e){ /* proceed with system fallbacks if webfonts aren't ready */ }
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = SHARE_CARD_W;
+    canvas.height = SHARE_CARD_H;
+    const ctx = canvas.getContext("2d");
+    drawShareGridBackground(ctx);
+
+    let y = 90;
+    ctx.fillStyle = SHARE_COLORS.inkSoft;
+    ctx.font = "700 26px 'JetBrains Mono', monospace";
+    ctx.textBaseline = "alphabetic";
+    drawSpacedText(ctx, "THE WAINWRIGHTS", SHARE_CARD_W / 2, y, 3);
+    y += 90;
+
+    const { climbed, percent, elevation } = computeCounts();
+    const vals = [climbed + " / " + TOTAL, percent + "%", elevation.toLocaleString() + "m"];
+    const labels = ["FELLS CLIMBED", "COMPLETE", "ELEVATION"];
+    const colW = (SHARE_CARD_W - SHARE_MARGIN * 2) / 3;
+    ctx.textAlign = "center";
+    for(let i = 0; i < 3; i++){
+      const cx = SHARE_MARGIN + colW * i + colW / 2;
+      ctx.font = "700 72px 'Fraunces', Georgia, serif";
+      ctx.fillStyle = SHARE_COLORS.greenDeep;
+      ctx.fillText(vals[i], cx, y + 70);
+      ctx.font = "400 22px 'JetBrains Mono', monospace";
+      ctx.fillStyle = SHARE_COLORS.inkSoft;
+      drawSpacedText(ctx, labels[i], cx, y + 105, 1.5);
+    }
+    y += 165;
+
+    const mapH = await drawShareMap(ctx, y);
+    y += mapH + 56;
+    drawShareRings(ctx, y);
+
+    return new Promise(resolve=> canvas.toBlob(resolve, "image/jpeg", 0.92));
+  }
+
+  async function shareProgressCard(){
+    const btn = document.getElementById("share-btn");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Preparing…";
+
+    let blob;
+    try{
+      blob = await buildShareCard();
+    }catch(err){
+      console.error("Building share card failed", err);
+      btn.textContent = "Couldn't build image";
+      setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2000);
+      return;
+    }
+
+    const file = new File([blob], "wainwrights-progress.jpg", { type: "image/jpeg" });
+
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({ files: [file], title: "My Wainwrights progress" });
+      }catch(err){
+        if(!err || err.name !== "AbortError") console.error("Share failed", err);
+      }
+      btn.disabled = false;
+      btn.textContent = originalText;
+      return;
+    }
+
+    // fallback for browsers without file-sharing support (mainly desktop):
+    // just download the image so it can be shared manually
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "wainwrights-progress.jpg";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    btn.textContent = "Saved — share it from your photos";
+    setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2500);
+  }
+
   // ---------- profile / first-sign-in name prompt ----------
 
   async function loadProfile(userId){
@@ -810,6 +1037,7 @@
     setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
+    document.getElementById("share-btn").onclick = shareProgressCard;
     subscribeRealtime(user.id);
 
     const profile = await loadProfile(user.id);
