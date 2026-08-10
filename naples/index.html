@@ -382,7 +382,7 @@
 (function(){
   "use strict";
 
-  const STORAGE_KEY = 'naples-trip-dashboard-v5';
+  const STORAGE_KEY = 'naples-trip-dashboard-v6';
 
   // ---------------- supabase sync (checkbox states) ----------------
   const SUPABASE_URL = 'https://bcrmbuiuekklpocpllpw.supabase.co';
@@ -456,71 +456,71 @@
       {
         key:'day1', date:'2026-09-08', dow:'Tue', label:'8 Sep', title:'Arrival & 2:00 PM Ragù',
         items:[
-          {id:'d1-0', start:'03:15', end:'06:15', time:'03:15–06:15', text:'★ BOOKED: Drop car at Manchester Airport JetParks 3 Saver (ref LCXCNW), check-in & board EZY2125', maps:'Manchester Airport JetParks 3 Saver', price_gbp:'Included', price_eur:'—'},
-          {id:'d1-1', start:'10:25', end:'10:35', time:'10:25', text:'Land at Naples Airport (NAP) — easyJet EZY2125 from Manchester', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
-          {id:'d1-2', start:'10:25', end:'11:15', time:'10:25–11:15', text:'Clear passport control, collect bags, exit the terminal', price_gbp:'—', price_eur:'—'},
-          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to the Airbnb (near Piazza Dante)', maps:'Piazza Dante Naples', price_gbp:'£18–22', price_eur:'€20–25'},
-          {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags at Airbnb, freshen up, explore Spaccanapoli street', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'★ BOOKED: Tandem Ristorante — legendary Neapolitan ragù lunch at Piazzetta Nilo', maps:'Tandem Ristorante Piazzetta Nilo Naples', rating:4.4, price_gbp:'£28–40', price_eur:'€32–46'},
-          {id:'d1-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Post-lunch wander: Spaccanapoli, street art, Via San Gregorio Armeno (presepi shops)', maps:'Via San Gregorio Armeno Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d1-7', start:'17:00', end:'18:30', time:'17:00–18:30', text:'Caffè Gambrinus: sfogliatella & espresso with views (historic cafe, since 1860)', maps:'Caffè Gambrinus Naples', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8'},
-          {id:'d1-8', start:'18:30', end:'20:00', time:'18:30–20:00', text:'Aperitivo at Enoteca Belledonne — natural wines, charcuterie, Piazza Bellini vibes', maps:'Enoteca Belledonne Piazza Bellini Naples', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d1-9', start:'20:00', end:'21:30', time:'20:00–21:30', text:'Napul\'è Bar: cocktails & street food, Piazza Bellini sunset crowd', maps:'Napul\'è Bar Piazza Bellini Naples', rating:4.3, price_gbp:'£6–14', price_eur:'€7–16'},
-          {id:'d1-10', start:'21:30', end:'23:59', time:'21:30 – late', text:'Barril (Via Cisterna dell\'Olio): craft cocktails, intimate vibe. Or Marechiaro wine bar — wherever the night takes you', maps:'Barril Naples cocktail bar', rating:4.5, price_gbp:'£8–16', price_eur:'€10–18'}
+          {id:'d1-0', start:'03:15', end:'06:15', time:'03:15–06:15', text:'★ BOOKED: Drop car at JetParks 3 Saver, check in for flight EZY2125', maps:'Manchester Airport JetParks 3 Saver', price_gbp:'Included', price_eur:'—'},
+          {id:'d1-1', start:'10:25', end:'10:35', time:'10:25', text:'Land at Naples Airport', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
+          {id:'d1-2', start:'10:25', end:'11:15', time:'10:25–11:15', text:'Passport control, collect bags, exit terminal', price_gbp:'—', price_eur:'—'},
+          {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to the Airbnb', maps:'Piazza Dante Naples', price_gbp:'£18–22', price_eur:'€20–25'},
+          {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags, freshen up, wander Spaccanapoli', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'★ BOOKED: Ragù lunch at Tandem, Piazzetta Nilo', maps:'Tandem Ristorante Piazzetta Nilo Naples', rating:4.4, price_gbp:'£28–40', price_eur:'€32–46'},
+          {id:'d1-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Wander Via San Gregorio Armeno — nativity scene shops', maps:'Via San Gregorio Armeno Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d1-7', start:'17:00', end:'18:30', time:'17:00–18:30', text:'Coffee & pastry at Caffè Gambrinus', maps:'Caffè Gambrinus Naples', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8'},
+          {id:'d1-8', start:'18:30', end:'20:00', time:'18:30–20:00', text:'Aperitivo at Enoteca Belledonne, Piazza Bellini', maps:'Enoteca Belledonne Piazza Bellini Naples', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d1-9', start:'20:00', end:'21:30', time:'20:00–21:30', text:'Cocktails at Napul\'è Bar, Piazza Bellini', maps:'Napul\'è Bar Piazza Bellini Naples', rating:4.3, price_gbp:'£6–14', price_eur:'€7–16'},
+          {id:'d1-10', start:'21:30', end:'23:59', time:'21:30 – late', text:'Late drinks at Barril, or wherever the night takes you', maps:'Barril Naples cocktail bar', rating:4.5, price_gbp:'£8–16', price_eur:'€10–18'}
         ]
       },
       {
         key:'day2', date:'2026-09-09', dow:'Wed', label:'9 Sep', title:'Vesuvius Crater Hike & Volcanic Winery',
         items:[
-          {id:'d2-1', start:'07:30', end:'08:15', time:'07:30–08:15', text:'Breakfast: pastry & coffee at Pasticceria Poppella near Dante', maps:'Pasticceria Poppella Naples', rating:4.6, price_gbp:'£3–5', price_eur:'€4–6'},
-          {id:'d2-ves-1', start:'08:20', end:'09:00', time:'08:20–09:00', text:'Metro Dante (Line 1 → Garibaldi) → Circumvesuviana to Ercolano Scavi', maps:'Ercolano Scavi Station', price_gbp:'£1.50', price_eur:'€2.10'},
-          {id:'d2-ves-2', start:'09:00', end:'09:35', time:'09:00–09:35', text:'Vesuvio Express shuttle bus: Ercolano Scavi → Quota 1000 car park', maps:'Vesuvio Express Ercolano', price_gbp:'£9–11', price_eur:'€10–12'},
-          {id:'d2-ves-3', start:'10:10', end:'11:55', time:'★ BOOKED: entry 10:10', text:'★ BOOKED: Gran Cono del Vesuvio crater hike (2 tickets, Vivaticket ref VIVATK166169932963) — gate opens 30 min early, ~45 min each way on the gravel path, panoramic views over the Bay of Naples. Pack a change of top + wipes in your day bag — dusty/ashy trail and you\'ll want to freshen up before the wine tasting', maps:'Mount Vesuvius Crater', rating:4.5, price_gbp:'£19 total (paid)', price_eur:'€22 total (paid)'},
-          {id:'d2-ves-4', start:'11:55', end:'12:25', time:'11:55–12:25', text:'Shuttle bus back down: Quota 1000 → Ercolano Scavi', maps:'Vesuvio Express Ercolano', price_gbp:'Included', price_eur:'Included'},
-          {id:'d2-ves-5', start:'12:25', end:'12:45', time:'12:25–12:45', text:'Circumvesuviana: Ercolano Scavi → Torre del Greco (staying on the mountain side rather than heading back into Naples)', maps:'Torre del Greco Station', price_gbp:'£1.50', price_eur:'€2.10'},
-          {id:'d2-ves-6', start:'12:45', end:'13:05', time:'12:45–13:05', text:'Coffee/beer stop: Crossroad Caffè — good cappuccino and Aperol Spritz on the terrace', maps:'Crossroad Caffè Torre del Greco', rating:4.8, price_gbp:'£3–7', price_eur:'€4–8'},
-          {id:'d2-ves-7', start:'13:05', end:'13:30', time:'13:05–13:30', text:'Taxi/Uber from Torre del Greco to Cantina del Vesuvio, Trecase (or ask the winery about their free shuttle from Torre Annunziata if arranged ahead)', maps:'Cantina del Vesuvio', rating:4.9, price_gbp:'£11–15', price_eur:'€13–17'},
-          {id:'d2-5', start:'14:00', end:'16:30', time:'★ BOOKED: 14:00–16:30', text:'★ BOOKED: Wine Tasting with Lunch at Cantina del Vesuvio — Russo Family (confirmation TOCK-RUD7S923D, 2 tickets, paid by Dave)', maps:'Cantina del Vesuvio', rating:4.9, price_gbp:'Included', price_eur:'Included'},
-          {id:'d2-6', start:'16:30', end:'18:00', time:'16:30–18:00', text:'Taxi to Torre Annunziata or Ercolano, then Circumvesuviana + Metro back to Dante', price_gbp:'£12–18', price_eur:'€14–21'},
+          {id:'d2-1', start:'07:30', end:'08:15', time:'07:30–08:15', text:'Breakfast at Pasticceria Poppella', maps:'Pasticceria Poppella Naples', rating:4.6, price_gbp:'£3–5', price_eur:'€4–6'},
+          {id:'d2-ves-1', start:'08:20', end:'09:00', time:'08:20–09:00', text:'Walk to Dante Metro, take Line 1 to Garibaldi, then the Circumvesuviana train to Ercolano Scavi', maps:'Ercolano Scavi Station', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d2-ves-2', start:'09:00', end:'09:35', time:'09:00–09:35', text:'At Ercolano Scavi, catch the Vesuvio Express shuttle bus up to Quota 1000', maps:'Vesuvio Express Ercolano', price_gbp:'£9–11', price_eur:'€10–12'},
+          {id:'d2-ves-3', start:'10:10', end:'11:55', time:'★ BOOKED: entry 10:10', text:'★ BOOKED: Crater hike (2 tickets) — gate opens 30 min early. Pack a change of top + wipes, trail is dusty', maps:'Mount Vesuvius Crater', rating:4.5, price_gbp:'£19 total (paid)', price_eur:'€22 total (paid)'},
+          {id:'d2-ves-4', start:'11:55', end:'12:25', time:'11:55–12:25', text:'Shuttle bus back down to Ercolano Scavi', maps:'Vesuvio Express Ercolano', price_gbp:'Included', price_eur:'Included'},
+          {id:'d2-ves-5', start:'12:25', end:'12:45', time:'12:25–12:45', text:'Take the Circumvesuviana one stop to Torre del Greco', maps:'Torre del Greco Station', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d2-ves-6', start:'12:45', end:'13:05', time:'12:45–13:05', text:'Coffee/beer stop at Crossroad Caffè', maps:'Crossroad Caffè Torre del Greco', rating:4.8, price_gbp:'£3–7', price_eur:'€4–8'},
+          {id:'d2-ves-7', start:'13:05', end:'13:30', time:'13:05–13:30', text:'Taxi/Uber to Cantina del Vesuvio, Trecase', maps:'Cantina del Vesuvio', rating:4.9, price_gbp:'£11–15', price_eur:'€13–17'},
+          {id:'d2-5', start:'14:00', end:'16:30', time:'★ BOOKED: 14:00–16:30', text:'★ BOOKED: Wine Tasting with Lunch at Cantina del Vesuvio (paid by Dave)', maps:'Cantina del Vesuvio', rating:4.9, price_gbp:'Included', price_eur:'Included'},
+          {id:'d2-6', start:'16:30', end:'18:00', time:'16:30–18:00', text:'Taxi + Circumvesuviana/Metro back to Dante', price_gbp:'£12–18', price_eur:'€14–21'},
           {id:'d2-7', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Rest at Airbnb, shower & change', maps:'Piazza Dante Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d2-8', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Evening stroll through Spaccanapoli — narrow medieval streets, street vendors, street art', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d2-9', start:'19:30', end:'20:00', time:'19:30–20:00', text:'Stop at Piazza San Domenico Maggiore — baroque church, street musicians, local scene', maps:'Piazza San Domenico Maggiore Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d2-10', start:'20:00', end:'20:45', time:'20:00–20:45', text:'Explore Via dei Tribunali — cafes, artisan shops, presepio boutiques, street food vendors', maps:'Via dei Tribunali Naples', price_gbp:'£4–10', price_eur:'€5–12'},
-          {id:'d2-11', start:'20:45', end:'21:30', time:'20:45–21:30', text:'Aperitivo at Enoteca Belledonne or Napul\'è Bar (Piazza Bellini) — wine, natural cork, local crowd', maps:'Enoteca Belledonne Piazza Bellini Naples', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d2-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'★ PIZZA: Pizzeria Gino Sorbillo — legendary family-run, pizza al taglio (counter) or sit-down (light option after the winery lunch)', maps:'Pizzeria Gino Sorbillo Naples', rating:4.5, price_gbp:'£10–16', price_eur:'€12–18'},
-          {id:'d2-13', start:'22:30', end:'23:30', time:'22:30–23:30', text:'Alternative: Di Fara (iconic since 1957, Margherita pizza) or L\'Ebbrezza di Noè (pizza + natural wines)', maps:'Di Fara Naples', rating:4.4, price_gbp:'£14–22', price_eur:'€16–26'},
-          {id:'d2-14', start:'23:30', end:'23:59', time:'23:30 – late', text:'Late night: Barril cocktail bar, L\'Antiquario speakeasy, or stroll Piazza Bellini', maps:'Barril Naples cocktail bar', rating:4.5, price_gbp:'£6–12', price_eur:'€8–15'}
+          {id:'d2-8', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Evening stroll through Spaccanapoli', maps:'Spaccanapoli Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d2-9', start:'19:30', end:'20:00', time:'19:30–20:00', text:'Piazza San Domenico Maggiore', maps:'Piazza San Domenico Maggiore Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d2-10', start:'20:00', end:'20:45', time:'20:00–20:45', text:'Explore Via dei Tribunali', maps:'Via dei Tribunali Naples', price_gbp:'£4–10', price_eur:'€5–12'},
+          {id:'d2-11', start:'20:45', end:'21:30', time:'20:45–21:30', text:'Aperitivo at Enoteca Belledonne or Napul\'è Bar', maps:'Enoteca Belledonne Piazza Bellini Naples', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d2-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'★ PIZZA: Pizzeria Gino Sorbillo (light option after the winery lunch)', maps:'Pizzeria Gino Sorbillo Naples', rating:4.5, price_gbp:'£10–16', price_eur:'€12–18'},
+          {id:'d2-13', start:'22:30', end:'23:30', time:'22:30–23:30', text:'Alternative: Di Fara or L\'Ebbrezza di Noè', maps:'Di Fara Naples', rating:4.4, price_gbp:'£14–22', price_eur:'€16–26'},
+          {id:'d2-14', start:'23:30', end:'23:59', time:'23:30 – late', text:'Late night: Barril, L\'Antiquario speakeasy, or Piazza Bellini', maps:'Barril Naples cocktail bar', rating:4.5, price_gbp:'£6–12', price_eur:'€8–15'}
         ]
       },
       {
         key:'day3', date:'2026-09-10', dow:'Thu', label:'10 Sep', title:'Positano Direct Ferry Day Trip',
         items:[
-          {id:'d3-1', start:'08:30', end:'09:00', time:'08:30–09:00', text:'Coffee & cornetto at Caffè Gambrinus or nearby (fuel up)', maps:'Caffè Gambrinus Naples', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8'},
-          {id:'d3-2', start:'09:15', end:'09:45', time:'09:15–09:45', text:'Walk to Municipio Metro (Line 1) → Molo Beverello Port', maps:'Molo Beverello Port Naples', price_gbp:'£1.50', price_eur:'€2.10'},
-          {id:'d3-3', start:'10:00', end:'11:30', time:'★ BOOKED: 10:00–11:30', text:'★ BOOKED: Direct ferry Naples → Positano (NLG JET)', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
-          {id:'d3-4', recsBefore:'day3-positano', start:'11:30', end:'13:30', time:'11:30–13:30', text:'Beach swim & drinks at La Gavitella or Spiaggia Grande beach club', maps:'La Gavitella Positano', price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d3-5', start:'13:30', end:'16:00', time:'13:30–16:00', text:'Lunch: Chez Black or Da Vincenzo — cliffside Amalfi views, fresh pasta & seafood', maps:'Chez Black Positano', rating:4.0, price_gbp:'£24–36', price_eur:'€28–40'},
-          {id:'d3-6', start:'16:00', end:'16:20', time:'16:00–16:20', text:'Explore Positano village: boutiques, narrow cliffside streets, gelato at Bacco', maps:'Positano town center', price_gbp:'£4–6', price_eur:'€5–7'},
-          {id:'d3-7', start:'16:24', end:'17:49', time:'★ BOOKED: 16:24–17:49', text:'★ BOOKED: Return ferry Positano → Molo Beverello, Naples (NLG JET)', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
-          {id:'d3-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Walk Lungomare Caracciolo — waterfront promenade with Vesuvius views, sea breezes, golden hour light', maps:'Lungomare Caracciolo Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d3-9', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Explore Borgo Marinaro — fishermen\'s quarter, pastel houses, local restaurants overlooking bay', maps:'Borgo Marinaro Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d3-10', start:'19:30', end:'20:15', time:'19:30–20:15', text:'Sunset drinks: Rooftop at Decumani Hotel or cocktails at Il Transatlantico (bay views with sunset)', maps:'Decumani Hotel Rooftop Naples', price_gbp:'£10–18', price_eur:'€12–21'},
-          {id:'d3-11', start:'20:15', end:'21:30', time:'20:15–21:30', text:'Dinner: Pizzeria Sorbillo (street pizza al taglio, quick & authentic) or sit-down at L\'Ebbrezza di Noè', maps:'Pizzeria Sorbillo Naples', rating:4.5, price_gbp:'£12–20', price_eur:'€14–23'},
-          {id:'d3-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'Piazza Bellini nightlife — wine bars, craft cocktails at Barril, street musicians, local energy', maps:'Piazza Bellini Naples bars', price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d3-13', start:'22:30', end:'23:59', time:'22:30 – late', text:'Late night: Marechiaro wine bar (seafood-focused), more Piazza Bellini exploration, or wind down at Spaccanapoli', maps:'Marechiaro Naples wine bar', rating:4.3, price_gbp:'£6–14', price_eur:'€7–16'}
+          {id:'d3-1', start:'08:30', end:'09:00', time:'08:30–09:00', text:'Coffee & cornetto at Caffè Gambrinus', maps:'Caffè Gambrinus Naples', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8'},
+          {id:'d3-2', start:'09:15', end:'09:45', time:'09:15–09:45', text:'Walk to Municipio Metro, head to Molo Beverello Port', maps:'Molo Beverello Port Naples', price_gbp:'£1.50', price_eur:'€2.10'},
+          {id:'d3-3', start:'10:00', end:'11:30', time:'★ BOOKED: 10:00–11:30', text:'★ BOOKED: Ferry to Positano', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
+          {id:'d3-4', recsBefore:'day3-positano', start:'11:30', end:'13:30', time:'11:30–13:30', text:'Beach & drinks at La Gavitella or Spiaggia Grande', maps:'La Gavitella Positano', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d3-5', start:'13:30', end:'16:00', time:'13:30–16:00', text:'Lunch at Chez Black or Da Vincenzo', maps:'Chez Black Positano', rating:4.0, price_gbp:'£24–36', price_eur:'€28–40'},
+          {id:'d3-6', start:'16:00', end:'16:20', time:'16:00–16:20', text:'Explore Positano — boutiques, gelato at Bacco', maps:'Positano town center', price_gbp:'£4–6', price_eur:'€5–7'},
+          {id:'d3-7', start:'16:24', end:'17:49', time:'★ BOOKED: 16:24–17:49', text:'★ BOOKED: Return ferry to Naples', maps:'Molo Beverello Positano ferry', price_gbp:'Included', price_eur:'Included'},
+          {id:'d3-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Walk Lungomare Caracciolo', maps:'Lungomare Caracciolo Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d3-9', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Explore Borgo Marinaro', maps:'Borgo Marinaro Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d3-10', start:'19:30', end:'20:15', time:'19:30–20:15', text:'Sunset drinks: Decumani Hotel rooftop or Il Transatlantico', maps:'Decumani Hotel Rooftop Naples', price_gbp:'£10–18', price_eur:'€12–21'},
+          {id:'d3-11', start:'20:15', end:'21:30', time:'20:15–21:30', text:'Dinner at Pizzeria Sorbillo or L\'Ebbrezza di Noè', maps:'Pizzeria Sorbillo Naples', rating:4.5, price_gbp:'£12–20', price_eur:'€14–23'},
+          {id:'d3-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'Piazza Bellini nightlife', maps:'Piazza Bellini Naples bars', price_gbp:'£8–16', price_eur:'€10–18'},
+          {id:'d3-13', start:'22:30', end:'23:59', time:'22:30 – late', text:'Late night: Marechiaro wine bar or wind down at Spaccanapoli', maps:'Marechiaro Naples wine bar', rating:4.3, price_gbp:'£6–14', price_eur:'€7–16'}
         ]
       },
       {
         key:'day4', date:'2026-09-11', dow:'Fri', label:'11 Sep', title:'Final Stroll & Flight Home',
         items:[
-          {id:'d4-1', start:'08:00', end:'09:00', time:'08:00–09:00', text:'Check out of Airbnb, store bags at luggage service (€5–8/bag)', maps:'Piazza Dante Naples', price_gbp:'£4–6', price_eur:'€5–8'},
-          {id:'d4-2', start:'09:00', end:'10:30', time:'09:00–10:30', text:'Final pastries: sfogliatella at Pasticceria Poppella + espresso', maps:'Pasticceria Poppella Naples', rating:4.6, price_gbp:'£4–8', price_eur:'€5–9'},
-          {id:'d4-3', start:'10:30', end:'12:30', time:'10:30–12:30', text:'Wander & shopping: Toledo street (via San Carlo), Via Chiaia designer quarter', maps:'Via Toledo Naples', price_gbp:'—', price_eur:'—'},
-          {id:'d4-4', start:'12:30', end:'13:30', time:'12:30–13:30', text:'Light lunch: Trattoria da Pepe or pizza al taglio near Toledo', maps:'Trattoria da Pepe Naples', price_gbp:'£8–14', price_eur:'€10–16'},
-          {id:'d4-5', start:'13:40', end:'14:15', time:'13:40–14:15', text:'Taxi: Piazza Dante → Naples Airport (€20–25, ~20 min)', price_gbp:'£18–22', price_eur:'€20–25'},
-          {id:'d4-6', start:'14:15', end:'16:15', time:'14:15–16:15', text:'Check in, security & boarding (Ryanair FR6834)', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
-          {id:'d4-7', start:'16:15', end:'18:15', time:'16:15–18:15', text:'Flight home: Ryanair FR6834 to Manchester', price_gbp:'—', price_eur:'—'},
-          {id:'d4-8', start:'18:15', end:'19:15', time:'18:15–19:15', text:'★ BOOKED: Collect car from Manchester Airport JetParks 3 Saver (ref LCXCNW), drive home', maps:'Manchester Airport JetParks 3 Saver', price_gbp:'—', price_eur:'—'}
+          {id:'d4-1', start:'08:00', end:'09:00', time:'08:00–09:00', text:'Check out, store bags', maps:'Piazza Dante Naples', price_gbp:'£4–6', price_eur:'€5–8'},
+          {id:'d4-2', start:'09:00', end:'10:30', time:'09:00–10:30', text:'Final pastries at Pasticceria Poppella', maps:'Pasticceria Poppella Naples', rating:4.6, price_gbp:'£4–8', price_eur:'€5–9'},
+          {id:'d4-3', start:'10:30', end:'12:30', time:'10:30–12:30', text:'Wander Via Toledo & Via Chiaia', maps:'Via Toledo Naples', price_gbp:'—', price_eur:'—'},
+          {id:'d4-4', start:'12:30', end:'13:30', time:'12:30–13:30', text:'Light lunch near Toledo', maps:'Trattoria da Pepe Naples', price_gbp:'£8–14', price_eur:'€10–16'},
+          {id:'d4-5', start:'13:40', end:'14:15', time:'13:40–14:15', text:'Taxi to Naples Airport', price_gbp:'£18–22', price_eur:'€20–25'},
+          {id:'d4-6', start:'14:15', end:'16:15', time:'14:15–16:15', text:'Check in, security, boarding', maps:'Naples Airport', price_gbp:'—', price_eur:'—'},
+          {id:'d4-7', start:'16:15', end:'18:15', time:'16:15–18:15', text:'Flight home to Manchester', price_gbp:'—', price_eur:'—'},
+          {id:'d4-8', start:'18:15', end:'19:15', time:'18:15–19:15', text:'★ BOOKED: Collect car from JetParks 3 Saver, drive home', maps:'Manchester Airport JetParks 3 Saver', price_gbp:'—', price_eur:'—'}
         ]
       }
     ],
@@ -624,9 +624,11 @@
       if(stored){
         const loaded = JSON.parse(stored);
         const base = defaultState();
-        // Merge order arrays: keep user's saved order/customizations, but append
-        // any newly-added built-in items that aren't in the saved list yet,
-        // and drop ids that no longer exist as built-ins or customs.
+        // Merge order arrays: keep the user's saved order/customizations, but insert
+        // any newly-added built-in items right after their nearest preceding
+        // neighbour in the default (chronological) order — not just appended at
+        // the end — so new stops land in the correct place even on saved state.
+        // Also drop ids that no longer exist as built-ins or customs.
         const mergedOrder = {};
         Object.keys(base.order).forEach(function(dayKey){
           const savedArr = (loaded.order && loaded.order[dayKey]) ? loaded.order[dayKey] : [];
@@ -634,7 +636,16 @@
           const validIds = base.order[dayKey].concat(customIds);
           const kept = savedArr.filter(function(id){ return validIds.indexOf(id)!==-1; });
           const missing = base.order[dayKey].filter(function(id){ return kept.indexOf(id)===-1; });
-          mergedOrder[dayKey] = kept.concat(missing);
+          missing.forEach(function(newId){
+            const baseIdx = base.order[dayKey].indexOf(newId);
+            let insertAfter = -1;
+            for(let i=baseIdx-1;i>=0;i--){
+              const pos = kept.indexOf(base.order[dayKey][i]);
+              if(pos!==-1){ insertAfter = pos; break; }
+            }
+            kept.splice(insertAfter+1, 0, newId);
+          });
+          mergedOrder[dayKey] = kept;
         });
         const mergedPaidDetails = {};
         Object.keys(Object.assign({}, base.paidDetails, loaded.paidDetails||{})).forEach(function(pid){
