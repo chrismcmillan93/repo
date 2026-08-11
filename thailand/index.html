@@ -146,9 +146,17 @@
     if (extra) for (var k in extra) h[k] = extra[k];
     return h;
   }
+  function sbErr(prefix, r, bodyText) {
+    var msg = prefix + ' failed (HTTP ' + r.status + (r.statusText ? ' ' + r.statusText : '') + ')';
+    if (bodyText) msg += ': ' + bodyText.slice(0, 200);
+    return new Error(msg);
+  }
   function sbGet(table, qs) {
     return fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + qs, { headers: sbHeaders() })
-      .then(function (r) { if (!r.ok) throw new Error(table + ' GET ' + r.status); return r.json(); });
+      .then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw sbErr(table + ' GET', r, t); });
+        return r.json();
+      });
   }
   // item_data is a brand-new table we control, so a real upsert (on_conflict) is safe.
   function sbUpsertItemData(rows) {
@@ -157,7 +165,9 @@
       method: 'POST',
       headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify(rows)
-    }).then(function (r) { if (!r.ok) throw new Error('item_data upsert ' + r.status); });
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw sbErr('item_data upsert', r, t); });
+    });
   }
   // checkbox_states is pre-existing and shared with another dashboard — we don't
   // add constraints to it, so instead of a DB upsert we PATCH a matching row if
@@ -169,7 +179,7 @@
       headers: sbHeaders({ 'Prefer': 'return=representation' }),
       body: JSON.stringify({ is_checked: isChecked })
     }).then(function (r) {
-      if (!r.ok) throw new Error('checkbox_states PATCH ' + r.status);
+      if (!r.ok) return r.text().then(function (t) { throw sbErr('checkbox_states PATCH', r, t); });
       return r.json();
     }).then(function (rows) {
       if (rows && rows.length > 0) return; // updated an existing row
@@ -177,7 +187,9 @@
         method: 'POST',
         headers: sbHeaders({ 'Prefer': 'return=minimal' }),
         body: JSON.stringify([{ dashboard_id: DASHBOARD_ID, item_id: itemId, is_checked: isChecked }])
-      }).then(function (r2) { if (!r2.ok) throw new Error('checkbox_states POST ' + r2.status); });
+      }).then(function (r2) {
+        if (!r2.ok) return r2.text().then(function (t) { throw sbErr('checkbox_states POST', r2, t); });
+      });
     });
   }
 
@@ -187,12 +199,12 @@
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 3500);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 6000);
   }
-  function flashSyncError() { flashToast('⚠ Sync failed — change may not be saved for others'); }
-  function showLoadErrorBanner() {
+  function flashSyncError(e) { flashToast('⚠ Sync failed: ' + (e && e.message ? e.message : 'unknown error')); }
+  function showLoadErrorBanner(e) {
     document.getElementById('syncBanner').innerHTML =
-      '<div class="tp-sync-banner">⚠ Could not reach the shared database — showing local defaults, changes may not be saved. ' +
+      '<div class="tp-sync-banner">⚠ Could not reach the shared database' + (e && e.message ? ' — ' + esc(e.message) : '') + '. Showing local defaults, changes may not be saved. ' +
       '<button data-action="retry-load">Retry</button></div>';
   }
   function clearLoadErrorBanner() { document.getElementById('syncBanner').innerHTML = ''; }
@@ -351,6 +363,34 @@
         description: "One of the highest % Arabica locations in the world — floor-to-ceiling windows, panoramic Bangkok skyline and river views from the 55th floor.",
         place: '% Arabica Bangkok Empire Tower, Level 55, 1 S Sathon Rd, Yan Nawa, Sathon, Bangkok 10120',
         rating: 4.6, ratingCount: 1814, placeId: 'ChIJVcDWajif4jARMI0DNmwbITg', tags: ['Coffee', 'Panoramic view'] },
+      { id: 'i15', location: 'bkk1', order: 14.1, category: 'Coffee', title: 'Casa Lapin x Ploenchit', cost: 4, thb: 180, notes: '~5-10 min walk from the Airbnb', checked: false,
+        description: "Genuinely close to home — pink-arched café inside a boutique hotel, Thai-grown beans alongside the usual blends.",
+        place: 'CASA LAPIN x Ploenchit, 33/2 Soi Ruam Rudi 2, Lumphini, Pathum Wan, Bangkok 10330',
+        rating: 4.3, ratingCount: 92, placeId: 'ChIJe7-X99qf4jART9gMPAiidDM', tags: ['Coffee', 'Close to Airbnb'] },
+      { id: 'i16', location: 'bkk1', order: 14.2, category: 'Coffee', title: 'Brave Roasters', cost: 4, thb: 180, notes: '~15-20 min walk or 2 BTS stops from the Airbnb — tucked inside Objects of Desire store, Siam Discovery', checked: false,
+        description: "Serious specialty coffee hidden inside a design store — three single-origin filter options, good spot to sit and work.",
+        place: 'Brave Roasters, 3rd Floor, Siam Discovery, Rama I Rd, Pathum Wan, Bangkok 10330',
+        rating: 4.4, ratingCount: 520, placeId: 'ChIJkeZNeM2e4jARcTi2CnQGAbk', tags: ['Coffee', 'Specialty'] },
+      { id: 'i17', location: 'bkk1', order: 14.3, category: 'Coffee', title: 'La Cabra Bangkok', cost: 5, thb: 225, notes: '~20-25 min taxi/BTS — right in Talad Noi, pairs with the 14 Nov crawl', checked: false, day: '14 Nov',
+        description: "Danish roaster's Bangkok outpost, tucked into Talad Noi — calm, Scandinavian-cool space, exceptional filter coffee.",
+        place: 'La Cabra Bangkok, 813 Charoen Krung Rd, Talat Noi, Samphanthawong, Bangkok 10100',
+        rating: 4.4, ratingCount: 489, placeId: 'ChIJnbwQRtGZ4jARKDm6zCQ-N_s', tags: ['Coffee', 'Specialty'] },
+      { id: 'i18', location: 'bkk1', order: 7.1, category: 'Bar', title: 'The Speakeasy Rooftop Bar, Hotel Muse', cost: 15, thb: 675, notes: 'On Soi Langsuan — a few minutes from the Airbnb', checked: false,
+        description: "1920s Art Deco rooftop two floors up, live band most nights, and a hidden members' room behind a velvet curtain. Round-the-corner from the Airbnb.",
+        place: 'The Speakeasy Rooftop Bar, Hotel Muse Bangkok, 55 Lang Suan Rd, Lumphini, Pathum Wan, Bangkok 10330',
+        rating: 4.7, ratingCount: 3308, placeId: 'ChIJ5178Viqf4jARZKFL40SO2RU', tags: ['Rooftop views', 'Live music', 'Cocktails'] },
+      { id: 'i19', location: 'bkk1', order: 7.2, category: 'Bar', title: 'Havana Social', cost: 15, thb: 675, notes: '~15-20 min BTS/taxi — 400 THB cover incl. one drink, dress code enforced', checked: false,
+        description: 'Cuban-themed speakeasy on Sukhumvit — salsa dancing, live music, a proper night out rather than just a bar.',
+        place: 'Havana Social, 41 Sukhumvit Soi 11, Khlong Toei Nuea, Watthana, Bangkok 10110',
+        rating: 4.4, ratingCount: 2526, placeId: 'ChIJPzDk6BGf4jARIn43300IF4Y', tags: ['Live music', 'Cocktails', 'Dancing'] },
+      { id: 'i20', location: 'bkk1', order: 13.5, category: 'Bar', title: 'Teens of Thailand', cost: 10, thb: 450, notes: '~20-25 min taxi — pairs with the 14 Nov Chinatown day', checked: false, day: '14 Nov',
+        description: "Bangkok's original gin bar, behind an unmarked shophouse door in Chinatown — small, characterful, all-gin menu.",
+        place: 'Teens of Thailand, 76 Soi Nana, Pom Prap Sattru Phai, Bangkok 10100',
+        rating: 4.4, ratingCount: 852, placeId: 'ChIJRyBsviaZ4jARj79PNOq0hBI', tags: ['Gin bar', 'Hidden bar'] },
+      { id: 'i21', location: 'bkk1', order: 4.5, category: 'Activity', title: 'Thonburi canal longtail boat tour', cost: 30, thb: 1350, notes: 'Book ahead, ~2hrs — pairs well as a morning start to the 14 Nov Chinatown day', checked: false, day: '14 Nov', reservation: true,
+        description: "A completely different side of Bangkok — stilt houses, hidden temples, local canal life, far from the tourist track. Co van Kessel's base is right by Talad Noi.",
+        place: 'Co van Kessel Bangkok Tours, 23 Charoen Krung 24, Talat Noi, Samphanthawong, Bangkok 10100',
+        rating: 4.9, ratingCount: 4247, placeId: 'ChIJV0YZRNmY4jARhoPwJOh_TgM', tags: ['Boat tour', 'Local life', 'Half-day'] },
 
       { id: 'k1', location: 'krabi', order: 0, category: 'Food', title: 'The Last Fisherman beach BBQ', cost: 12, thb: 540, notes: '', checked: false,
         description: 'Strip of beachfront bars on Ao Nang/Nopparat Thara for sunset BBQ and beers.',
@@ -649,7 +689,7 @@
       renderAll();
     }).catch(function (e) {
       console.error('Shared data load failed:', e);
-      showLoadErrorBanner();
+      showLoadErrorBanner(e);
       hasLoaded = true;
       renderAll();
     });
@@ -664,16 +704,16 @@
   }
   function writeField(itemId, field, value) {
     sbUpsertItemData([{ dashboard_id: DASHBOARD_ID, item_id: itemId, field: field, value: value === undefined ? null : value, updated_at: new Date().toISOString() }])
-      .catch(function (e) { console.error(e); flashSyncError(); });
+      .catch(function (e) { console.error(e); flashSyncError(e); });
   }
   function writeFields(itemId, obj) {
     var rows = Object.keys(obj).map(function (f) {
       return { dashboard_id: DASHBOARD_ID, item_id: itemId, field: f, value: obj[f] === undefined ? null : obj[f], updated_at: new Date().toISOString() };
     });
-    sbUpsertItemData(rows).catch(function (e) { console.error(e); flashSyncError(); });
+    sbUpsertItemData(rows).catch(function (e) { console.error(e); flashSyncError(e); });
   }
   function writeCheck(itemId, val) {
-    sbSetCheck(itemId, val).catch(function (e) { console.error(e); flashSyncError(); });
+    sbSetCheck(itemId, val).catch(function (e) { console.error(e); flashSyncError(e); });
   }
 
   // ---------- mutations ----------
@@ -701,7 +741,7 @@
     sbUpsertItemData([
       { dashboard_id: DASHBOARD_ID, item_id: item.id, field: 'order', value: item.order, updated_at: new Date().toISOString() },
       { dashboard_id: DASHBOARD_ID, item_id: swap.id, field: 'order', value: swap.order, updated_at: new Date().toISOString() }
-    ]).catch(function (e) { console.error(e); flashSyncError(); });
+    ]).catch(function (e) { console.error(e); flashSyncError(e); });
   }
   function addItem(location) {
     var draft = draftFor(location);
