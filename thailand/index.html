@@ -228,6 +228,10 @@
       route: 'MAN → BKK', airline: 'Qatar Airways QR0028', conf: 'ZV6HXX',
       when: 'Thu 12 Nov · 14:05 dep', detail: '1 stop DOH · 13h 20m · lands 13:05 +1 day'
     },
+    internal: {
+      route: 'Phuket → Koh Samui', airline: 'Bangkok Airways PG254', conf: 'FBIOJ6',
+      when: 'Sun 22 Nov · 11:00 dep', detail: 'Direct · 55m · lands 11:55 · Chris only, seat 2C'
+    },
     returnLeg: {
       route: 'BKK → MAN', airline: 'Qatar/BA · QR0835 + BA5811', conf: 'ZV6HXX',
       when: 'Fri 27 Nov · 18:55 dep', detail: '1 stop DOH · 14h 15m · lands 06:00 +1 day'
@@ -636,7 +640,9 @@
 
   function seedBookings() {
     return [
-      { id: 'bk1', title: 'Confirm BKK–MAN return flight date matches 27 Nov', deadline: 'Confirmed ✓', urgency: 'low', notes: 'Fri 27 Nov 2026, 18:55 BKK departure', done: true },
+      { id: 'bk2a', title: 'Book Phuket→Koh Samui flight (22 Nov)', deadline: 'By 24 Aug', urgency: 'high',
+        notes: 'Bangkok Airways PG254, 11:00 dep, 11:55 arr. Chris already booked (seat 2C) — Andrew, Craig and Dalz still need their own seats.',
+        done: false, party: ['Andrew', 'Craig', 'Dalz'], bookedPeople: {} },
       { id: 'bk2b', title: 'Book Samui→Bangkok flight (26 Nov)', deadline: 'By 24 Aug', urgency: 'high',
         notes: 'Bangkok Airways, evening departures. 26 Nov — matches Sunrise Resort checkout. Dalz not on this leg.',
         done: false, party: ['Chris', 'Andrew', 'Craig'], bookedPeople: {} },
@@ -979,11 +985,15 @@
 
   // ---------- render (unchanged visuals) ----------
   function renderFlightCard() {
-    var o = FLIGHT.outbound, r = FLIGHT.returnLeg;
+    var o = FLIGHT.outbound, i = FLIGHT.internal, r = FLIGHT.returnLeg;
     document.getElementById('flightCard').innerHTML =
       '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(o.route) + '</div><div class="tp-flightright">' + esc(o.conf) + '</div></div>' +
       '<div class="tp-flightmeta">' + esc(o.airline) + ' · ' + esc(o.when) + '</div>' +
       '<div class="tp-flightmeta">' + esc(o.detail) + '</div>' +
+      '<div class="tp-flightdivider"></div>' +
+      '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(i.route) + '</div><div class="tp-flightright">' + esc(i.conf) + '</div></div>' +
+      '<div class="tp-flightmeta">' + esc(i.airline) + ' · ' + esc(i.when) + '</div>' +
+      '<div class="tp-flightmeta">' + esc(i.detail) + '</div>' +
       '<div class="tp-flightdivider"></div>' +
       '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(r.route) + '</div><div class="tp-flightright">' + esc(r.conf) + '</div></div>' +
       '<div class="tp-flightmeta">' + esc(r.airline) + ' · ' + esc(r.when) + '</div>' +
