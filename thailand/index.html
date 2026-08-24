@@ -86,7 +86,7 @@
   .tp-filter-btn { font-family:'Space Grotesk',sans-serif; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; background:transparent; border:1.5px solid; border-radius:999px; padding:0.28rem 0.7rem; cursor:pointer; color:#F5EFE0; }
   .tp-filter-btn.active { color:#0E2A2E; }
   .tp-filter-btn:hover:not(.active) { background:rgba(255,255,255,0.06); }
-  .tp-itin-wrap { margin-top:0.9rem; padding-top:0.8rem; border-top:1px solid rgba(127,179,217,0.2); }
+  .tp-itin-wrap { margin-bottom:0.9rem; padding-bottom:0.8rem; border-bottom:1px solid rgba(127,179,217,0.2); }
   .tp-itin-head { display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:transparent; border:none; width:100%; padding:0; color:inherit; font:inherit; }
   .tp-itin-title { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.86rem; color:#7FB3D9; display:flex; align-items:center; gap:0.4rem; }
   .tp-itin-count { font-family:'Space Mono',monospace; font-size:0.66rem; color:#8FB0AC; }
@@ -99,6 +99,11 @@
   .tp-itin-actions { display:flex; align-items:center; gap:0; flex-shrink:0; }
   .tp-itin-add { display:flex; align-items:center; gap:0.35rem; margin-top:0.3rem; }
   .tp-itin-empty { color:#5f7f7c; font-size:0.74rem; font-style:italic; margin-bottom:0.4rem; }
+  .tp-pack-toggle-btn { width:100%; margin-top:1rem; background:rgba(232,163,61,0.1); border:1.5px solid rgba(232,163,61,0.4); color:#E8A33D; border-radius:10px; padding:0.65rem; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem; }
+  .tp-pack-toggle-btn:hover { background:rgba(232,163,61,0.18); }
+  .tp-pack-row { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; }
+  .tp-pack-text { flex:1; min-width:0; font-size:0.82rem; padding:0.4rem 0.55rem; }
+  .tp-pack-text.checked { text-decoration:line-through; color:#8FB0AC; }
   .tp-progress { font-family:'Space Mono',monospace; font-size:0.68rem; color:#8FB0AC; }
   .tp-stub { padding:0.75rem 0; border-bottom:1px dashed rgba(232,163,61,0.22); }
   .tp-stub:last-child { border-bottom:none; }
@@ -136,12 +141,13 @@
       <div class="tp-tile"><div class="tp-tile-num" id="cdSecs">–</div><div class="tp-tile-label">Sec</div></div>
     </div>
     <div class="tp-flightcard" id="flightCard"></div>
+    <button class="tp-pack-toggle-btn" data-action="toggle-packing">🎒 Packing List</button>
   </div>
 
+  <div class="tp-section" id="packingPanel"></div>
   <div id="syncBanner"></div>
   <div class="tp-section" id="bookingsPanel"></div>
   <div class="tp-section" id="airbnbPanel"></div>
-  <div class="tp-section" id="flightsPanel"></div>
   <div class="tp-section" id="costPanel"></div>
   <div class="tp-section" id="locationsPanel"></div>
 </div>
@@ -224,18 +230,18 @@
   function clearLoadErrorBanner() { document.getElementById('syncBanner').innerHTML = ''; }
 
   var FLIGHT = {
-    outbound: {
-      route: 'MAN → BKK', airline: 'Qatar Airways QR0028', conf: 'ZV6HXX',
-      when: 'Thu 12 Nov · 14:05 dep', detail: '1 stop DOH · 13h 20m · lands 13:05 +1 day'
-    },
-    internal: {
-      route: 'Phuket → Koh Samui', airline: 'Bangkok Airways PG254', conf: 'FBIOJ6',
-      when: 'Sun 22 Nov · 11:00 dep', detail: 'Direct · 55m · lands 11:55 · Chris only, seat 2C'
-    },
-    returnLeg: {
-      route: 'BKK → MAN', airline: 'Qatar/BA · QR0835 + BA5811', conf: 'ZV6HXX',
-      when: 'Fri 27 Nov · 18:55 dep', detail: '1 stop DOH · 14h 15m · lands 06:00 +1 day'
-    },
+    legs: [
+      { route: 'MAN → BKK', airline: 'Qatar Airways QR0028', conf: 'ZV6HXX',
+        when: 'Thu 12 Nov · 14:05 dep', detail: '1 stop DOH · 13h 20m · lands 13:05 +1 day' },
+      { route: 'BKK → Krabi', airline: 'Thai Airways TG', conf: '\u2014',
+        when: 'Mon 16 Nov · 10:45 dep', detail: 'Direct · 1h 20m · lands 12:05 · Chris, Andrew & Craig' },
+      { route: 'Phuket → Koh Samui', airline: 'Bangkok Airways PG254', conf: 'FBIOJ6',
+        when: 'Sun 22 Nov · 11:00 dep', detail: 'Direct · 55m · lands 11:55 · Chris only, seat 2C' },
+      { route: 'Koh Samui → Bangkok', airline: 'Bangkok Airways PG', conf: '\u2014',
+        when: 'Thu 26 Nov · 15:35 dep', detail: 'Direct · lands 16:50 · Chris only, flex fare' },
+      { route: 'BKK → MAN', airline: 'Qatar/BA · QR0835 + BA5811', conf: 'ZV6HXX',
+        when: 'Fri 27 Nov · 18:55 dep', detail: '1 stop DOH · 14h 15m · lands 06:00 +1 day' }
+    ],
     target: '2026-11-12T14:05:00Z'
   };
 
@@ -271,6 +277,35 @@
     ];
   }
 
+  var PACK_CATEGORIES = ['Clothing', 'Toiletries & Health', 'Electronics & Gear', 'Documents & Essentials'];
+  function seedPacking() {
+    return [
+      { id: 'pk-1', category: 'Clothing', text: '5\u20136x Lightweight T-shirts / Tank tops', order: 0, checked: false },
+      { id: 'pk-2', category: 'Clothing', text: '1\u20132x Linen or lightweight long-sleeve shirts', order: 1, checked: false },
+      { id: 'pk-3', category: 'Clothing', text: '2\u20133x Lightweight shorts', order: 2, checked: false },
+      { id: 'pk-4', category: 'Clothing', text: '1x Lightweight pants/trousers (temple-appropriate)', order: 3, checked: false },
+      { id: 'pk-5', category: 'Clothing', text: '1x Sarong or light shawl', order: 4, checked: false },
+      { id: 'pk-6', category: 'Clothing', text: '7x Quick-dry underwear', order: 5, checked: false },
+      { id: 'pk-7', category: 'Clothing', text: '3x Pairs of socks', order: 6, checked: false },
+      { id: 'pk-8', category: 'Clothing', text: '2x Swimsuits', order: 7, checked: false },
+      { id: 'pk-9', category: 'Clothing', text: '1x Lightweight rain jacket or poncho', order: 8, checked: false },
+      { id: 'pk-10', category: 'Clothing', text: '1x Comfortable walking sneakers/trainers', order: 9, checked: false },
+      { id: 'pk-11', category: 'Clothing', text: '1x Running shoes', order: 10, checked: false },
+      { id: 'pk-12', category: 'Clothing', text: '1x Sandals or flip-flops', order: 11, checked: false },
+      { id: 'pk-13', category: 'Toiletries & Health', text: 'Travel-sized toiletries (shampoo bar, toothbrush, toothpaste, deodorant)', order: 0, checked: false },
+      { id: 'pk-14', category: 'Toiletries & Health', text: 'High-SPF sunscreen (reef-safe)', order: 1, checked: false },
+      { id: 'pk-15', category: 'Toiletries & Health', text: 'Mosquito repellent (DEET or Picaridin)', order: 2, checked: false },
+      { id: 'pk-16', category: 'Toiletries & Health', text: 'Small first-aid kit (plasters, rehydration salts, anti-diarrheal, pain relievers)', order: 3, checked: false },
+      { id: 'pk-17', category: 'Electronics & Gear', text: 'Universal travel adapter', order: 0, checked: false },
+      { id: 'pk-18', category: 'Electronics & Gear', text: 'Power bank (10,000\u201320,000 mAh)', order: 1, checked: false },
+      { id: 'pk-19', category: 'Electronics & Gear', text: 'Dry bag (10L\u201315L)', order: 2, checked: false },
+      { id: 'pk-20', category: 'Electronics & Gear', text: 'Microfiber travel towel', order: 3, checked: false },
+      { id: 'pk-21', category: 'Documents & Essentials', text: 'Passport (valid for at least 6 months)', order: 0, checked: false },
+      { id: 'pk-22', category: 'Documents & Essentials', text: 'Copies of travel documents and insurance', order: 1, checked: false },
+      { id: 'pk-23', category: 'Documents & Essentials', text: 'Cards & local Thai Baht cash', order: 2, checked: false }
+    ];
+  }
+
   function seedAirbnbs() {
     return [
       { id: 'ab-bkk', location: 'Bangkok', locKey: 'bkk1', name: 'Home in Khet Pathum Wan', status: 'confirmed',
@@ -294,9 +329,15 @@
       { id: 'ab-kpg-sunrise', location: 'Koh Phangan', locKey: 'kpg', name: 'Sunrise Resort', status: 'confirmed',
         host: 'Shared with Dalz', address: '136 Moo 6 T. Baan Tai Koh Phangan, Haad Rin, 84280',
         checkin: 'Sun 22 Nov · 14:00', checkout: 'Thu 26 Nov · 12:00',
-        totalGbp: 379, totalThb: null, bookedBy: 'Chris', paid: { Chris: true }, partyOverride: ['Chris', 'Dalz'],
+        totalGbp: 379, totalThb: null, bookedBy: 'Chris', paid: {}, partyOverride: ['Chris', 'Dalz'],
         rating: null, ratingCount: null, placeId: null,
-        note: '~£379 total for 4 nights, non-refundable. Covers arrival night (22 Nov) through to the Bangkok transfer morning (26 Nov) for Chris + Dalz.' }
+        note: '~£379 total for 4 nights, non-refundable. Covers arrival night (22 Nov) through to the Bangkok transfer morning (26 Nov) for Chris + Dalz. Booking confirmed but the full amount is still outstanding to the property \u2014 not yet paid.' },
+      { id: 'ab-bkk2-divalux', location: 'Bangkok (return)', locKey: 'bkk2', name: 'Divalux Resort & Spa', status: 'confirmed',
+        host: 'Chris only', address: 'Near Suvarnabhumi Airport, Lat Krabang, Bangkok',
+        checkin: 'Thu 26 Nov', checkout: 'Fri 27 Nov',
+        totalGbp: 36, totalThb: null, bookedBy: 'Chris', paid: { Chris: true }, partyOverride: ['Chris'],
+        rating: null, ratingCount: null, placeId: null,
+        note: 'One night before the 27 Nov 18:55 departure. Free 24hr shuttle to the terminal. Chosen over Siam Mandarina (£63/night, no free cancellation) \u2014 Divalux was £36/night with free cancellation. Andrew and Craig need their own buffer-night arrangement if they want one.' }
     ];
   }
 
@@ -587,6 +628,10 @@
         description: 'Smaller and friendlier than Tiger with a similar Chalong location — clean facilities, dedicated ladies-only sessions.',
         place: '19/2 Moo 3 Soi Palai, Tambon Chalong, Phuket 83130',
         rating: 4.8, ratingCount: 397, placeId: 'ChIJi6NyfFAuUDARc3y6xch2u04', tags: ['Muay Thai', 'CrossFit', 'Ladies classes'] },
+      { id: 'p36', location: 'phuket', order: 6.5, category: 'Activity', title: 'Boathouse Phuket \u2014 wine tasting', cost: 29, thb: 1300, notes: 'Sommelier-guided, Mon\u2013Fri 4\u20135:30pm, min 2 people, 24hr advance booking. ~20 min taxi from Patong (Kata Hill separates them, not walkable)', checked: false, reservation: true,
+        description: 'A genuinely different Phuket experience — proper sommelier-guided tasting on Kata Beach, sea view, good for a change of pace from bars and beaches.',
+        place: 'The Boathouse Restaurant, Kata Beach, Karon, Mueang Phuket District, Phuket 83100',
+        rating: 4.4, ratingCount: 330, placeId: 'ChIJWZ5s7VklUDARcpoYsE3mxVM', tags: ['Wine tasting', 'Sea view', 'Unique experience'] },
 
 
       { id: 'kp1', location: 'kpg', order: 0, category: 'Food', title: "Fisherman's Restaurant, Ban Tai", cost: 10, thb: 450, notes: '', checked: false,
@@ -631,27 +676,39 @@
       { id: 'b2a', location: 'bkk2', order: 0, category: 'Other', title: 'Buffer night hotel (airport-adjacent)', cost: 0, thb: 0, notes: 'Location TBD', checked: false,
         description: 'Overnight stop before the 27 Nov flight home.', place: 'Suvarnabhumi Airport, Bangkok',
         rating: null, ratingCount: null, placeId: null, tags: [] },
-      { id: 'b2b', location: 'bkk2', order: 1, category: 'Rooftop', title: 'Cooling Tower, Carlton Hotel', cost: 15, thb: 675, notes: '10% service charge, cocktails ~450 THB', checked: false, day: '26 Nov',
-        description: '34th-floor rooftop with dual skyline views, DJ — solid last-night spot near the buffer hotel zone.',
+      { id: 'b2b', location: 'bkk2', order: 1, category: 'Rooftop', title: 'Cooling Tower, Carlton Hotel', cost: 15, thb: 675, notes: '10% service charge, cocktails ~450 THB. Not near the buffer hotel \u2014 Sukhumvit is ~30-40 min from the Suvarnabhumi area, worth it only as a dedicated trip', checked: false, day: '26 Nov',
+        description: '34th-floor rooftop with dual skyline views, DJ.',
         place: 'Cooling Tower, Carlton Hotel Bangkok Sukhumvit, 491 Sukhumvit Rd, Klongtoey Nua, Bangkok 10110',
         rating: 4.6, ratingCount: 376, placeId: 'ChIJnyhvJLef4jARabPpa1XMad8', tags: ['Rooftop views', 'Cocktails', 'DJ'] },
+      { id: 'b2c', location: 'bkk2', order: 2, category: 'Food', title: 'Glai Hwor', cost: 12, thb: 540, notes: '~10-15 min taxi from the Suvarnabhumi hotel cluster', checked: false, day: '26 Nov',
+        description: "Heritage Thai house, repeatedly called the best Thai meal of people's entire trip — pandan-wrapped chicken, beef cheek stew, fresh-water prawns.",
+        place: 'Glai Hwor restaurant, 1095/8 Khwaeng Lat Krabang, Khet Lat Krabang, Bangkok 10520',
+        rating: 4.8, ratingCount: 175, placeId: 'ChIJE5GuVVxnHTERh3PWO5jDzPM', tags: ['Thai food', 'Local institution'] },
+      { id: 'b2d', location: 'bkk2', order: 3, category: 'Food', title: 'Meisaku Premium Yakiniku', cost: 45, thb: 2000, notes: '~15 min taxi from the Suvarnabhumi hotel cluster \u2014 splurge pricing', checked: false, day: '26 Nov',
+        description: 'Exceptional wagyu and sashimi, modern comfortable space — a proper way to close out the trip if you want to splurge.',
+        place: 'Meisaku Premium Yakiniku - PARC Bangna, 955 Debaratna Rd, Bang Na Nuea, Bangkok 10260',
+        rating: 4.9, ratingCount: 411, placeId: 'ChIJ24qRYPJfHTER8NWX9eYroWU', tags: ['Japanese food', 'Splurge dinner'] },
+      { id: 'b2e', location: 'bkk2', order: 4, category: 'Food', title: 'Atthaross Caf\u00e9', cost: 10, thb: 450, notes: '~10-15 min taxi from the Suvarnabhumi hotel cluster, on the water, live music some evenings', checked: false, day: '26 Nov',
+        description: 'Halal Thai/Indian menu with a canal-side sunset — reviewers specifically call it the perfect way to say goodbye to Thailand.',
+        place: 'Atthaross Caf\u00e9, 965 4 Thanon Lat Krabang, Khwaeng Lat Krabang, Bangkok 10520',
+        rating: 4.4, ratingCount: 513, placeId: 'ChIJdR_tYsJnHTER9qpDVSA_0iE', tags: ['Halal', 'Live music', 'Sunset'] },
     ];
   }
 
   function seedBookings() {
     return [
-      { id: 'bk2a', title: 'Book Phuket→Koh Samui flight (22 Nov)', deadline: 'By 24 Aug', urgency: 'high',
-        notes: 'Bangkok Airways PG254, 11:00 dep, 11:55 arr. Chris already booked (seat 2C) — Andrew, Craig and Dalz still need their own seats.',
-        done: false, party: ['Andrew', 'Craig', 'Dalz'], bookedPeople: {} },
-      { id: 'bk2b', title: 'Book Samui→Bangkok flight (26 Nov)', deadline: 'By 24 Aug', urgency: 'high',
-        notes: 'Bangkok Airways, evening departures. 26 Nov — matches Sunrise Resort checkout. Dalz not on this leg.',
-        done: false, party: ['Chris', 'Andrew', 'Craig'], bookedPeople: {} },
-      { id: 'bk8', title: 'Book Bangkok→Krabi flight (16 Nov)', deadline: 'By 24 Aug', urgency: 'medium', notes: '14:00–16:00 departure window recommended, based on the Bangkok Airbnb 12:00 checkout + ~45–60 min airport transfer. Suvarnabhumi-based carriers only.',
-        done: false, party: ['Chris', 'Andrew', 'Craig'], bookedPeople: {} },
       { id: 'bk7', title: 'Book Krabi→Phuket transport', deadline: 'By 31 Aug', urgency: 'medium', notes: 'Ferry vs speedboat vs private van.', done: false },
-      { id: 'bk10', title: 'Book Bangkok buffer night hotel (26–27 Nov)', deadline: 'By 24 Aug', urgency: 'medium', notes: 'Airport-adjacent.',
-        done: false, party: ['Chris', 'Andrew', 'Craig'], bookedPeople: {} },
+      { id: 'bk-res-i31', title: 'Book YOKKAO Muay Thai drop-in (Bangkok)', deadline: 'A few days ahead, once in Bangkok', urgency: 'low', notes: 'Min 1hr session.', done: false },
+      { id: 'bk-res-i21', title: 'Book Thonburi canal longtail boat tour (Bangkok)', deadline: 'A few days ahead, once in Bangkok', urgency: 'low', notes: 'Pairs well with the 14 Nov Chinatown day.', done: false },
+      { id: 'bk-res-k6', title: 'Book Railay rock climbing (Krabi)', deadline: 'A few days ahead, once in Krabi', urgency: 'low', notes: 'Via King Climbers.', done: false },
+      { id: 'bk-res-p12', title: 'Reserve Baan Rim Pa (Phuket)', deadline: 'Mid-to-late Oct', urgency: 'low', notes: 'Sunset table, dine 17:30-19:30.', done: false },
+      { id: 'bk-res-p18', title: 'Reserve Acqua Restaurant (Phuket)', deadline: 'Mid-to-late Oct', urgency: 'low', notes: 'Michelin Guide \u2018Plate\u2019 award, worth booking ahead.', done: false },
+      { id: 'bk-res-p14', title: 'Book Simon Cabaret tickets (Phuket)', deadline: 'By late Oct', urgency: 'medium', notes: 'Popular show, high season \u2014 book ahead.', done: false },
       { id: 'bk12', title: 'Reserve Baba Nest rooftop (Phuket)', deadline: 'Mid-to-late Oct', urgency: 'low', notes: 'A few weeks ahead of 18–22 Nov', done: false },
+      { id: 'bk-res-p21', title: 'Book Phuket Elephant Sanctuary', deadline: 'By late Oct', urgency: 'medium', notes: 'Popular, high season \u2014 book a few days to weeks ahead.', done: false },
+      { id: 'bk-res-p22', title: 'Book Coral Island (Koh Hae) day trip', deadline: 'By late Oct', urgency: 'medium', notes: 'Speedboat tour, popular in high season \u2014 book ahead.', done: false },
+      { id: 'bk-res-p36', title: 'Book Boathouse Phuket wine tasting', deadline: '24hrs ahead minimum', urgency: 'low', notes: 'Min 2 people, Mon\u2013Fri 4\u20135:30pm only.', done: false },
+      { id: 'bk-res-kp3', title: "Reserve L'Alcove (Koh Phangan)", deadline: 'A week or two ahead', urgency: 'low', notes: 'Splurge French dinner on the sand.', done: false },
       { id: 'bk13', title: 'Check UK passport / visa entry requirements', deadline: 'By 14 Sep', urgency: 'low', notes: '', done: false }
     ];
   }
@@ -672,10 +729,10 @@
   }
 
   var state = {
-    items: seedItems(), bookings: seedBookings(), airbnbs: seedAirbnbs(), flights: [], itineraryEntries: seedItinerary(),
-    expandedLocations: { bkk1: true }, bookingsOpen: true, airbnbsOpen: true, flightsOpen: true, itineraryOpen: { bkk1: true },
+    items: seedItems(), bookings: seedBookings(), airbnbs: seedAirbnbs(), itineraryEntries: seedItinerary(), packing: seedPacking(),
+    expandedLocations: { bkk1: true }, bookingsOpen: true, airbnbsOpen: true, itineraryOpen: { bkk1: true }, packingOpen: false,
     editOpen: {}, drafts: {}, categoryFilter: {}, abDraft: { name: '', location: '', party: '' },
-    flDraft: { route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, itinDraft: {}
+    itinDraft: {}, packDraft: {}
   };
   var hasLoaded = false;
 
@@ -774,18 +831,6 @@
         });
       });
 
-      // Flights added by anyone in the group
-      state.flights = [];
-      Object.keys(fieldMap).forEach(function (id) {
-        if (id.indexOf('flight-') !== 0) return;
-        var f = fieldMap[id];
-        if (f.deleted === true) return;
-        state.flights.push({
-          id: id, route: f.route || '(untitled)', airline: f.airline || '',
-          date: f.date || '', time: f.time || '', notes: f.notes || '', addedBy: f.addedBy || ''
-        });
-      });
-
       // Itinerary: start from the seeded recommendations, overlay edits, drop soft-deleted
       state.itineraryEntries = seedItinerary().filter(function (e) {
         var f = fieldMap[e.id]; return !(f && f.deleted === true);
@@ -802,6 +847,26 @@
         state.itineraryEntries.push({
           id: id, location: f.location || '', day: f.day || '',
           time: f.time || '', text: f.text || '', order: f.order != null ? f.order : 0
+        });
+      });
+
+      // Packing list: start from the seed, overlay edits + checked state, drop soft-deleted
+      state.packing = seedPacking().filter(function (p) {
+        var f = fieldMap[p.id]; return !(f && f.deleted === true);
+      }).map(function (p) {
+        var f = fieldMap[p.id] || {};
+        var merged = Object.assign({}, p, f);
+        merged.checked = checkMap.hasOwnProperty(p.id) ? checkMap[p.id] : p.checked;
+        return merged;
+      });
+      Object.keys(fieldMap).forEach(function (id) {
+        if (id.indexOf('pk-custom-') !== 0) return;
+        if (state.packing.some(function (p) { return p.id === id; })) return;
+        var f = fieldMap[id];
+        if (f.deleted === true) return;
+        state.packing.push({
+          id: id, category: f.category || 'Clothing', text: f.text || '(untitled)',
+          order: f.order != null ? f.order : 0, checked: checkMap.hasOwnProperty(id) ? checkMap[id] : false
         });
       });
 
@@ -928,26 +993,6 @@
     AIRBNB_FIELDS.forEach(function (f) { toWrite[f] = newAb[f]; });
     writeFields(newAb.id, toWrite);
   }
-  function deleteFlight(id) {
-    state.flights = state.flights.filter(function (f) { return f.id !== id; });
-    renderAll();
-    writeField(id, 'deleted', true);
-  }
-  function addFlight() {
-    var draft = state.flDraft || { route: '', airline: '', date: '', time: '', notes: '', addedBy: '' };
-    if (!draft.route || !draft.route.trim()) return;
-    var newFl = {
-      id: 'flight-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-      route: draft.route.trim(), airline: (draft.airline || '').trim(),
-      date: (draft.date || '').trim(), time: (draft.time || '').trim(),
-      notes: (draft.notes || '').trim(), addedBy: (draft.addedBy || '').trim()
-    };
-    state.flights.push(newFl);
-    state.flDraft = { route: '', airline: '', date: '', time: '', notes: '', addedBy: '' };
-    renderAll();
-    writeFields(newFl.id, { route: newFl.route, airline: newFl.airline, date: newFl.date, time: newFl.time, notes: newFl.notes, addedBy: newFl.addedBy });
-  }
-
   function itinKey(loc, day) { return loc + ':::' + day; }
   function addItinEntry(loc, day) {
     var d = (state.itinDraft || {})[itinKey(loc, day)] || { time: '', text: '' };
@@ -983,21 +1028,54 @@
     writeFields(swap.id, { order: swap.order });
   }
 
+  function togglePackItem(id) {
+    var p = state.packing.find(function (x) { return x.id === id; });
+    if (!p) return;
+    p.checked = !p.checked;
+    renderPacking();
+    writeCheck(id, p.checked);
+  }
+  function deletePackItem(id) {
+    state.packing = state.packing.filter(function (p) { return p.id !== id; });
+    renderPacking();
+    writeField(id, 'deleted', true);
+  }
+  function movePackItem(id, dir) {
+    var item = state.packing.find(function (p) { return p.id === id; });
+    if (!item) return;
+    var siblings = state.packing.filter(function (p) { return p.category === item.category; }).sort(function (a, b) { return a.order - b.order; });
+    var idx = siblings.findIndex(function (p) { return p.id === id; });
+    var swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= siblings.length) return;
+    var swap = siblings[swapIdx];
+    var tmp = item.order; item.order = swap.order; swap.order = tmp;
+    renderPacking();
+    writeFields(item.id, { order: item.order });
+    writeFields(swap.id, { order: swap.order });
+  }
+  function addPackItem(category) {
+    var text = (state.packDraft || {})[category] || '';
+    if (!text.trim()) return;
+    var siblings = state.packing.filter(function (p) { return p.category === category; });
+    var maxOrder = siblings.length ? Math.max.apply(null, siblings.map(function (p) { return p.order; })) : -1;
+    var item = {
+      id: 'pk-custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      category: category, text: text.trim(), order: maxOrder + 1, checked: false
+    };
+    state.packing.push(item);
+    state.packDraft[category] = '';
+    renderPacking();
+    writeFields(item.id, { category: item.category, text: item.text, order: item.order });
+  }
+
   // ---------- render (unchanged visuals) ----------
   function renderFlightCard() {
-    var o = FLIGHT.outbound, i = FLIGHT.internal, r = FLIGHT.returnLeg;
-    document.getElementById('flightCard').innerHTML =
-      '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(o.route) + '</div><div class="tp-flightright">' + esc(o.conf) + '</div></div>' +
-      '<div class="tp-flightmeta">' + esc(o.airline) + ' · ' + esc(o.when) + '</div>' +
-      '<div class="tp-flightmeta">' + esc(o.detail) + '</div>' +
-      '<div class="tp-flightdivider"></div>' +
-      '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(i.route) + '</div><div class="tp-flightright">' + esc(i.conf) + '</div></div>' +
-      '<div class="tp-flightmeta">' + esc(i.airline) + ' · ' + esc(i.when) + '</div>' +
-      '<div class="tp-flightmeta">' + esc(i.detail) + '</div>' +
-      '<div class="tp-flightdivider"></div>' +
-      '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(r.route) + '</div><div class="tp-flightright">' + esc(r.conf) + '</div></div>' +
-      '<div class="tp-flightmeta">' + esc(r.airline) + ' · ' + esc(r.when) + '</div>' +
-      '<div class="tp-flightmeta">' + esc(r.detail) + '</div>';
+    document.getElementById('flightCard').innerHTML = FLIGHT.legs.map(function (leg, idx) {
+      return (idx > 0 ? '<div class="tp-flightdivider"></div>' : '') +
+        '<div class="tp-flightrow"><div class="tp-flightroute">' + esc(leg.route) + '</div><div class="tp-flightright">' + esc(leg.conf) + '</div></div>' +
+        '<div class="tp-flightmeta">' + esc(leg.airline) + ' · ' + esc(leg.when) + '</div>' +
+        '<div class="tp-flightmeta">' + esc(leg.detail) + '</div>';
+    }).join('');
   }
 
   function isBkPersonBooked(b, name) { return !!(b.bookedPeople && b.bookedPeople[name]); }
@@ -1134,37 +1212,34 @@
       (state.airbnbsOpen ? '<div class="tp-panel-body">' + stubs + summary + addForm + '</div>' : '') + '</div>';
   }
 
-  function renderFlights() {
-    var cards = state.flights.map(function (f) {
-      return '<div class="tp-stub">' +
-        '<div class="tp-stub-top"><div><div class="tp-stub-name">' + esc(f.route) + '</div>' +
-        (f.airline ? '<div class="tp-stub-host">' + esc(f.airline) + '</div>' : '') + '</div>' +
-        '<button class="tp-icon-btn" data-action="delete-flight" data-id="' + f.id + '" aria-label="Delete flight">🗑</button></div>' +
-        '<div class="tp-stub-dates">' +
-        (f.date ? '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Date</div><div class="tp-stub-dateval">' + esc(f.date) + '</div></div>' : '') +
-        (f.time ? '<div class="tp-stub-datecol"><div class="tp-stub-datelabel">Time</div><div class="tp-stub-dateval">' + esc(f.time) + '</div></div>' : '') +
-        '</div>' +
-        (f.notes ? '<div class="tp-stub-note">' + esc(f.notes) + '</div>' : '') +
-        (f.addedBy ? '<div class="tp-stub-note">Added by ' + esc(f.addedBy) + '</div>' : '') +
-        '</div>';
+  function renderPacking() {
+    var panel = document.getElementById('packingPanel');
+    if (!state.packingOpen) { panel.innerHTML = ''; return; }
+    var total = state.packing.length;
+    var checkedCount = state.packing.filter(function (p) { return p.checked; }).length;
+    var body = PACK_CATEGORIES.map(function (cat) {
+      var items = state.packing.filter(function (p) { return p.category === cat; }).sort(function (a, b) { return a.order - b.order; });
+      var rows = items.length === 0 ? '<div class="tp-itin-empty">Nothing here yet</div>' : items.map(function (p, idx) {
+        return '<div class="tp-pack-row">' +
+          '<button class="tp-check ' + (p.checked ? 'checked' : '') + '" data-action="toggle-pack" data-id="' + p.id + '" aria-label="Toggle packed">' + (p.checked ? '✓' : '') + '</button>' +
+          '<input class="tp-input tp-pack-text ' + (p.checked ? 'checked' : '') + '" data-role="pack-text" data-id="' + p.id + '" value="' + esc(p.text) + '" />' +
+          '<div class="tp-itin-actions">' +
+          '<button class="tp-icon-btn" ' + (idx === 0 ? 'disabled' : '') + ' data-action="pack-move" data-dir="up" data-id="' + p.id + '" aria-label="Move up">↑</button>' +
+          '<button class="tp-icon-btn" ' + (idx === items.length - 1 ? 'disabled' : '') + ' data-action="pack-move" data-dir="down" data-id="' + p.id + '" aria-label="Move down">↓</button>' +
+          '<button class="tp-icon-btn" data-action="pack-delete" data-id="' + p.id + '" aria-label="Delete">🗑</button>' +
+          '</div></div>';
+      }).join('');
+      var d = (state.packDraft || {})[cat] || '';
+      var addRow = '<div class="tp-itin-add">' +
+        '<input class="tp-input tp-itin-text" placeholder="Add to ' + esc(cat) + '\u2026" data-role="pack-draft" data-category="' + esc(cat) + '" value="' + esc(d) + '" />' +
+        '<button class="tp-icon-btn" data-action="pack-add" data-category="' + esc(cat) + '" aria-label="Add item">➕</button></div>';
+      return '<div class="tp-itin-day"><div class="tp-itin-daylabel">' + esc(cat) + '</div>' + rows + addRow + '</div>';
     }).join('');
-    var empty = state.flights.length === 0 ? '<div class="tp-empty">Just the two group flights above so far — add your own below (Bangkok→Krabi, Phuket→Samui, anything else).</div>' : '';
 
-    var d = state.flDraft || { route: '', airline: '', date: '', time: '', notes: '', addedBy: '' };
-    var addForm = '<div class="tp-add-row" style="margin-top:0.8rem;">' +
-      '<input class="tp-input tp-input-title" placeholder="Route, e.g. Bangkok \u2192 Krabi" data-role="fl-draft-route" value="' + esc(d.route) + '" />' +
-      '<input class="tp-input tp-input-title" placeholder="Airline / flight no." data-role="fl-draft-airline" value="' + esc(d.airline) + '" />' +
-      '<input class="tp-input tp-input-cost" placeholder="Date" data-role="fl-draft-date" value="' + esc(d.date) + '" />' +
-      '<input class="tp-input tp-input-cost" placeholder="Time" data-role="fl-draft-time" value="' + esc(d.time) + '" />' +
-      '<input class="tp-input tp-input-title" placeholder="Notes (optional)" data-role="fl-draft-notes" value="' + esc(d.notes) + '" />' +
-      '<input class="tp-input tp-input-title" placeholder="Your name" data-role="fl-draft-addedby" value="' + esc(d.addedBy) + '" />' +
-      '<button class="tp-btn-add" data-action="add-flight">+ Add flight</button></div>';
-
-    document.getElementById('flightsPanel').innerHTML =
-      '<div class="tp-panel"><button class="tp-panel-head" data-action="toggle-flights">' +
-      '<div><div class="tp-panel-title">✈ Other flights</div><div class="tp-panel-sub">' + state.flights.length + ' added by the group</div></div>' +
-      '<span class="tp-chev ' + (state.flightsOpen ? 'open' : '') + '">⌄</span></button>' +
-      (state.flightsOpen ? '<div class="tp-panel-body">' + cards + empty + addForm + '</div>' : '') + '</div>';
+    panel.innerHTML = '<div class="tp-panel"><div class="tp-panel-body" style="border-top:none;padding-top:0.9rem;">' +
+      '<div class="tp-panel-title" style="margin-bottom:0.2rem;">🎒 Packing List</div>' +
+      '<div class="tp-panel-sub" style="margin-bottom:0.6rem;">' + checkedCount + ' / ' + total + ' packed</div>' +
+      body + '</div></div>';
   }
 
   function renderCostSummary() {
@@ -1287,12 +1362,12 @@
         '<div><div class="tp-panel-title"><span class="tp-leg-num">' + loc.leg + '</span> ' + esc(loc.name) + '</div>' +
         '<div class="tp-panel-sub">' + esc(loc.dates) + ' · <span class="tp-progress">' + checkedCount + '/' + locItems.length + ' added</span></div></div>' +
         '<span class="tp-chev ' + (open ? 'open' : '') + '">⌄</span></button>' +
-        (open ? '<div class="tp-panel-body">' + filterBtns + itemsHtml + addRow + itinSection + '</div>' : '') + '</div>';
+        (open ? '<div class="tp-panel-body">' + itinSection + filterBtns + itemsHtml + addRow + '</div>' : '') + '</div>';
     }).join('');
     document.getElementById('locationsPanel').innerHTML = html;
   }
 
-  function renderAll() { renderBookings(); renderAirbnbs(); renderFlights(); renderCostSummary(); renderLocations(); }
+  function renderAll() { renderBookings(); renderAirbnbs(); renderCostSummary(); renderLocations(); renderPacking(); }
 
   // ---------- events (delegated) ----------
   var app = document.getElementById('app');
@@ -1308,19 +1383,21 @@
     else if (action === 'toggle-location') toggleLocation(id);
     else if (action === 'toggle-bookings') { state.bookingsOpen = !state.bookingsOpen; renderAll(); }
     else if (action === 'toggle-airbnbs') { state.airbnbsOpen = !state.airbnbsOpen; renderAll(); }
-    else if (action === 'toggle-flights') { state.flightsOpen = !state.flightsOpen; renderAll(); }
     else if (action === 'add-item') addItem(el.dataset.location);
     else if (action === 'toggle-paid') togglePaid(id, el.dataset.name);
     else if (action === 'toggle-bk-person') toggleBkPerson(id, el.dataset.name);
     else if (action === 'delete-airbnb') deleteAirbnb(id);
     else if (action === 'add-airbnb') addAirbnb();
-    else if (action === 'delete-flight') deleteFlight(id);
-    else if (action === 'add-flight') addFlight();
     else if (action === 'toggle-itinerary') { state.itineraryOpen[id] = !state.itineraryOpen[id]; renderLocations(); }
     else if (action === 'itin-add') addItinEntry(el.dataset.location, el.dataset.day);
     else if (action === 'itin-delete') deleteItinEntry(id);
     else if (action === 'itin-move') moveItinEntry(id, el.dataset.dir);
     else if (action === 'filter-category') { state.categoryFilter[id] = el.dataset.category; renderLocations(); }
+    else if (action === 'toggle-packing') { state.packingOpen = !state.packingOpen; renderPacking(); }
+    else if (action === 'toggle-pack') togglePackItem(id);
+    else if (action === 'pack-delete') deletePackItem(id);
+    else if (action === 'pack-move') movePackItem(id, el.dataset.dir);
+    else if (action === 'pack-add') addPackItem(el.dataset.category);
     else if (action === 'retry-load') loadState();
   });
 
@@ -1355,12 +1432,6 @@
     else if (role === 'ab-draft-name') { state.abDraft = Object.assign({ name: '', location: '', party: '' }, state.abDraft, { name: el.value }); }
     else if (role === 'ab-draft-location') { state.abDraft = Object.assign({ name: '', location: '', party: '' }, state.abDraft, { location: el.value }); }
     else if (role === 'ab-draft-party') { state.abDraft = Object.assign({ name: '', location: '', party: '' }, state.abDraft, { party: el.value }); }
-    else if (role === 'fl-draft-route') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { route: el.value }); }
-    else if (role === 'fl-draft-airline') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { airline: el.value }); }
-    else if (role === 'fl-draft-date') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { date: el.value }); }
-    else if (role === 'fl-draft-time') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { time: el.value }); }
-    else if (role === 'fl-draft-notes') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { notes: el.value }); }
-    else if (role === 'fl-draft-addedby') { state.flDraft = Object.assign({ route: '', airline: '', date: '', time: '', notes: '', addedBy: '' }, state.flDraft, { addedBy: el.value }); }
     else if (role === 'itin-time') {
       var ie = state.itineraryEntries.find(function (x) { return x.id === el.dataset.id; });
       if (ie) { ie.time = el.value; scheduleFieldWrite(ie.id, 'time', ie.time); }
@@ -1376,6 +1447,13 @@
     else if (role === 'itin-draft-text') {
       var k2 = el.dataset.key;
       state.itinDraft[k2] = Object.assign({ time: '', text: '' }, state.itinDraft[k2], { text: el.value });
+    }
+    else if (role === 'pack-text') {
+      var pk = state.packing.find(function (x) { return x.id === el.dataset.id; });
+      if (pk) { pk.text = el.value; scheduleFieldWrite(pk.id, 'text', pk.text); }
+    }
+    else if (role === 'pack-draft') {
+      state.packDraft[el.dataset.category] = el.value;
     }
     else if (role === 'ab-bookedby') { ab = findAirbnb(el.dataset.id); if (ab) { ab.bookedBy = el.value; scheduleFieldWrite(ab.id, 'bookedBy', ab.bookedBy); } }
     else if (role === 'ab-note') { ab = findAirbnb(el.dataset.id); if (ab) { ab.note = el.value; scheduleFieldWrite(ab.id, 'note', ab.note); } }
@@ -1396,6 +1474,9 @@
     if (e.key === 'Enter' && e.target.dataset.role === 'itin-draft-text') {
       var parts = e.target.dataset.key.split(':::');
       addItinEntry(parts[0], parts[1]);
+    }
+    if (e.key === 'Enter' && e.target.dataset.role === 'pack-draft') {
+      addPackItem(e.target.dataset.category);
     }
   });
 
