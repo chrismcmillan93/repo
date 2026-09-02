@@ -244,6 +244,20 @@
   .add-form-actions .btn-add{ background: var(--lemon); color: var(--ink); }
   .add-form-actions .btn-cancel{ background: transparent; color: rgba(252,250,244,0.55); border:1px solid var(--line-strong); }
 
+  /* ---------- tap-to-choose ---------- */
+  .choice-block{ padding:10px 0; border-top:1px solid var(--line); }
+  .choice-time{ display:block; font-size:0.72rem; color: var(--majolica); font-weight:600; letter-spacing:0.02em; margin-bottom:2px; }
+  .choice-label{ font-family:'Fraunces', serif; font-size:0.92rem; font-weight:600; margin-bottom:10px; }
+  .choice-options{ display:flex; flex-direction:column; gap:10px; }
+  .choice-card{ border:1px solid var(--line-strong); border-radius:12px; padding:12px 14px; cursor:pointer; background: rgba(16,26,34,0.35); transition: border-color 0.15s ease, background 0.15s ease; }
+  .choice-card:hover{ border-color: var(--lemon); }
+  .choice-card.is-selected{ border-color: var(--lemon); background: rgba(242,183,5,0.12); box-shadow: 0 0 0 1px rgba(242,183,5,0.3); }
+  .choice-card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .choice-card-name{ font-weight:700; font-size:0.9rem; }
+  .choice-check{ font-size:0.72rem; color: var(--lemon); font-weight:700; flex-shrink:0; letter-spacing:0.03em; text-transform:uppercase; }
+  .choice-card-desc{ font-size:0.78rem; color: rgba(252,250,244,0.6); margin-top:5px; line-height:1.4; }
+  .choice-card-price{ font-size:0.78rem; color: var(--lemon); margin-top:6px; font-weight:600; }
+
   /* ---------- recommendations panel ---------- */
   .recs-toggle-wrap{ margin:14px 0; padding-top:12px; border-top:1px solid var(--line-strong); }
   .recs-toggle-btn{
@@ -377,7 +391,7 @@
 (function(){
   "use strict";
 
-  const STORAGE_KEY = 'naples-trip-dashboard-v5';
+  const STORAGE_KEY = 'naples-trip-dashboard-v7';
 
   // ---------------- supabase sync (checkbox states) ----------------
   const SUPABASE_URL = 'https://bcrmbuiuekklpocpllpw.supabase.co';
@@ -456,17 +470,21 @@
           {id:'d1-3', start:'11:15', end:'11:40', time:'11:15–11:40', text:'Taxi to the Airbnb (near Piazza Dante)', maps:'https://www.google.com/maps/search/?api=1&query=Piazza+Dante%2C+80135+Napoli', price_gbp:'£18–22', price_eur:'€20–25'},
           {id:'d1-4', start:'11:40', end:'13:45', time:'11:40–13:45', text:'Drop bags at Airbnb, freshen up, explore Spaccanapoli street', maps:'https://www.google.com/maps/search/?api=1&query=Spaccanapoli%2C+80134+Napoli', price_gbp:'—', price_eur:'—'},
           {id:'d1-5', start:'14:00', end:'15:30', time:'14:00–15:30', text:'★ BOOKED: Tandem Ristorante — legendary Neapolitan ragù lunch, outside seating (Via San Giovanni Maggiore Pignatelli location — Paladino/Piazzetta Nilo branch redirected your booking here)', maps:'https://www.google.com/maps/search/?api=1&query=Tandem+Rag%C3%B9%2C+Via+San+Giovanni+Maggiore+Pignatelli+1A%2C+80134+Napoli', rating:4.4, price_gbp:'£28–40', price_eur:'€32–46'},
-          {id:'d1-6', start:'15:30', end:'17:00', time:'15:30–17:00', text:'Post-lunch wander: Spaccanapoli, street art, Via San Gregorio Armeno (presepi shops)', maps:'https://www.google.com/maps/search/?api=1&query=Via+San+Gregorio+Armeno%2C+80138+Napoli', price_gbp:'—', price_eur:'—'},
-          {id:'d1-7', start:'17:00', end:'18:30', time:'17:00–18:30', text:'Caffè Gambrinus: sfogliatella & espresso with views (historic cafe, since 1860)', maps:'https://www.google.com/maps/search/?api=1&query=Caff%C3%A8+Gambrinus%2C+Via+Chiaia+1%2C+80132+Napoli', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8'},
-          {id:'d1-8', start:'18:30', end:'20:00', time:'18:30–20:00', text:'Aperitivo at Enoteca Belledonne — natural wines, charcuterie, Chiaia district', maps:'https://www.google.com/maps/search/?api=1&query=Enoteca+Belledonne%2C+Vico+Belledonne+a+Chiaia+18%2C+80121+Napoli', rating:4.5, price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d1-9', start:'20:00', end:'21:30', time:'20:00–21:30', text:'Alkymya Bellini: build-your-own cocktails, right on Piazza Bellini', maps:'https://www.google.com/maps/search/?api=1&query=Alkymya+Bellini%2C+Via+Santa+Maria+di+Costantinopoli+97%2C+80138+Napoli', rating:4.6, price_gbp:'£9–18', price_eur:'€10–20'},
-          {id:'d1-10', start:'21:30', end:'23:59', time:'21:30 – late', text:'Barril (Via Giuseppe Fiorelli, Chiaia): craft cocktails in a leafy garden. Or Vineria San Sebastiano — wherever the night takes you', maps:'https://www.google.com/maps/search/?api=1&query=Barril%2C+Via+Giuseppe+Fiorelli+11%2C+80121+Napoli', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18'}
+          {id:'d1-6', start:'15:30', end:'16:00', time:'15:30–16:00', text:'Cappella Sansevero — the Veiled Christ sculpture, Naples\' must-see (book online in advance, timed entry sells out)', maps:'https://www.google.com/maps/search/?api=1&query=Cappella+Sansevero%2C+Via+Francesco+de+Sanctis+19%2C+80134+Napoli', rating:4.7, price_gbp:'£7–9', price_eur:'€8–10'},
+          {id:'d1-7', start:'16:00', end:'16:20', time:'16:00–16:20', text:'Via San Gregorio Armeno — the presepi (nativity craft) street, artisan workshops', maps:'https://www.google.com/maps/search/?api=1&query=Via+San+Gregorio+Armeno%2C+80138+Napoli', rating:4.7, price_gbp:'—', price_eur:'—'},
+          {id:'d1-8', start:'16:20', end:'16:45', time:'16:20–16:45', text:'Duomo di Napoli (Cattedrale di Santa Maria Assunta) — home to the relics of San Gennaro', maps:'https://www.google.com/maps/search/?api=1&query=Duomo+di+Napoli%2C+Via+Duomo+147%2C+80138+Napoli', rating:4.7, price_gbp:'Free', price_eur:'Free'},
+          {id:'d1-9', start:'16:45', end:'17:05', time:'16:45–17:05', text:'Complesso Monumentale di Santa Chiara — quiet majolica-tiled cloister, good contrast to the busy streets', maps:'https://www.google.com/maps/search/?api=1&query=Complesso+Monumentale+di+Santa+Chiara%2C+Via+Santa+Chiara+49%2C+80134+Napoli', rating:4.7, price_gbp:'£6', price_eur:'€7'},
+          {id:'d1-10', start:'17:15', end:'17:45', time:'17:15–17:45', text:'Cammarota Spritz — famous €1 Aperol spritz in a plastic cup, buzzing mix of locals and tourists, right on the way toward the sea', maps:'https://www.google.com/maps/search/?api=1&query=Cammarota+Spritz%2C+Vico+Lungo+Teatro+Nuovo+31%2C+80134+Napoli', rating:4.5, price_gbp:'£1–3', price_eur:'€1–3'},
+          {id:'d1-11', start:'17:45', end:'18:45', time:'17:45–18:45', text:'Walk down Via Toledo toward the sea', maps:'https://www.google.com/maps/search/?api=1&query=Via+Toledo%2C+80132+Napoli', price_gbp:'—', price_eur:'—'},
+          {id:'d1-12', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Castel dell\'Ovo / Borgo Marinari — golden hour, sunset over the bay (~19:25)', maps:'https://www.google.com/maps/search/?api=1&query=Castel+dell%27Ovo%2C+Via+Eldorado+3%2C+80132+Napoli', rating:4.6, price_gbp:'Free', price_eur:'Free'},
+          {id:'d1-13', start:'20:00', end:'21:30', time:'20:00–21:30', text:'Dinner: Diego Vitagliano Pizzeria (Santa Lucia) — modern, award-winning pizzaiolo, steps from Castel dell\'Ovo, no trek required', maps:'https://www.google.com/maps/search/?api=1&query=Diego+Vitagliano+Pizzeria%2C+Via+Santa+Lucia+78%2C+80132+Napoli', rating:4.4, price_gbp:'£10–16', price_eur:'€12–18'},
+          {id:'d1-14', start:'21:30', end:'22:15', time:'21:30 – late', text:'Vinarium — 20+ year local favourite wine bar, house wine by the glass from €3.50, Chiaia', maps:'https://www.google.com/maps/search/?api=1&query=Vinarium%2C+Vico+Santa+Maria+a+Cappella+Vecchia+7%2C+80121+Napoli', rating:4.5, price_gbp:'£4–10', price_eur:'€4–12'}
         ]
       },
       {
         key:'day2', date:'2026-09-09', dow:'Wed', label:'9 Sep', title:'Vesuvius Hike & Volcanic Winery',
         items:[
-          {id:'d2-1', start:'07:30', end:'08:15', time:'07:30–08:15', text:'Breakfast: pastry & coffee at Pasticceria Poppella near Dante', maps:'https://www.google.com/maps/search/?api=1&query=Pasticceria+Poppella%2C+Via+Santa+Brigida+69%2C+80132+Napoli', rating:4.6, price_gbp:'£3–5', price_eur:'€4–6'},
+          {id:'d2-1', start:'07:30', end:'08:15', time:'07:30–08:15', text:'Breakfast: coffee & cornetto at Bar Mexico, right on Piazza Dante (historic since 1948 — zero walk from the Airbnb, steps from the Metro entrance)', maps:'https://www.google.com/maps/search/?api=1&query=Bar+Mexico%2C+Piazza+Dante+86%2C+80135+Napoli', price_gbp:'£3–5', price_eur:'€4–6'},
 
           {id:'d2-ves-1', start:'08:15', end:'09:00', time:'08:15–09:00', text:'Metro Dante (Line 1 → Garibaldi) → Circumvesuviana to Ercolano Scavi', maps:'https://www.google.com/maps/search/?api=1&query=Ercolano+Scavi+Station%2C+80056+Ercolano', price_gbp:'£1.50', price_eur:'€2.10'},
           {id:'d2-ves-2', start:'09:00', end:'09:30', time:'09:00–09:30', text:'Vesuvio Express shuttle bus: Ercolano Scavi → Quota 1000 car park (book crater ticket online in advance — limited daily capacity)', maps:'https://www.google.com/maps/search/?api=1&query=Vesuvio+Express%2C+Via+Cristoforo+Colombo%2C+80056+Ercolano', price_gbp:'£9–11', price_eur:'€10–12'},
@@ -480,9 +498,11 @@
           {id:'d2-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Evening stroll through Spaccanapoli — narrow medieval streets, street vendors, street art', maps:'https://www.google.com/maps/search/?api=1&query=Spaccanapoli%2C+80134+Napoli', price_gbp:'—', price_eur:'—'},
           {id:'d2-9', start:'18:45', end:'19:15', time:'18:45–19:15', text:'Stop at Piazza San Domenico Maggiore — baroque church, street musicians, local scene', maps:'https://www.google.com/maps/search/?api=1&query=Piazza+San+Domenico+Maggiore%2C+80134+Napoli', price_gbp:'—', price_eur:'—'},
           {id:'d2-10', start:'19:15', end:'20:00', time:'19:15–20:00', text:'Explore Via dei Tribunali — cafes, artisan shops, presepio boutiques, street food vendors', maps:'https://www.google.com/maps/search/?api=1&query=Via+dei+Tribunali%2C+80138+Napoli', price_gbp:'£4–10', price_eur:'€5–12'},
-          {id:'d2-11', start:'20:00', end:'20:45', time:'20:00–20:45', text:'Aperitivo at Enoteca Belledonne (Chiaia) or Alkymya Bellini (Piazza Bellini) — wine, cocktails, local crowd', maps:'https://www.google.com/maps/search/?api=1&query=Enoteca+Belledonne%2C+Vico+Belledonne+a+Chiaia+18%2C+80121+Napoli', rating:4.5, price_gbp:'£8–16', price_eur:'€10–18'},
-          {id:'d2-12', start:'20:45', end:'21:45', time:'20:45–21:45', text:'★ PIZZA: Pizzeria Gino Sorbillo — legendary family-run, on "via della pizza"', maps:'https://www.google.com/maps/search/?api=1&query=Gino+Sorbillo%2C+Via+dei+Tribunali+32%2C+80138+Napoli', rating:4.2, price_gbp:'£10–16', price_eur:'€12–18'},
-          {id:'d2-13', start:'21:45', end:'23:00', time:'21:45–23:00', text:'Alternative dinner: L\'Antica Pizzeria da Michele (since 1870, Margherita/Marinara only) or L\'Ebbrezza di Noè (pizza + natural wines)', maps:'https://www.google.com/maps/search/?api=1&query=LAntica+Pizzeria+da+Michele%2C+Via+Cesare+Sersale+1%2C+80139+Napoli', rating:4.4, price_gbp:'£6–10', price_eur:'€7–12'},
+          {id:'d2-11', start:'20:00', end:'20:45', time:'20:00–20:45', text:'Aperitivo at Alkymya Bellini — build-your-own cocktails, right on Piazza Bellini, no need to leave the neighbourhood', maps:'https://www.google.com/maps/search/?api=1&query=Alkymya+Bellini%2C+Via+Santa+Maria+di+Costantinopoli+97%2C+80138+Napoli', rating:4.6, price_gbp:'£9–18', price_eur:'€10–20'},
+          {id:'d2-pizza-choice', start:'20:45', end:'21:45', time:'20:45–21:45', choice:true, label:'★ PIZZA NIGHT — tap to choose', options:[
+            {key:'sorbillo', name:'Pizzeria Gino Sorbillo', desc:'Legendary family-run spot on "via della pizza" — busy, fast-moving queue (they text you when your table\'s ready), sit-down or al taglio. Quicker, and central to tonight\'s route.', rating:4.2, price_gbp:'£10–16', price_eur:'€12–18', maps:'https://www.google.com/maps/search/?api=1&query=Gino+Sorbillo%2C+Via+dei+Tribunali+32%2C+80138+Napoli', distNote:'4 min walk from Alkymya Bellini (previous stop) · 27 min walk to Barril (next stop)'},
+            {key:'michele', name:'L\'Antica Pizzeria da Michele', desc:'The legendary original since 1870 — Margherita or Marinara only, nothing else on the menu. Longer queue and a touch further out, but it\'s the name everyone asks about.', rating:4.3, price_gbp:'£5–9', price_eur:'€6–10', maps:'https://www.google.com/maps/search/?api=1&query=LAntica+Pizzeria+da+Michele%2C+Via+Cesare+Sersale+1%2C+80139+Napoli', distNote:'12 min walk from Alkymya Bellini (previous stop) · 33 min walk to Barril (next stop)'}
+          ]},
           {id:'d2-14', start:'23:00', end:'23:59', time:'23:00 – late', text:'Late night: Barril cocktail bar (Chiaia) or stroll Piazza Bellini, street food at vendors', maps:'https://www.google.com/maps/search/?api=1&query=Barril%2C+Via+Giuseppe+Fiorelli+11%2C+80121+Napoli', rating:4.4, price_gbp:'£6–12', price_eur:'€8–15'}
         ]
       },
@@ -498,7 +518,7 @@
           {id:'d3-7', start:'16:24', end:'17:49', time:'★ BOOKED: 16:24–17:49', text:'★ BOOKED: Return ferry Positano → Molo Beverello, Naples (NLG JET)', maps:'https://www.google.com/maps/search/?api=1&query=Molo+Beverello%2C+80133+Napoli', price_gbp:'Included', price_eur:'Included'},
           {id:'d3-8', start:'18:00', end:'18:45', time:'18:00–18:45', text:'Walk Lungomare Caracciolo — waterfront promenade with Vesuvius views, sea breezes, golden hour light', maps:'https://www.google.com/maps/search/?api=1&query=Lungomare+Caracciolo%2C+80122+Napoli', price_gbp:'—', price_eur:'—'},
           {id:'d3-9', start:'18:45', end:'19:30', time:'18:45–19:30', text:'Explore Borgo Marinaro — fishermen\'s quarter, pastel houses, local restaurants overlooking bay', maps:'https://www.google.com/maps/search/?api=1&query=Borgo+Marinaro%2C+80132+Napoli', price_gbp:'—', price_eur:'—'},
-          {id:'d3-10', start:'19:30', end:'20:15', time:'19:30–20:15', text:'Sunset drinks: Vesuvio Roof Bar & Restaurant near Piazza Garibaldi (confirmed panoramic Vesuvius/bay views — book ahead)', maps:'https://www.google.com/maps/search/?api=1&query=Vesuvio+Roof+Bar%2C+Piazza+Garibaldi+9%2C+80142+Napoli', price_gbp:'£15–30', price_eur:'€17–34'},
+          {id:'d3-10', start:'19:30', end:'20:15', time:'19:30–20:15', text:'Sunset drinks: Sky Lounge at Grand Hotel Vesuvio — rooftop terrace right by Castel dell\'Ovo, sea views over the bay (no need to trek across town — you\'re already right here)', maps:'https://www.google.com/maps/search/?api=1&query=Sky+Lounge+Grand+Hotel+Vesuvio%2C+Via+Partenope+45%2C+80121+Napoli', price_gbp:'£15–30', price_eur:'€17–34'},
           {id:'d3-11', start:'20:15', end:'21:30', time:'20:15–21:30', text:'Dinner: Pizzeria Sorbillo (street pizza al taglio, quick & authentic) or sit-down at L\'Ebbrezza di Noè', maps:'https://www.google.com/maps/search/?api=1&query=Gino+Sorbillo%2C+Via+dei+Tribunali+32%2C+80138+Napoli', rating:4.5, price_gbp:'£12–20', price_eur:'€14–23'},
           {id:'d3-12', start:'21:30', end:'22:30', time:'21:30–22:30', text:'Piazza Bellini nightlife — Alkymya Bellini for cocktails, street musicians, local energy', maps:'https://www.google.com/maps/search/?api=1&query=Alkymya+Bellini%2C+Via+Santa+Maria+di+Costantinopoli+97%2C+80138+Napoli', price_gbp:'£9–18', price_eur:'€10–20'},
           {id:'d3-13', start:'22:30', end:'23:59', time:'22:30 – late', text:'Late night: Vineria San Sebastiano (cosy wine bar, 29m from Dante Metro), more Piazza Bellini exploration, or wind down at Spaccanapoli', maps:'https://www.google.com/maps/search/?api=1&query=Vineria+San+Sebastiano%2C+Via+San+Sebastiano+11%2C+80134+Napoli', rating:4.6, price_gbp:'£6–14', price_eur:'€7–16'}
@@ -520,8 +540,9 @@
     extras: [
       {id:'ex-airbnb', name:'Accogliente appartamento nel Cuore della Città', tags:['Accommodation'], maps:'https://www.google.com/maps/search/?api=1&query=Piazza+Dante%2C+80135+Napoli', price_gbp:'£332.28 total', price_eur:'—', desc:'Piazza Dante — your base for 3 nights'},
 
-      {id:'ex-pastries', name:'Pasticceria Poppella', tags:['Breakfast','Pastries'], maps:'https://www.google.com/maps/search/?api=1&query=Pasticceria+Poppella%2C+Via+Santa+Brigida+69%2C+80132+Napoli', rating:4.6, price_gbp:'£3–5', price_eur:'€4–6', desc:'5 min walk from Airbnb — award-winning sfogliatelle, perfect for quick morning fuel'},
-      {id:'ex-coffee', name:'Caffè Gambrinus', tags:['Coffee','Historic Cafe'], maps:'https://www.google.com/maps/search/?api=1&query=Caffè+Gambrinus%2C+Via+Chiaia+1%2C+80132+Napoli', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8', desc:'10 min walk — legendary since 1860, great people-watching'},
+      {id:'ex-mexico', name:'Bar Mexico', tags:['Breakfast','Coffee','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Bar+Mexico%2C+Piazza+Dante+86%2C+80135+Napoli', desc:'Right on Piazza Dante, zero walk — historic since 1948, famous for its espresso blend'},
+      {id:'ex-pastries', name:'Pasticceria Poppella (Santa Brigida)', tags:['Breakfast','Pastries'], maps:'https://www.google.com/maps/search/?api=1&query=Pasticceria+Poppella%2C+Via+Santa+Brigida+69%2C+80132+Napoli', rating:4.6, price_gbp:'£3–5', price_eur:'€4–6', desc:'~12–15 min walk toward Via Toledo — award-winning sfogliatelle, worth the detour on your way to shopping'},
+      {id:'ex-coffee', name:'Caffè Gambrinus', tags:['Coffee','Historic Cafe'], maps:'https://www.google.com/maps/search/?api=1&query=Caffè+Gambrinus%2C+Via+Chiaia+1%2C+80132+Napoli', rating:4.6, price_gbp:'£4–7', price_eur:'€5–8', desc:'~15 min walk — legendary since 1860, great people-watching'},
 
       {id:'ex-beer', name:'Il Birraiuolo', tags:['Craft Beer','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Il+Birraiuolo%2C+Via+Vincenzo+Bellini+48%2C+80135+Napoli', rating:4.7, price_gbp:'£4–7', price_eur:'€5–8', desc:'Just north of Dante Metro — cosy local craft beer bar, super close'},
       {id:'ex-vineria', name:'Vineria San Sebastiano', tags:['Wine','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Vineria+San+Sebastiano%2C+Via+San+Sebastiano+11%2C+80134+Napoli', rating:4.6, price_gbp:'£6–14', price_eur:'€7–16', desc:'29m from Dante Metro — cosy, welcoming wine bar, warm local crowd'},
@@ -529,15 +550,19 @@
       {id:'ex-barril', name:'Barril', tags:['Cocktails','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Barril%2C+Via+Giuseppe+Fiorelli+11%2C+80121+Napoli', rating:4.4, price_gbp:'£8–16', price_eur:'€10–18', desc:'Chiaia — leafy garden cocktail bar, craft mixology'},
       {id:'ex-music', name:'Alter Ego Lounge Bar', tags:['Live Music','Cocktails','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Alter+Ego+Lounge+Bar%2C+Via+Santa+Maria+di+Costantinopoli+105%2C+80138+Napoli', rating:4.1, price_gbp:'£6–12', price_eur:'€7–14', desc:'Near Piazza Bellini — live music & DJs, worth staying late'},
       {id:'ex-alkymya', name:'Alkymya Bellini', tags:['Cocktails','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Alkymya+Bellini%2C+Via+Santa+Maria+di+Costantinopoli+97%2C+80138+Napoli', rating:4.6, price_gbp:'£9–18', price_eur:'€10–20', desc:'Right on Piazza Bellini — build-your-own cocktail concept, lively crowd'},
+      {id:'ex-cammarota', name:'Cammarota Spritz', tags:['Cocktails','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Cammarota+Spritz%2C+Vico+Lungo+Teatro+Nuovo+31%2C+80134+Napoli', rating:4.5, price_gbp:'£1–3', price_eur:'€1–3', desc:'€1 Aperol spritz in a plastic cup, near Via Toledo — buzzing, genuine mix of locals and tourists'},
+      {id:'ex-vinarium', name:'Vinarium', tags:['Wine','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Vinarium%2C+Vico+Santa+Maria+a+Cappella+Vecchia+7%2C+80121+Napoli', rating:4.5, price_gbp:'£4–10', price_eur:'€4–12', desc:'20+ year local favourite in Chiaia — house wine by the glass from €3.50'},
 
-      {id:'ex-pizza', name:'L\'Antica Pizzeria da Michele', tags:['Pizza','Iconic'], maps:'https://www.google.com/maps/search/?api=1&query=LAntica+Pizzeria+da+Michele%2C+Via+Cesare+Sersale+1%2C+80139+Napoli', rating:4.4, price_gbp:'£6–10', price_eur:'€7–12', desc:'Since 1870 — legendary, only Margherita & Marinara, expect a queue'},
+      {id:'ex-pizza', name:'L\'Antica Pizzeria da Michele', tags:['Pizza','Iconic'], maps:'https://www.google.com/maps/search/?api=1&query=LAntica+Pizzeria+da+Michele%2C+Via+Cesare+Sersale+1%2C+80139+Napoli', rating:4.3, price_gbp:'£5–9', price_eur:'€6–10', desc:'Since 1870 — legendary, only Margherita & Marinara, expect a queue'},
       {id:'ex-pizza-gino', name:'Pizzeria Gino Sorbillo', tags:['Pizza','Iconic'], maps:'https://www.google.com/maps/search/?api=1&query=Gino+Sorbillo%2C+Via+dei+Tribunali+32%2C+80138+Napoli', rating:4.2, price_gbp:'£10–16', price_eur:'€12–18', desc:'Legendary family-run on "via della pizza" — worth the wait'},
+      {id:'ex-vitagliano', name:'Diego Vitagliano Pizzeria — Santa Lucia', tags:['Pizza','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Diego+Vitagliano+Pizzeria%2C+Via+Santa+Lucia+78%2C+80132+Napoli', rating:4.4, price_gbp:'£10–16', price_eur:'€12–18', desc:'Modern, award-winning pizzaiolo, steps from Castel dell\'Ovo — gluten-free kitchen available'},
       {id:'ex-trattoria', name:'Osteria da Carmela', tags:['General Italian','Traditional','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Osteria+da+Carmela%2C+Via+Conte+di+Ruvo+11%2C+80135+Napoli', rating:4.4, price_gbp:'£16–26', price_eur:'€18–30', desc:'Since 1967 — family-run, authentic Neapolitan cooking'},
 
       {id:'ex-supermarket', name:'Carrefour Express (Via Chiaia)', tags:['Supermarket'], maps:'https://www.google.com/maps/search/?api=1&query=Carrefour+Express%2C+Via+Chiaia%2C+80121+Napoli', price_gbp:'—', price_eur:'—', desc:'Grab snacks, water, last-minute supplies'},
 
-      {id:'ex-viewpoint', name:'Castel dell\'Ovo', tags:['Viewpoint','Worth-the-trip'], maps:'https://www.google.com/maps/search/?api=1&query=Castel+dell%27Ovo%2C+Via+Eldorado+3%2C+80132+Napoli', price_gbp:'Free', price_eur:'Free', desc:'Golden hour sunset over the bay — magical light'},
-      {id:'ex-rooftop', name:'Vesuvio Roof Bar & Restaurant', tags:['Rooftop Bar','Sunset','Worth-the-trip'], maps:'https://www.google.com/maps/search/?api=1&query=Vesuvio+Roof+Bar%2C+Piazza+Garibaldi+9%2C+80142+Napoli', price_gbp:'£15–30', price_eur:'€17–34', desc:'Confirmed panoramic Vesuvius & bay views, on Line 1 near Garibaldi — book ahead'},
+      {id:'ex-viewpoint', name:'Castel dell\'Ovo', tags:['Viewpoint','Worth-the-trip'], maps:'https://www.google.com/maps/search/?api=1&query=Castel+dell%27Ovo%2C+Via+Eldorado+3%2C+80132+Napoli', rating:4.6, price_gbp:'Free', price_eur:'Free', desc:'Golden hour sunset over the bay — magical light'},
+      {id:'ex-sansevero', name:'Cappella Sansevero', tags:['Worth-the-trip'], maps:'https://www.google.com/maps/search/?api=1&query=Cappella+Sansevero%2C+Via+Francesco+de+Sanctis+19%2C+80134+Napoli', rating:4.7, price_gbp:'£7–9', price_eur:'€8–10', desc:'The Veiled Christ sculpture — book online, timed entry sells out'},
+      {id:'ex-rooftop', name:'Sky Lounge, Grand Hotel Vesuvio', tags:['Rooftop Bar','Sunset','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Sky+Lounge+Grand+Hotel+Vesuvio%2C+Via+Partenope+45%2C+80121+Napoli', price_gbp:'£15–30', price_eur:'€17–34', desc:'Right by Castel dell\'Ovo on the Santa Lucia waterfront — panoramic bay views, easy walk from the ferry port'},
       {id:'ex-lungomare', name:'Lungomare Caracciolo', tags:['Viewpoint','Free'], maps:'https://www.google.com/maps/search/?api=1&query=Lungomare+Caracciolo%2C+80122+Napoli', price_gbp:'Free', price_eur:'Free', desc:'Waterfront walk with Vesuvius views — perfect for golden hour'},
       {id:'ex-borgo', name:'Borgo Marinaro', tags:['Viewpoint','Neighborhood'], maps:'https://www.google.com/maps/search/?api=1&query=Borgo+Marinaro%2C+80132+Napoli', price_gbp:'—', price_eur:'—', desc:'Fishermen\'s quarter by Castel dell\'Ovo, pastel houses, local vibe'},
       {id:'ex-metro-dante', name:'Dante Metro Station', tags:['Transport'], maps:'https://www.google.com/maps/search/?api=1&query=Dante+Metro+Station%2C+Piazza+Dante%2C+80135+Napoli', price_gbp:'£8 (3-day pass)', price_eur:'€9.60 (3-day pass)', desc:'Your transport hub'},
@@ -591,8 +616,8 @@
   function defaultState(){
     return {
       order: {
-        day1:['d1-1','d1-2','d1-3','d1-4','d1-5','d1-6','d1-7','d1-8','d1-9','d1-10'],
-        day2:['d2-1','d2-pom-1','d2-pom-2','d2-pom-3','d2-ves-1','d2-ves-2','d2-ves-3','d2-ves-4','d2-ves-5','d2-5','d2-6','d2-7','d2-8','d2-9','d2-10','d2-11','d2-12','d2-13','d2-14'],
+        day1:['d1-1','d1-2','d1-3','d1-4','d1-5','d1-6','d1-7','d1-8','d1-9','d1-10','d1-11','d1-12','d1-13','d1-14'],
+        day2:['d2-1','d2-ves-1','d2-ves-2','d2-ves-3','d2-ves-4','d2-ves-5','d2-5','d2-6','d2-7','d2-8','d2-9','d2-10','d2-11','d2-pizza-choice','d2-14'],
         day3:['d3-1','d3-2','d3-3','d3-4','d3-5','d3-6','d3-7','d3-8','d3-9','d3-10','d3-11','d3-12','d3-13'],
         day4:['d4-1','d4-2','d4-3','d4-4','d4-5','d4-6','d4-7']
       },
@@ -1074,6 +1099,36 @@
     return html;
   }
 
+  function renderChoiceItem(item){
+    let selected = null;
+    item.options.forEach(function(opt){
+      if(state.done[item.id+'__'+opt.key]) selected = opt.key;
+    });
+    const allKeys = item.options.map(function(o){ return o.key; }).join(',');
+    let html = '<div class="choice-block">';
+    html += '  <span class="choice-time">'+item.time+'</span>';
+    html += '  <div class="choice-label">'+item.label+'</div>';
+    html += '  <div class="choice-options">';
+    item.options.forEach(function(opt){
+      const isSel = selected===opt.key;
+      html += '    <div class="choice-card '+(isSel?'is-selected':'')+'" data-action="select-choice" data-choice-id="'+item.id+'" data-option-key="'+opt.key+'" data-all-keys="'+allKeys+'">';
+      html += '      <div class="choice-card-head"><span class="choice-card-name">'+escapeHtml(opt.name)+'</span>'+(isSel?'<span class="choice-check">✓ Chosen</span>':'')+'</div>';
+      html += '      <div>'+formatRating(opt.rating)+'</div>';
+      html += '      <div class="choice-card-desc">'+escapeHtml(opt.desc)+'</div>';
+      html += '      <div class="choice-card-price">est. '+escapeHtml(opt.price_gbp||'—')+' / '+escapeHtml(opt.price_eur||'—')+'</div>';
+      if(opt.distNote){
+        html += '      <span class="item-estimate">🚶 '+escapeHtml(opt.distNote)+'</span>';
+      }
+      if(opt.maps){
+        html += '      <div style="margin-top:3px;"><a class="item-maps-link" href="'+getMapsUrl(opt.maps)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺 Maps</a></div>';
+      }
+      html += '    </div>';
+    });
+    html += '  </div>';
+    html += '</div>';
+    return html;
+  }
+
   // ---------------- days ----------------
   function renderDays(){
     const container = document.getElementById('daysContainer');
@@ -1096,6 +1151,10 @@
           if(!item) return;
           if(item.recsBefore){
             html += renderRecommendationsPanel(item.recsBefore);
+          }
+          if(item.choice){
+            html += renderChoiceItem(item);
+            return;
           }
           const isDone = !!state.done[id];
           const isSkipped = !!state.skipped[id];
@@ -1226,6 +1285,17 @@
     } else if(action==='cancel-add'){
       uiState.openAddForm.delete(dayKey);
       renderDays();
+    } else if(action==='select-choice'){
+      const choiceId = target.dataset.choiceId;
+      const optionKey = target.dataset.optionKey;
+      const allKeys = (target.dataset.allKeys||'').split(',');
+      allKeys.forEach(function(k){
+        if(!k) return;
+        const oid = choiceId+'__'+k;
+        state.done[oid] = (k===optionKey);
+        saveCheckboxStateToSupabase(oid, state.done[oid]);
+      });
+      saveState(); renderDays();
     } else if(action==='toggle-recs'){
       const key = target.dataset.key;
       if(uiState.openRecommendations.has(key)) uiState.openRecommendations.delete(key); else uiState.openRecommendations.add(key);
