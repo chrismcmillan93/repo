@@ -10,12 +10,10 @@ import { getUserId } from './state.js';
 import { todayISO, formatDateDMY } from './utils.js';
 import { DEMO_MODE } from './config.js';
 import { createDemoClient } from './demoClient.js';
-import { buildDemoData } from './blankData.js';
+import { buildDemoData } from './demoData.js';
 
-// This is the LIVE app: no sample data. In DEMO_MODE every call below runs
-// against an empty in-memory dataset (real empty states, not error
-// banners) instead of the network — see config.js to switch back to the
-// real Supabase project once it's ready.
+// In DEMO_MODE every call below runs against an in-memory sample dataset
+// instead of the network — see config.js to switch back to the real thing.
 const supabase = DEMO_MODE ? createDemoClient(buildDemoData()) : realSupabase;
 
 function requireUser() {

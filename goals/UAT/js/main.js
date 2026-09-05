@@ -170,7 +170,7 @@ async function bootstrap() {
     // Sign-in is temporarily disabled — see config.js to re-enable it.
     if (demoBanner) demoBanner.hidden = false;
     logoutBtn.style.display = 'none';
-    const demoUser = { id: 'demo-user', email: 'Preview — sign-in disabled, no data yet' };
+    const demoUser = { id: 'demo-user', email: 'UAT — sign-in disabled, no data yet' };
     setCurrentUser(demoUser);
     showApp(demoUser);
     return;
