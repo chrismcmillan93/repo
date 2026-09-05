@@ -5,9 +5,16 @@
 // Every insert stamps user_id explicitly: RLS's with_check clauses require
 // user_id = auth.uid(), and PostgREST does not fill that in for you.
 
-import { supabase } from './supabaseClient.js';
-import { getUserId, getCurrentUser } from './state.js';
+import { supabase as realSupabase } from './supabaseClient.js';
+import { getUserId } from './state.js';
 import { todayISO, formatDateDMY } from './utils.js';
+import { DEMO_MODE } from './config.js';
+import { createDemoClient } from './demoClient.js';
+import { buildDemoData } from './demoData.js';
+
+// In DEMO_MODE every call below runs against an in-memory sample dataset
+// instead of the network — see config.js to switch back to the real thing.
+const supabase = DEMO_MODE ? createDemoClient(buildDemoData()) : realSupabase;
 
 function requireUser() {
   const id = getUserId();
