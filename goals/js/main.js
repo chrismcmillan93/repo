@@ -7,6 +7,7 @@ import {
 } from './auth.js';
 import { setCurrentUser } from './state.js';
 import { route, startRouter } from './router.js';
+import { DEMO_MODE } from './config.js';
 
 import { renderDashboard } from './views/dashboard.js';
 import { renderAreas } from './views/areas.js';
@@ -32,6 +33,7 @@ const codeSubmit = document.getElementById('code-submit');
 
 const userEmailEl = document.getElementById('auth-user-email');
 const logoutBtn = document.getElementById('logout-btn');
+const demoBanner = document.getElementById('demo-banner');
 
 let pendingEmail = '';
 let routerStarted = false;
@@ -49,10 +51,12 @@ async function showApp(user) {
 
   if (!seededThisSession) {
     seededThisSession = true;
-    // Safe to call repeatedly (on conflict do nothing) — see §0 of the build spec.
-    supabase.rpc('seed_default_areas').then(({ error }) => {
-      if (error) console.warn('seed_default_areas failed — is the goals schema exposed yet?', error.message);
-    });
+    if (!DEMO_MODE) {
+      // Safe to call repeatedly (on conflict do nothing) — see §0 of the build spec.
+      supabase.rpc('seed_default_areas').then(({ error }) => {
+        if (error) console.warn('seed_default_areas failed — is the goals schema exposed yet?', error.message);
+      });
+    }
   }
 
   if (!routerStarted) {
@@ -162,6 +166,16 @@ function showAuthErrorFromUrl(info) {
 }
 
 async function bootstrap() {
+  if (DEMO_MODE) {
+    // Sign-in is temporarily disabled — see config.js to re-enable it.
+    if (demoBanner) demoBanner.hidden = false;
+    logoutBtn.style.display = 'none';
+    const demoUser = { id: 'demo-user', email: 'Demo mode — sample data, not connected to Supabase' };
+    setCurrentUser(demoUser);
+    showApp(demoUser);
+    return;
+  }
+
   setupAuthForm();
   setupLogout();
 

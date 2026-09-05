@@ -102,6 +102,13 @@ a{ color: var(--accent); }
 .back-link{ display:inline-block; font-size:0.82rem; color: var(--ink-soft); text-decoration:none; margin-bottom:12px; }
 .back-link:hover{ color: var(--ink); }
 
+/* ---------- demo mode banner ---------- */
+.demo-banner{
+  background: rgba(192,138,62,0.14); border:1px solid rgba(192,138,62,0.4); color: #8a601f;
+  border-radius:10px; padding:10px 14px; font-size:0.8rem; line-height:1.5; margin-bottom:18px;
+}
+.demo-banner code{ background: rgba(43,39,33,0.08); padding:1px 6px; border-radius:6px; }
+
 /* ---------- generic states ---------- */
 .loading-state, .empty-state, .error-banner{ text-align:center; padding: 20px 10px; }
 .empty-title{ font-family:'Fraunces', serif; font-size:1.05rem; margin:0 0 4px; }
