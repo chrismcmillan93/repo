@@ -56,9 +56,9 @@ export function formatNumber(n, unit) {
   return unit ? `${str} ${unit}` : str;
 }
 
-const HORIZON_LABELS = { annual: 'Annual', quarterly: 'Quarterly', long_term: 'Long-term' };
+const HORIZON_LABELS = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annual', long_term: 'Long-term' };
 const STATUS_LABELS = { active: 'Active', paused: 'Paused', achieved: 'Achieved', dropped: 'Dropped' };
-const MEASURE_LABELS = { numeric: 'Numeric', milestone: 'Milestones', narrative: 'Narrative' };
+const MEASURE_LABELS = { numeric: 'Numeric', milestone: 'Milestones', pass_fail: 'Pass/fail', narrative: 'Narrative' };
 const DECISION_LABELS = { continue: 'Continue', adjust: 'Adjust', pause: 'Pause', complete: 'Complete', drop: 'Drop' };
 const PERIOD_LABELS = { month: 'Month', quarter: 'Quarter', year: 'Year' };
 

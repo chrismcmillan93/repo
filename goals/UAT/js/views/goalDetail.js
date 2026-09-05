@@ -4,7 +4,7 @@
 
 import * as db from '../db.js';
 import {
-  escapeHtml, formatDateDMY, formatNumber, todayISO,
+  escapeHtml, formatDateDMY, formatNumber, formatPercent, todayISO,
   horizonLabel, statusLabel, measureLabel, decisionLabel, renderNote
 } from '../utils.js';
 import { periodLabel } from '../periods.js';
@@ -68,7 +68,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
 
     <section class="card">
       <p class="card-eyebrow">Progress</p>
-      ${renderPaceBar(p ? p.percent_complete : null, p ? p.percent_elapsed : null, area.colour)}
+      ${renderPaceBar(p ? p.percent_complete : null, p ? p.percent_elapsed : null, area.colour, passFailLabel(goal, p))}
       ${renderMeasureDetail(goal, p)}
     </section>
 
@@ -97,6 +97,11 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
         ${goal.measure_type === 'numeric' ? `<label>Value${goal.unit ? ' (' + escapeHtml(goal.unit) + ')' : ''}
           <input type="number" step="any" name="value">
         </label>` : ''}
+        ${goal.measure_type === 'pass_fail' ? `<label class="picker-label">This period</label>
+        <div class="passfail-toggle" data-passfail-toggle>
+          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="1">✓ Achieved</button>
+          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="0">✗ Not achieved</button>
+        </div>` : ''}
         <label class="picker-label">Confidence it'll land</label>
         ${pickerHtml('detail-update', '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
         <button type="submit" class="btn btn-primary">Save update</button>
@@ -105,7 +110,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
 
     <section class="card">
       <p class="card-eyebrow">Timeline</p>
-      ${renderTimeline(updates)}
+      ${renderTimeline(updates, goal.measure_type)}
     </section>
 
     <section class="card">
@@ -124,7 +129,20 @@ function renderMeasureDetail(goal, p) {
   if (goal.measure_type === 'milestone' && p) {
     return `<p class="measure-detail">${Number(p.milestones_done)} of ${Number(p.milestone_count)} milestones done</p>`;
   }
+  if (goal.measure_type === 'pass_fail') {
+    const target = goal.target_value ? formatNumber(goal.target_value, goal.unit) + ' per period' : null;
+    return `<p class="measure-detail">${target ? `Target: ${target}. ` : ''}Reviewed pass/fail each period, not a running number.</p>`;
+  }
   return `<p class="measure-detail">Narrative goal — tracked through notes, not a number.</p>`;
+}
+
+/** Pace-bar caption override for pass_fail goals — "72% complete" doesn't read as a hit-rate. */
+function passFailLabel(goal, p) {
+  if (goal.measure_type !== 'pass_fail' || !p) return undefined;
+  const total = Number(p.pass_fail_total || 0);
+  if (!total) return 'No periods logged yet';
+  const hits = Number(p.pass_fail_hits || 0);
+  return `${hits} of ${total} periods achieved (${formatPercent(p.percent_complete)})`;
 }
 
 function renderMilestonesSection(milestones) {
@@ -150,18 +168,28 @@ function renderMilestonesSection(milestones) {
   `;
 }
 
-function renderTimeline(updates) {
+function renderTimeline(updates, measureType) {
   if (!updates.length) return emptyStateHtml('No updates yet', 'Add your first one above.');
   return `<ul class="timeline-list">${updates.map((u) => `
     <li class="timeline-item">
       <div class="timeline-item-head">
         <span class="timeline-date">${formatDateDMY(u.occurred_on)}</span>
-        ${u.value !== null && u.value !== undefined ? `<span class="timeline-value">${formatNumber(u.value)}</span>` : ''}
+        ${timelineValueHtml(u, measureType)}
         ${u.confidence ? `<span class="timeline-confidence" title="Confidence">Confidence ${u.confidence}/5</span>` : ''}
       </div>
       ${u.note ? `<div class="timeline-note">${renderNote(u.note)}</div>` : ''}
     </li>
   `).join('')}</ul>`;
+}
+
+function timelineValueHtml(u, measureType) {
+  if (u.value === null || u.value === undefined) return '';
+  if (measureType === 'pass_fail') {
+    return Number(u.value) >= 1
+      ? `<span class="timeline-value pf-hit">✓ Achieved</span>`
+      : `<span class="timeline-value pf-miss">✗ Not achieved</span>`;
+  }
+  return `<span class="timeline-value">${formatNumber(u.value)}</span>`;
 }
 
 function renderReviewRefs(refs) {
@@ -193,15 +221,30 @@ function bindPage(root, goal, updates) {
 
   let confidence = null;
   bindPicker(root, 'detail-update', (v) => { confidence = v; });
+
+  let passFailValue = null;
+  const pfToggle = root.querySelector('[data-passfail-toggle]');
+  if (pfToggle) {
+    pfToggle.querySelectorAll('[data-pf-value]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        passFailValue = Number(btn.dataset.pfValue);
+        pfToggle.querySelectorAll('[data-pf-value]').forEach((b) => b.classList.toggle('is-selected', b === btn));
+      });
+    });
+  }
+
   const addForm = root.querySelector('#add-update-form');
   addForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(addForm);
+    let value = null;
+    if (goal.measure_type === 'numeric') value = fd.get('value');
+    else if (goal.measure_type === 'pass_fail') value = passFailValue;
     await db.createGoalUpdate({
       goal_id: goal.id,
       occurred_on: fd.get('occurred_on'),
       note: fd.get('note'),
-      value: goal.measure_type === 'numeric' ? fd.get('value') : null,
+      value,
       confidence
     });
     renderGoalDetail(root, { id: goal.id });

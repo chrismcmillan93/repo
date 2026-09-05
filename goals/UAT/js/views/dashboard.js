@@ -3,7 +3,7 @@
 // momentum grid.
 
 import * as db from '../db.js';
-import { escapeHtml, relativeDays } from '../utils.js';
+import { escapeHtml, relativeDays, formatPercent } from '../utils.js';
 import { periodLabel } from '../periods.js';
 import { renderRadar } from '../charts/radar.js';
 import { renderPaceBar } from '../charts/paceBar.js';
@@ -111,17 +111,30 @@ function goalCardHtml(g) {
         <span class="goal-card-meta">${lastUpdateLabel}</span>
       </div>
       ${overdueBannerHtml(g)}
-      ${renderPaceBar(p.percent_complete ?? null, p.percent_elapsed ?? null, g.areaColour)}
+      ${renderPaceBar(p.percent_complete ?? null, p.percent_elapsed ?? null, g.areaColour, passFailLabel(g, p))}
       <button type="button" class="quick-update-toggle" data-action="toggle-quick-update">+ Add update</button>
       <form class="quick-update-form" hidden data-quick-update-for="${g.id}">
         <textarea name="note" placeholder="What happened?" rows="2"></textarea>
         ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="Value${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
+        ${g.measure_type === 'pass_fail' ? `<div class="passfail-toggle" data-passfail-toggle>
+          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="1">✓ Achieved</button>
+          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="0">✗ Not achieved</button>
+        </div>` : ''}
         <label class="picker-label">Confidence</label>
         ${pickerHtml(`qu-${g.id}`, '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
         <button type="submit" class="btn btn-primary btn-sm">Save update</button>
       </form>
     </div>
   `;
+}
+
+/** Pace-bar caption override for pass_fail goals — "72% complete" doesn't read as a hit-rate. */
+function passFailLabel(g, p) {
+  if (g.measure_type !== 'pass_fail' || !p) return undefined;
+  const total = Number(p.pass_fail_total || 0);
+  if (!total) return 'No periods logged yet';
+  const hits = Number(p.pass_fail_hits || 0);
+  return `${hits} of ${total} periods achieved (${formatPercent(p.percent_complete)})`;
 }
 
 async function renderMomentumSection(goals) {
@@ -169,14 +182,29 @@ function bindDashboardEvents(root, goals) {
     const goalId = form.dataset.quickUpdateFor;
     let confidence = null;
     bindPicker(root, `qu-${goalId}`, (v) => { confidence = v; });
+
+    let passFailValue = null;
+    const pfToggle = form.querySelector('[data-passfail-toggle]');
+    if (pfToggle) {
+      pfToggle.querySelectorAll('[data-pf-value]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          passFailValue = Number(btn.dataset.pfValue);
+          pfToggle.querySelectorAll('[data-pf-value]').forEach((b) => b.classList.toggle('is-selected', b === btn));
+        });
+      });
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const goal = goals.find((g) => g.id === goalId);
+      let value = null;
+      if (goal && goal.measure_type === 'numeric') value = fd.get('value');
+      else if (goal && goal.measure_type === 'pass_fail') value = passFailValue;
       await db.createGoalUpdate({
         goal_id: goalId,
         note: fd.get('note'),
-        value: goal && goal.measure_type === 'numeric' ? fd.get('value') : null,
+        value,
         confidence
       });
       renderDashboard(root);
