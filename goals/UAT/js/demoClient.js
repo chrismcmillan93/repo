@@ -60,7 +60,11 @@ function computeGoalProgress(store) {
       horizon: g.horizon, priority: g.priority, measure_type: g.measure_type,
       start_date: g.start_date, target_date: g.target_date, unit: g.unit,
       start_value: g.start_value, target_value: g.target_value, direction: g.direction,
-      current_value: g.measure_type === 'numeric' ? currentValue : Number(g.start_value || 0),
+      // Matches the real view's unconditional `coalesce(latest.value, start_value)` —
+      // no measure_type branch here (a previous version of this incorrectly zeroed
+      // current_value for non-numeric goals, which broke pass_fail's "am I checked
+      // in this period" check on the dashboard).
+      current_value: currentValue,
       last_update_on: latest ? latest.occurred_on : null,
       latest_confidence: latest ? latest.confidence : null,
       update_count: ups.length,

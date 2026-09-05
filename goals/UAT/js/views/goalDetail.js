@@ -7,7 +7,7 @@ import {
   escapeHtml, formatDateDMY, formatNumber, formatPercent, todayISO,
   horizonLabel, statusLabel, measureLabel, decisionLabel, renderNote
 } from '../utils.js';
-import { periodLabel } from '../periods.js';
+import { periodLabel, enumeratePeriods, horizonToPeriodType } from '../periods.js';
 import { renderPaceBar } from '../charts/paceBar.js';
 import { renderSparkline } from '../charts/sparkline.js';
 import { renderConfidenceTrend } from '../charts/confidenceTrend.js';
@@ -85,28 +85,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
 
     ${goal.measure_type === 'milestone' ? renderMilestonesSection(milestones) : ''}
 
-    <section class="card">
-      <p class="card-eyebrow">Add an update</p>
-      <form id="add-update-form" class="stacked-form">
-        <label>Date
-          <input type="date" name="occurred_on" value="${todayISO()}" max="${todayISO()}" required>
-        </label>
-        <label>Note
-          <textarea name="note" rows="2" placeholder="What happened, what you noticed…"></textarea>
-        </label>
-        ${goal.measure_type === 'numeric' ? `<label>Value${goal.unit ? ' (' + escapeHtml(goal.unit) + ')' : ''}
-          <input type="number" step="any" name="value">
-        </label>` : ''}
-        ${goal.measure_type === 'pass_fail' ? `<label class="picker-label">This period</label>
-        <div class="passfail-toggle" data-passfail-toggle>
-          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="1">✓ Achieved</button>
-          <button type="button" class="btn btn-quiet btn-sm" data-pf-value="0">✗ Not achieved</button>
-        </div>` : ''}
-        <label class="picker-label">Confidence it'll land</label>
-        ${pickerHtml('detail-update', '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
-        <button type="submit" class="btn btn-primary">Save update</button>
-      </form>
-    </section>
+    ${goal.measure_type === 'pass_fail' ? renderCheckInSection(goal, updates) : renderAddUpdateForm(goal)}
 
     <section class="card">
       <p class="card-eyebrow">Timeline</p>
@@ -143,6 +122,73 @@ function passFailLabel(goal, p) {
   if (!total) return 'No periods logged yet';
   const hits = Number(p.pass_fail_hits || 0);
   return `${hits} of ${total} periods achieved (${formatPercent(p.percent_complete)})`;
+}
+
+function renderAddUpdateForm(goal) {
+  return `
+    <section class="card">
+      <p class="card-eyebrow">Add an update</p>
+      <form id="add-update-form" class="stacked-form">
+        <label>Date
+          <input type="date" name="occurred_on" value="${todayISO()}" max="${todayISO()}" required>
+        </label>
+        <label>Note
+          <textarea name="note" rows="2" placeholder="What happened, what you noticed…"></textarea>
+        </label>
+        ${goal.measure_type === 'numeric' ? `<label>Value${goal.unit ? ' (' + escapeHtml(goal.unit) + ')' : ''}
+          <input type="number" step="any" name="value">
+        </label>` : ''}
+        <label class="picker-label">Confidence it'll land</label>
+        ${pickerHtml('detail-update', '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
+        <button type="submit" class="btn btn-primary">Save update</button>
+      </form>
+    </section>
+  `;
+}
+
+const CHECKIN_VISIBLE_DEFAULT = 12;
+
+/**
+ * One row per period (week/month/quarter, per the goal's horizon) from
+ * start_date through today, newest first — a fixed slot per period rather
+ * than an open-ended dated form, so a gap in checking in is obvious and a
+ * period can only ever hold one outcome. Click a button to select it,
+ * click the same one again to deselect (clears that period back to
+ * "not checked in yet").
+ */
+function renderCheckInSection(goal, updates) {
+  const periodType = horizonToPeriodType(goal.horizon);
+  const byOccurredOn = new Map(updates.map((u) => [u.occurred_on, u]));
+  const periods = enumeratePeriods(periodType, goal.start_date, todayISO()).reverse();
+  const visible = periods.slice(0, CHECKIN_VISIBLE_DEFAULT);
+  const hidden = periods.slice(CHECKIN_VISIBLE_DEFAULT);
+
+  const rowHtml = (period) => {
+    const existing = byOccurredOn.get(period.start);
+    const state = existing ? Number(existing.value) : null; // 1, 0, or null (not checked in)
+    return `
+      <li class="checkin-row" data-checkin-period="${period.start}">
+        <span class="checkin-label">${escapeHtml(periodLabel(periodType, period.start))}${state === null ? '<span class="checkin-pending">Not checked in yet</span>' : ''}</span>
+        <div class="passfail-toggle">
+          <button type="button" class="btn btn-quiet btn-sm ${state === 1 ? 'is-selected' : ''}" data-pf-value="1">✓ Achieved</button>
+          <button type="button" class="btn btn-quiet btn-sm ${state === 0 ? 'is-selected' : ''}" data-pf-value="0">✗ Not achieved</button>
+        </div>
+      </li>
+    `;
+  };
+
+  return `
+    <section class="card">
+      <p class="card-eyebrow">Check in per ${periodType}</p>
+      <ul class="checkin-list">${visible.map(rowHtml).join('')}</ul>
+      ${hidden.length ? `
+        <details class="archived-details">
+          <summary>Show ${hidden.length} earlier ${periodType}${hidden.length === 1 ? '' : 's'}</summary>
+          <ul class="checkin-list">${hidden.map(rowHtml).join('')}</ul>
+        </details>
+      ` : ''}
+    </section>
+  `;
 }
 
 function renderMilestonesSection(milestones) {
@@ -219,36 +265,36 @@ function bindPage(root, goal, updates) {
     renderGoalDetail(root, { id: goal.id });
   });
 
-  let confidence = null;
-  bindPicker(root, 'detail-update', (v) => { confidence = v; });
-
-  let passFailValue = null;
-  const pfToggle = root.querySelector('[data-passfail-toggle]');
-  if (pfToggle) {
-    pfToggle.querySelectorAll('[data-pf-value]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        passFailValue = Number(btn.dataset.pfValue);
-        pfToggle.querySelectorAll('[data-pf-value]').forEach((b) => b.classList.toggle('is-selected', b === btn));
+  if (goal.measure_type === 'pass_fail') {
+    root.querySelectorAll('[data-checkin-period]').forEach((row) => {
+      const periodStart = row.dataset.checkinPeriod;
+      row.querySelectorAll('[data-pf-value]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const value = Number(btn.dataset.pfValue);
+          const alreadySelected = btn.classList.contains('is-selected');
+          await db.setPeriodCheckIn(goal.id, periodStart, alreadySelected ? null : !!value);
+          renderGoalDetail(root, { id: goal.id });
+        });
       });
     });
-  }
+  } else {
+    let confidence = null;
+    bindPicker(root, 'detail-update', (v) => { confidence = v; });
 
-  const addForm = root.querySelector('#add-update-form');
-  addForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(addForm);
-    let value = null;
-    if (goal.measure_type === 'numeric') value = fd.get('value');
-    else if (goal.measure_type === 'pass_fail') value = passFailValue;
-    await db.createGoalUpdate({
-      goal_id: goal.id,
-      occurred_on: fd.get('occurred_on'),
-      note: fd.get('note'),
-      value,
-      confidence
+    const addForm = root.querySelector('#add-update-form');
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(addForm);
+      await db.createGoalUpdate({
+        goal_id: goal.id,
+        occurred_on: fd.get('occurred_on'),
+        note: fd.get('note'),
+        value: goal.measure_type === 'numeric' ? fd.get('value') : null,
+        confidence
+      });
+      renderGoalDetail(root, { id: goal.id });
     });
-    renderGoalDetail(root, { id: goal.id });
-  });
+  }
 
   const milestoneForm = root.querySelector('#add-milestone-form');
   if (milestoneForm) {

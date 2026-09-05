@@ -164,6 +164,38 @@ export async function createGoalUpdate({ goal_id, occurred_on, note, value, conf
   return unwrap(await supabase.from('goal_updates').insert(row).select().single());
 }
 
+/**
+ * Period check-ins for pass_fail goals: exactly one goal_updates row per
+ * period, keyed by occurred_on === that period's start date. Lets the UI
+ * show one row per week/month/quarter and know unambiguously whether it's
+ * been logged yet, rather than an open-ended list of arbitrarily-dated
+ * entries.
+ */
+export async function getGoalUpdateForOccurredOn(goalId, occurredOn) {
+  const rows = unwrap(await supabase.from('goal_updates').select('*')
+    .eq('goal_id', goalId).eq('occurred_on', occurredOn));
+  return rows[0] || null;
+}
+
+/** Selects/switches a period's outcome. Pass null to deselect (delete the entry). */
+export async function setPeriodCheckIn(goalId, periodStart, achieved) {
+  const existing = await getGoalUpdateForOccurredOn(goalId, periodStart);
+  if (achieved === null) {
+    if (existing) await deleteGoalUpdate(existing.id);
+    return null;
+  }
+  if (existing) {
+    return unwrap(await supabase.from('goal_updates').update({ value: achieved ? 1 : 0 })
+      .eq('id', existing.id).select().single());
+  }
+  return createGoalUpdate({ goal_id: goalId, occurred_on: periodStart, value: achieved ? 1 : 0 });
+}
+
+export async function deleteGoalUpdate(id) {
+  const { error } = await supabase.from('goal_updates').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---------------- views ----------------
 
 export async function listGoalProgress() {

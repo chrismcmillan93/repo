@@ -96,6 +96,13 @@ a{ color: var(--accent); }
 .timeline-value.pf-hit{ color: var(--good); }
 .timeline-value.pf-miss{ color: var(--error); }
 
+.checkin-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.checkin-row{ display:flex; flex-direction:column; gap:8px; padding:10px 0; border-top:1px solid var(--line); }
+.checkin-list .checkin-row:first-child{ border-top:none; padding-top:0; }
+.checkin-label{ font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:8px; }
+.checkin-pending{ font-size:0.68rem; font-weight:600; color: var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; }
+.goal-card > .checkin-row{ border-top:none; padding:6px 0 0; }
+
 /* ---------- signed-in shell ---------- */
 .app-header{
   display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
