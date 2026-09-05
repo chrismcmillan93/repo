@@ -1,22 +1,23 @@
-// Bootstraps the Goals & Progress app: wires up the sign-in forms, reacts to
-// auth state, and — once signed in — proves the authenticated round-trip to
-// the `goals` schema actually works by seeding + fetching `life_areas`.
-//
-// This is intentionally the whole app for now (build step 2: auth shell).
-// Areas/goals CRUD, the dashboard, and everything else come in later steps.
+// Bootstraps the Goals & Progress app: auth forms, session handling, and
+// route registration. Each view lives in js/views/*.js.
 
 import { supabase } from './supabaseClient.js';
 import {
-  requestSignIn,
-  verifyCode,
-  signOut,
-  getCurrentSession,
-  onAuthStateChange,
-  readAuthErrorFromUrl
+  requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
+import { setCurrentUser } from './state.js';
+import { route, startRouter } from './router.js';
+
+import { renderDashboard } from './views/dashboard.js';
+import { renderAreas } from './views/areas.js';
+import { renderGoalDetail } from './views/goalDetail.js';
+import { renderGoalForm } from './views/goalForm.js';
+import { renderReviewNew, renderReviewFlow } from './views/reviewFlow.js';
+import { renderReviewsArchive, renderReviewDetail } from './views/reviewsArchive.js';
 
 const authScreen = document.getElementById('auth-screen');
 const appShell = document.getElementById('app-shell');
+const viewRoot = document.getElementById('view-root');
 
 const authForm = document.getElementById('auth-form');
 const emailInput = document.getElementById('auth-email');
@@ -32,84 +33,65 @@ const codeSubmit = document.getElementById('code-submit');
 const userEmailEl = document.getElementById('auth-user-email');
 const logoutBtn = document.getElementById('logout-btn');
 
-const connStatus = document.getElementById('conn-status');
-const areasList = document.getElementById('areas-list');
-
 let pendingEmail = '';
-let hasRunConnectionCheck = false;
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (ch) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
-  ));
-}
+let routerStarted = false;
+let seededThisSession = false;
 
 function showAuthScreen() {
   appShell.style.display = 'none';
   authScreen.style.display = '';
 }
 
-function showApp(user) {
+async function showApp(user) {
   authScreen.style.display = 'none';
   appShell.style.display = '';
   userEmailEl.textContent = user.email || '';
-  if (!hasRunConnectionCheck) {
-    hasRunConnectionCheck = true;
-    runConnectionCheck();
+
+  if (!seededThisSession) {
+    seededThisSession = true;
+    // Safe to call repeatedly (on conflict do nothing) — see §0 of the build spec.
+    supabase.rpc('seed_default_areas').then(({ error }) => {
+      if (error) console.warn('seed_default_areas failed — is the goals schema exposed yet?', error.message);
+    });
+  }
+
+  if (!routerStarted) {
+    routerStarted = true;
+    registerRoutes();
+    startRouter(viewRoot);
   }
 }
 
 function handleSession(session) {
   if (session && session.user) {
+    setCurrentUser(session.user);
     showApp(session.user);
   } else {
-    hasRunConnectionCheck = false;
+    setCurrentUser(null);
     showAuthScreen();
   }
 }
 
-/**
- * Proves the authenticated fetch works end to end: calls seed_default_areas()
- * (safe to call repeatedly — see §0 of the build spec) then reads back
- * life_areas, which only succeeds if the schema is exposed, RLS is scoped
- * correctly, and the client is pointed at the right schema.
- */
-async function runConnectionCheck() {
-  connStatus.textContent = 'Checking the goals schema…';
-  areasList.innerHTML = '';
-
-  const { error: seedError } = await supabase.rpc('seed_default_areas');
-  if (seedError) {
-    connStatus.innerHTML =
-      'Could not reach the <code>goals</code> schema yet: <strong>' +
-      escapeHtml(seedError.message || String(seedError)) +
-      '</strong>. If this says "not found" or similar, the schema probably ' +
-      'still needs adding under Settings → API → Exposed schemas (see §8 of the build spec).';
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from('life_areas')
-    .select('id, name, colour, sort_order')
-    .is('archived_at', null)
-    .order('sort_order', { ascending: true });
-
-  if (error) {
-    connStatus.innerHTML =
-      'Signed in, but the fetch against <code>life_areas</code> failed: <strong>' +
-      escapeHtml(error.message || String(error)) + '</strong>.';
-    return;
-  }
-
-  connStatus.textContent = data.length
-    ? 'Signed in and reading life_areas from the goals schema:'
-    : 'Signed in — connection works, but life_areas came back empty.';
-
-  areasList.innerHTML = data.map((area) => (
-    '<li><span class="area-dot" style="background:' + escapeHtml(area.colour || '#999') + '"></span>' +
-    escapeHtml(area.name) + '</li>'
-  )).join('');
+function registerRoutes() {
+  route('/', renderDashboard);
+  route('/areas', renderAreas);
+  route('/goal/new', renderGoalForm);
+  route('/goal/:id', renderGoalDetail);
+  route('/goal/:id/edit', renderGoalForm);
+  route('/review/new', renderReviewNew);
+  route('/review/:id', renderReviewFlow);
+  route('/reviews', renderReviewsArchive);
+  route('/reviews/:id', renderReviewDetail);
 }
+
+function setNavActive() {
+  const path = window.location.hash.replace(/^#/, '') || '/';
+  document.querySelectorAll('.app-nav a').forEach((a) => {
+    const target = a.getAttribute('data-nav');
+    a.classList.toggle('is-active', target === '/' ? path === '/' : path.startsWith(target));
+  });
+}
+window.addEventListener('hashchange', setNavActive);
 
 function setupAuthForm() {
   authForm.addEventListener('submit', async (e) => {
