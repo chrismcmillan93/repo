@@ -5,10 +5,14 @@ import { escapeHtml, todayISO, horizonLabel, measureLabel, statusLabel } from '.
 import { navigate } from '../router.js';
 import { loadingHtml, errorHtml } from './shared.js';
 
-const HORIZONS = ['annual', 'quarterly', 'long_term'];
-const MEASURES = ['numeric', 'milestone', 'narrative'];
+const HORIZONS = ['weekly', 'monthly', 'quarterly', 'annual', 'long_term'];
+const MEASURES = ['numeric', 'milestone', 'pass_fail', 'narrative'];
 const STATUSES = ['active', 'paused', 'achieved', 'dropped'];
 const DIRECTIONS = ['increase', 'decrease'];
+
+// Open-ended horizons — no fixed end date, so target_date is optional
+// (matches the goals_target_date_required check constraint).
+const OPEN_ENDED_HORIZONS = ['long_term', 'weekly', 'monthly'];
 
 export async function renderGoalForm(root, params) {
   root.innerHTML = loadingHtml('Loading…');
@@ -37,12 +41,13 @@ function opt(value, label, selected) {
 function formHtml(areas, goal) {
   const g = goal || {
     area_id: areas[0].id, title: '', description: '', why: '',
-    horizon: 'annual', status: 'active', start_date: todayISO(), target_date: '',
+    horizon: 'monthly', status: 'active', start_date: todayISO(), target_date: '',
     measure_type: 'numeric', target_value: '', start_value: 0, unit: '', direction: 'increase',
     priority: 3
   };
   const isEdit = !!goal;
   const numericVisible = g.measure_type === 'numeric';
+  const passFailVisible = g.measure_type === 'pass_fail';
 
   return `
     <section class="card">
@@ -104,6 +109,19 @@ function formHtml(areas, goal) {
             </label>
           </div>
         </div>
+
+        <div id="passfail-fields" ${passFailVisible ? '' : 'hidden'}>
+          <p class="field-hint">Each update records a simple yes/no for that period (e.g. "did I save £400 this month?"). Progress shows as a hit-rate across every period logged.</p>
+          <div class="form-row">
+            <label>Target, for reference <span class="field-hint">(optional)</span>
+              <input type="number" step="any" name="pf_target_value" placeholder="400" value="${g.target_value ?? ''}">
+            </label>
+            <label>Unit <span class="field-hint">(optional)</span>
+              <input type="text" name="pf_unit" placeholder="£" value="${escapeHtml(g.unit || '')}">
+            </label>
+          </div>
+        </div>
+
         ${g.measure_type === 'milestone' ? `<p class="field-hint">Add milestones from the goal's detail page once it's created.</p>` : ''}
 
         <label>Priority (1 = highest)
@@ -124,17 +142,19 @@ function bindForm(root, areas, goal, isEdit) {
   const form = root.querySelector('#goal-form');
   const measureSelect = form.querySelector('[name="measure_type"]');
   const numericFields = root.querySelector('#numeric-fields');
+  const passFailFields = root.querySelector('#passfail-fields');
   const horizonSelect = form.querySelector('[name="horizon"]');
   const targetHint = root.querySelector('#target-date-hint');
   const errorEl = root.querySelector('#form-error');
 
-  function syncNumericVisibility() {
+  function syncMeasureVisibility() {
     numericFields.hidden = measureSelect.value !== 'numeric';
+    passFailFields.hidden = measureSelect.value !== 'pass_fail';
   }
   function syncTargetHint() {
-    targetHint.textContent = horizonSelect.value === 'long_term' ? '(optional)' : '(required)';
+    targetHint.textContent = OPEN_ENDED_HORIZONS.includes(horizonSelect.value) ? '(optional)' : '(required)';
   }
-  measureSelect.addEventListener('change', syncNumericVisibility);
+  measureSelect.addEventListener('change', syncMeasureVisibility);
   horizonSelect.addEventListener('change', syncTargetHint);
   syncTargetHint();
 
@@ -150,7 +170,7 @@ function bindForm(root, areas, goal, isEdit) {
     if (title.length < 1 || title.length > 160) {
       return showError(errorEl, 'Title must be 1–160 characters.');
     }
-    if (horizon !== 'long_term' && !targetDate) {
+    if (!OPEN_ENDED_HORIZONS.includes(horizon) && !targetDate) {
       return showError(errorEl, 'Target date is required for annual and quarterly goals.');
     }
     if (targetDate && fd.get('start_date') && targetDate < fd.get('start_date')) {
@@ -176,6 +196,10 @@ function bindForm(root, areas, goal, isEdit) {
       payload.target_value = Number(fd.get('target_value'));
       payload.unit = fd.get('unit') || null;
       payload.direction = fd.get('direction');
+    } else if (measureType === 'pass_fail') {
+      const pfTarget = fd.get('pf_target_value');
+      payload.target_value = pfTarget ? Number(pfTarget) : null;
+      payload.unit = fd.get('pf_unit') || null;
     } else {
       payload.target_value = null;
       payload.unit = null;

@@ -88,6 +88,14 @@ a{ color: var(--accent); }
 .form-error{ font-size:0.82rem; color: var(--error); margin: 4px 0 0; }
 .field-hint{ font-size:0.72rem; color: var(--ink-soft); font-weight:500; }
 
+/* ---------- pass/fail goals ---------- */
+.passfail-toggle{ display:flex; gap:8px; }
+.passfail-toggle .btn[data-pf-value]{ flex:1; }
+.passfail-toggle .btn.is-selected[data-pf-value="1"]{ background: rgba(63,143,94,0.16); border-color: var(--good); color: var(--good); }
+.passfail-toggle .btn.is-selected[data-pf-value="0"]{ background: rgba(166,72,58,0.1); border-color: var(--error); color: var(--error); }
+.timeline-value.pf-hit{ color: var(--good); }
+.timeline-value.pf-miss{ color: var(--error); }
+
 /* ---------- signed-in shell ---------- */
 .app-header{
   display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
