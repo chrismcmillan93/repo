@@ -59,7 +59,10 @@
       🔧 UAT — example data only, not connected to Supabase. New features and changes land here first, before live. Sign-in is temporarily switched off (see <code>js/config.js</code>).
     </div>
     <header class="app-header">
-      <nav class="app-nav">
+      <button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="app-nav" aria-label="Menu" title="Menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav class="app-nav" id="app-nav">
         <a href="#/" data-nav="/">Dashboard</a>
         <a href="#/areas" data-nav="/areas">Areas &amp; Goals</a>
         <a href="#/wishlist" data-nav="/wishlist">Wishlist</a>
