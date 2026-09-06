@@ -49,11 +49,17 @@ export function formatPercent(fraction) {
   return Math.round(n * 100) + '%';
 }
 
+// Currency symbols prefix the number with no space (£500), same as how
+// anyone would actually write it; anything else — a word or abbreviation
+// like "km" or "min" — suffixes with a space (58 min), unchanged.
+const CURRENCY_SYMBOLS = new Set(['£', '$', '€', '¥', '₹', '₩', '₽', '₺', '₫', '₴', '₦', '₱', '฿', '₡', '₪', '₸']);
+
 export function formatNumber(n, unit) {
   if (n === null || n === undefined || n === '') return '—';
   const num = Number(n);
   const str = Number.isInteger(num) ? String(num) : num.toFixed(1);
-  return unit ? `${str} ${unit}` : str;
+  if (!unit) return str;
+  return CURRENCY_SYMBOLS.has(unit.trim()) ? `${unit}${str}` : `${str} ${unit}`;
 }
 
 const HORIZON_LABELS = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annual', long_term: 'Long-term' };
