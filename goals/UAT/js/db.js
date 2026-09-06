@@ -196,6 +196,11 @@ export async function deleteGoalUpdate(id) {
   if (error) throw error;
 }
 
+/** Every update across every goal — used by search. Fine to fetch in full at personal-app scale. */
+export async function listAllGoalUpdates() {
+  return unwrap(await supabase.from('goal_updates').select('*').order('occurred_on', { ascending: false }));
+}
+
 // ---------------- views ----------------
 
 export async function listGoalProgress() {
@@ -291,6 +296,11 @@ export async function listReviewGoalsForGoal(goalId) {
     .in('id', reviewIds));
   const byId = new Map(reviews.map((r) => [r.id, r]));
   return rgs.map((rg) => ({ ...rg, review: byId.get(rg.review_id) || null }));
+}
+
+/** Every review_goals entry for the user, across every review — used by search. */
+export async function listAllReviewGoals() {
+  return unwrap(await supabase.from('review_goals').select('*'));
 }
 
 export async function upsertReviewGoal(payload) {

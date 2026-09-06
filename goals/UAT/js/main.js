@@ -15,6 +15,7 @@ import { renderGoalDetail } from './views/goalDetail.js';
 import { renderGoalForm } from './views/goalForm.js';
 import { renderReviewNew, renderReviewFlow } from './views/reviewFlow.js';
 import { renderReviewsArchive, renderReviewDetail } from './views/reviewsArchive.js';
+import { renderSearch } from './views/search.js';
 
 const authScreen = document.getElementById('auth-screen');
 const appShell = document.getElementById('app-shell');
@@ -86,6 +87,7 @@ function registerRoutes() {
   route('/review/:id', renderReviewFlow);
   route('/reviews', renderReviewsArchive);
   route('/reviews/:id', renderReviewDetail);
+  route('/search', renderSearch);
 }
 
 function setNavActive() {
