@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USA 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header-top">
+    <div class="brand">
+      <span class="brand-title">USA 2027</span>
+      <span class="brand-sub" id="brandSub">Austin &middot; Las Vegas &middot; Los Angeles &middot; Santa Barbara</span>
+    </div>
+    <div class="currency-toggle" id="currencyToggle">
+      <span class="fx-note" id="fxNote">Loading rate&hellip;</span>
+      <div class="toggle-pair" role="group" aria-label="Display currency">
+        <button type="button" data-currency="GBP">GBP</button>
+        <button type="button" data-currency="USD">USD</button>
+      </div>
+      <button type="button" class="fx-edit-btn" id="fxEditBtn" title="Edit exchange rate" aria-label="Edit exchange rate">&#9998;</button>
+    </div>
+  </div>
+  <nav class="app-nav">
+    <a href="#/overview" data-route="overview">Overview</a>
+    <a href="#/itinerary" data-route="itinerary">Itinerary</a>
+    <a href="#/bookings" data-route="bookings">Bookings</a>
+    <a href="#/places" data-route="places">Places</a>
+    <a href="#/costs" data-route="costs">Costs</a>
+    <a href="#/checklist" data-route="checklist">Checklist</a>
+  </nav>
+</header>
+
+<main class="app-main" id="app-main">
+  <p class="section-note">Loading&hellip;</p>
+</main>
+
+<div id="toast-host" aria-live="polite"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
