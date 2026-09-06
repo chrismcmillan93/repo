@@ -108,6 +108,39 @@ function setNavActive() {
 }
 window.addEventListener('hashchange', setNavActive);
 
+// Mobile nav: the .app-nav list becomes a dropdown below a hamburger button
+// (see the max-width:640px block in style.css) — this just wires the toggle
+// open/closed. On wide screens the button is hidden by CSS and none of this
+// fires.
+function setupMobileNav() {
+  const navToggle = document.getElementById('nav-toggle');
+  const appNav = document.getElementById('app-nav');
+  if (!navToggle || !appNav) return;
+
+  function closeNav() {
+    appNav.classList.remove('is-open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  navToggle.addEventListener('click', () => {
+    const isOpen = appNav.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+  });
+  appNav.addEventListener('click', (e) => {
+    if (e.target.closest('a')) closeNav();
+  });
+  document.addEventListener('click', (e) => {
+    if (!appNav.classList.contains('is-open')) return;
+    if (appNav.contains(e.target) || navToggle.contains(e.target)) return;
+    closeNav();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNav();
+  });
+  window.addEventListener('hashchange', closeNav);
+}
+setupMobileNav();
+
 function setupAuthForm() {
   authForm.addEventListener('submit', async (e) => {
     e.preventDefault();
