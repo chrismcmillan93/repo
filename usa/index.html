@@ -61,15 +61,21 @@
     <div class="countdown-slot" id="countdownSlot"></div>
     <div class="stamp-row" id="stampRow"></div>
   </div>
-  <nav class="app-nav">
+</header>
+
+<!-- Sibling of <header>, not nested inside it: a sticky element only
+     stays pinned within its own parent's box, so the nav needs the whole
+     page as its parent to stay stuck past the header's height. -->
+<nav class="app-nav">
+  <div class="app-nav-inner">
     <a href="#/overview" data-route="overview">Overview</a>
     <a href="#/itinerary" data-route="itinerary">Itinerary</a>
     <a href="#/bookings" data-route="bookings">Bookings</a>
     <a href="#/places" data-route="places">Places</a>
     <a href="#/costs" data-route="costs">Costs</a>
     <a href="#/checklist" data-route="checklist">Checklist</a>
-  </nav>
-</header>
+  </div>
+</nav>
 
 <main class="app-main" id="app-main">
   <p class="section-note">Loading&hellip;</p>

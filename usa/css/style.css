@@ -87,7 +87,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .app-header{
   background: var(--navy);
   color: var(--paper);
-  position: sticky; top:0; z-index:20;
 }
 .app-header-top{
   max-width: 880px; margin:0 auto; padding: var(--sp-4) var(--sp-4) var(--sp-3);
@@ -142,10 +141,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .stamp .stamp-dates{ font-family: var(--font-label); font-size:0.56rem; line-height:1.2; color: rgba(247,239,221,0.6); margin-top:3px; }
 
 /* ---- tab bar ---- */
+/* Only the slim tab strip stays pinned on scroll — the flags/title/
+   countdown/stamps above it scroll away, so the fixed part of the header
+   stays a single row instead of eating half the screen. Full-bleed
+   background so the pinned strip doesn't show page background at its
+   edges on screens wider than the 880px content column. */
 .app-nav{
+  background: var(--navy-deep);
+  position: sticky; top:0; z-index:20;
+  box-shadow: 0 2px 0 var(--gold);
+  display:flex; overflow-x:auto;
+}
+.app-nav-inner{
   max-width:880px; margin:0 auto; padding: 0 var(--sp-4);
-  display:flex; gap: var(--sp-1); overflow-x:auto;
-  border-top: 1px solid rgba(247,239,221,0.14);
+  display:flex; gap: var(--sp-1);
 }
 .app-nav a{
   flex-shrink:0; text-decoration:none; color: rgba(247,239,221,0.6); font-family: var(--font-label);
