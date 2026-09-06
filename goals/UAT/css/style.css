@@ -211,6 +211,10 @@ a{ color: var(--accent); }
   background: rgba(166,72,58,0.1); color: var(--error); border:none; border-radius:99px;
   font-size:0.72rem; font-weight:700; padding:5px 11px; cursor:pointer; margin:4px 0 8px;
 }
+.attention-pill{
+  display:inline-block; background: rgba(192,138,62,0.12); color: var(--warn); border-radius:99px;
+  font-size:0.72rem; font-weight:700; padding:5px 11px; margin:4px 0 8px;
+}
 .overdue-actions{ margin-bottom:10px; }
 .overdue-actions-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
 .overdue-extend-form{ display:flex; gap:8px; }
@@ -224,6 +228,27 @@ a{ color: var(--accent); }
 .goal-description{ font-size:0.9rem; color: var(--ink); margin: 10px 0; }
 .goal-description p{ margin:0 0 8px; }
 .measure-detail{ font-size:0.88rem; color: var(--ink-soft); margin:8px 0 0; }
+.pace-suggestion{ font-size:0.85rem; color: var(--accent); font-weight:600; margin:8px 0 0; }
+
+/* ---------- search ---------- */
+.search-input{
+  width:100%; border:1px solid var(--line-strong); border-radius:10px; padding:11px 14px;
+  font-size:1rem; color: var(--ink); background: var(--paper);
+}
+.search-results-list{ list-style:none; margin:0; padding:0; }
+.search-result{
+  background: var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 18px; margin-bottom:12px;
+}
+.search-result-kicker{
+  font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;
+  color: var(--accent); margin:0 0 4px;
+}
+.search-result-title{ font-weight:700; font-size:0.95rem; margin:0 0 4px; }
+.search-result-title a{ color: var(--ink); text-decoration:none; }
+.search-result-title a:hover{ color: var(--accent); }
+.search-result-snippet{ font-size:0.86rem; color: var(--ink-soft); margin:0; line-height:1.5; }
+.search-result-snippet mark{ background: rgba(192,138,62,0.28); color: var(--ink); border-radius:3px; padding:0 2px; }
 
 /* ---------- sparkline / confidence ---------- */
 .sparkline-svg, .conf-trend-svg{ width:100%; height:auto; display:block; }

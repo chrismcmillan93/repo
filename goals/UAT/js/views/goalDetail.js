@@ -4,7 +4,7 @@
 
 import * as db from '../db.js';
 import {
-  escapeHtml, formatDateDMY, formatNumber, formatPercent, todayISO,
+  escapeHtml, formatDateDMY, formatNumber, formatPercent, todayISO, isOverdue,
   horizonLabel, statusLabel, measureLabel, decisionLabel, renderNote
 } from '../utils.js';
 import { periodLabel, enumeratePeriods, horizonToPeriodType } from '../periods.js';
@@ -12,7 +12,7 @@ import { renderPaceBar } from '../charts/paceBar.js';
 import { renderSparkline } from '../charts/sparkline.js';
 import { renderConfidenceTrend } from '../charts/confidenceTrend.js';
 import {
-  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions,
+  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions, needsAttentionPillHtml,
   pickerHtml, bindPicker, areaDotHtml
 } from './shared.js';
 
@@ -59,6 +59,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
         ${formatDateDMY(goal.start_date)} → ${goal.target_date ? formatDateDMY(goal.target_date) : 'no target date'}
       </p>
       ${overdueBannerHtml(goal)}
+      ${needsAttentionPillHtml(goal, p)}
       ${goal.description ? `<div class="goal-description">${renderNote(goal.description)}</div>` : ''}
       <div class="form-row">
         <a class="btn btn-quiet btn-sm" href="#/goal/${goal.id}/edit">Edit</a>
@@ -70,6 +71,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
       <p class="card-eyebrow">Progress</p>
       ${renderPaceBar(p ? p.percent_complete : null, p ? p.percent_elapsed : null, area.colour, passFailLabel(goal, p))}
       ${renderMeasureDetail(goal, p)}
+      ${suggestedPaceHtml(goal, p)}
     </section>
 
     ${goal.measure_type === 'numeric' ? `
@@ -113,6 +115,29 @@ function renderMeasureDetail(goal, p) {
     return `<p class="measure-detail">${target ? `Target: ${target}. ` : ''}Reviewed pass/fail each period, not a running number.</p>`;
   }
   return `<p class="measure-detail">Narrative goal — tracked through notes, not a number.</p>`;
+}
+
+/**
+ * "Need ~£210 per month to hit £5,000 by 15 Jun 2027" — numeric goals with
+ * a target date only (a goal with no end date has nothing to divide the
+ * remaining amount across). Suppressed once overdue — the overdue banner
+ * already owns that conversation.
+ */
+function suggestedPaceHtml(goal, p) {
+  if (goal.measure_type !== 'numeric' || !goal.target_date || !p || isOverdue(goal)) return '';
+  const current = Number(p.current_value ?? goal.start_value ?? 0);
+  const target = Number(goal.target_value);
+  if (!Number.isFinite(target)) return '';
+
+  const remaining = goal.direction === 'decrease' ? current - target : target - current;
+  if (remaining <= 0) return `<p class="pace-suggestion">Target already reached — nothing more needed.</p>`;
+
+  const periodType = ['weekly', 'monthly', 'quarterly'].includes(goal.horizon) ? horizonToPeriodType(goal.horizon) : 'month';
+  const periodsRemaining = Math.max(1, enumeratePeriods(periodType, todayISO(), goal.target_date).length);
+  const perPeriod = remaining / periodsRemaining;
+  const periodWord = { week: 'week', month: 'month', quarter: 'quarter' }[periodType];
+
+  return `<p class="pace-suggestion">Need ~${escapeHtml(formatNumber(perPeriod, goal.unit))} per ${periodWord} to hit ${escapeHtml(formatNumber(target, goal.unit))} by ${escapeHtml(formatDateDMY(goal.target_date))}.</p>`;
 }
 
 /** Pace-bar caption override for pass_fail goals — "72% complete" doesn't read as a hit-rate. */

@@ -1,12 +1,13 @@
 // UAT starts close to live (no real backend), but carries a couple of
 // example goals so a requested change can actually be seen working rather
 // than only tested via a blank form. Currently demonstrating: weekly/
-// monthly horizons, the pass_fail measure type ("save £400/month" — a
-// plain yes/no per period instead of a running numeric total), and its
-// per-period check-in list.
+// monthly horizons, the pass_fail measure type and its per-period check-in
+// list, the "needs attention" flag, the suggested-pace line, and search
+// (which needs at least one goal/update/review/review-goal note to find).
 
 function iso(d) { return d.toISOString().slice(0, 10); }
 function daysAgo(n) { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return iso(d); }
+function daysFromNow(n) { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
 
 /** 1st of the month N months before the current month — i.e. a real period-start date, matching what setPeriodCheckIn() writes. */
 function monthStart(monthsBack) {
@@ -14,6 +15,14 @@ function monthStart(monthsBack) {
   const total = now.getUTCFullYear() * 12 + now.getUTCMonth() - monthsBack;
   const y = Math.floor(total / 12), m = (total % 12 + 12) % 12;
   return iso(new Date(Date.UTC(y, m, 1)));
+}
+
+/** Last day of that same month. */
+function monthEnd(monthsBack) {
+  const now = new Date();
+  const total = now.getUTCFullYear() * 12 + now.getUTCMonth() - monthsBack;
+  const y = Math.floor(total / 12), m = (total % 12 + 12) % 12;
+  return iso(new Date(Date.UTC(y, m + 1, 0)));
 }
 
 const U = 'demo-user';
@@ -38,6 +47,14 @@ export function buildDemoData() {
       horizon: 'weekly', status: 'active', start_date: daysAgo(28), target_date: null,
       measure_type: 'numeric', target_value: 15, start_value: 0, unit: 'km', direction: 'increase',
       priority: 2, created_at: daysAgo(28), updated_at: daysAgo(1), archived_at: null
+    },
+    {
+      id: 'goal-house-deposit', user_id: U, area_id: 'area-finance',
+      title: 'Save £3,000 towards a house deposit', description: 'Separate pot from the everyday emergency fund.',
+      why: "Renting forever isn't the plan.",
+      horizon: 'monthly', status: 'active', start_date: daysAgo(200), target_date: daysFromNow(150),
+      measure_type: 'numeric', target_value: 3000, start_value: 0, unit: '£', direction: 'increase',
+      priority: 1, created_at: daysAgo(200), updated_at: daysAgo(40), archived_at: null
     }
   ];
 
@@ -53,7 +70,29 @@ export function buildDemoData() {
     { id: 'gu-sav-3', user_id: U, goal_id: 'goal-savings-monthly', occurred_on: monthStart(2), note: 'Car insurance renewal ate this month\'s saving.', value: 0, confidence: 3, created_at: monthStart(2) },
     { id: 'gu-sav-4', user_id: U, goal_id: 'goal-savings-monthly', occurred_on: monthStart(1), note: 'Back on track.', value: 1, confidence: 5, created_at: monthStart(1) },
     // Weekly running goal — reset each week, so only this week's total matters.
-    { id: 'gu-run-1', user_id: U, goal_id: 'goal-run-weekly', occurred_on: daysAgo(1), note: 'Two runs in so far this week.', value: 9, confidence: 4, created_at: daysAgo(1) }
+    { id: 'gu-run-1', user_id: U, goal_id: 'goal-run-weekly', occurred_on: daysAgo(1), note: 'Two runs in so far this week.', value: 9, confidence: 4, created_at: daysAgo(1) },
+    // House deposit — one update, well behind pace and quiet for a while,
+    // so both "needs attention" and the suggested-pace line have something
+    // real to demonstrate.
+    { id: 'gu-house-1', user_id: U, goal_id: 'goal-house-deposit', occurred_on: daysAgo(40), note: 'Opened the separate savings pot and moved the first chunk in.', value: 400, confidence: 3, created_at: daysAgo(40) }
+  ];
+
+  const reviews = [
+    {
+      id: 'review-last-month', user_id: U, period_type: 'month',
+      period_start: monthStart(1), period_end: monthEnd(1),
+      status: 'complete',
+      went_well: 'Got the savings habit back on track after the car insurance renewal knocked it off course.',
+      didnt_go_well: 'Barely touched the house deposit pot — kept meaning to move money across and didn\'t.',
+      learned: 'The months I move money the day I\'m paid are the months it actually happens.',
+      focus_next: 'Set up a standing order for the deposit pot instead of relying on remembering.',
+      overall_rating: 3, created_at: monthStart(0), completed_at: monthStart(0)
+    }
+  ];
+
+  const review_goals = [
+    { id: 'rg-sav-1', user_id: U, review_id: 'review-last-month', goal_id: 'goal-savings-monthly', rating: 4, commentary: 'Back on track after a wobble.', value_at_review: 1, percent_at_review: 0.75, decision: 'continue', created_at: monthStart(0) },
+    { id: 'rg-house-1', user_id: U, review_id: 'review-last-month', goal_id: 'goal-house-deposit', rating: 2, commentary: 'Needs a standing order, not good intentions — keeps slipping.', value_at_review: 400, percent_at_review: 0.13, decision: 'adjust', created_at: monthStart(0) }
   ];
 
   return {
@@ -61,8 +100,7 @@ export function buildDemoData() {
     // goal_progress is computed live by demoClient.js on every read (it's a
     // real Postgres VIEW there — this stand-in mirrors that), so no static
     // snapshot is seeded here.
-    reviews: [],
-    review_goals: [],
+    reviews, review_goals,
     __pending: []
   };
 }

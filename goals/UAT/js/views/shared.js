@@ -2,7 +2,7 @@
 // pickers, and generic loading/empty/error states. Kept together since
 // they're each a few lines, not because they're one "thing".
 
-import { escapeHtml, formatDateDMY, todayISO, isOverdue } from '../utils.js';
+import { escapeHtml, formatDateDMY, todayISO, isOverdue, daysBetween } from '../utils.js';
 import * as db from '../db.js';
 
 export function loadingHtml(label) {
@@ -88,6 +88,37 @@ export function bindPicker(root, name, onChange) {
       onChange(Number(btn.dataset.value));
     });
   });
+}
+
+// "Behind pace" and "gone quiet" are each mild on their own; together (or
+// either one persisting) is worth a nudge distinct from the date-based
+// overdue banner. Staleness threshold scales with the goal's own cadence —
+// 10 quiet days matters for a weekly goal, not for an annual one.
+const STALE_DAYS_BY_HORIZON = { weekly: 10, monthly: 35, quarterly: 100, annual: 370, long_term: 100 };
+const PACE_GAP_THRESHOLD = 0.15; // 15 percentage points behind expected
+
+export function needsAttentionReason(goal, p) {
+  if (!p || goal.status !== 'active' || isOverdue(goal)) return null;
+  const staleDays = STALE_DAYS_BY_HORIZON[goal.horizon] ?? 60;
+  const daysSince = p.last_update_on
+    ? daysBetween(p.last_update_on, todayISO())
+    : (goal.start_date ? daysBetween(goal.start_date, todayISO()) : null);
+  const isStale = daysSince !== null && daysSince > staleDays;
+
+  const hasElapsed = p.percent_elapsed !== null && p.percent_elapsed !== undefined;
+  const hasComplete = p.percent_complete !== null && p.percent_complete !== undefined;
+  const behind = hasElapsed && hasComplete && (Number(p.percent_elapsed) - Number(p.percent_complete)) >= PACE_GAP_THRESHOLD;
+
+  if (!isStale && !behind) return null;
+  if (behind && isStale) return `Behind pace and quiet for ${daysSince} days`;
+  if (behind) return 'Behind pace';
+  return `No update in ${daysSince} days`;
+}
+
+/** A quieter cousin of the overdue pill — informational, no inline actions. */
+export function needsAttentionPillHtml(goal, p) {
+  const reason = needsAttentionReason(goal, p);
+  return reason ? `<p class="attention-pill">⚑ ${escapeHtml(reason)}</p>` : '';
 }
 
 export function areaDotHtml(colour) {

@@ -9,7 +9,7 @@ import { renderRadar } from '../charts/radar.js';
 import { renderPaceBar } from '../charts/paceBar.js';
 import { renderMomentumGrid } from '../charts/momentumGrid.js';
 import {
-  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions,
+  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions, needsAttentionPillHtml,
   pickerHtml, bindPicker, areaDotHtml
 } from './shared.js';
 
@@ -111,6 +111,7 @@ function goalCardHtml(g) {
         <span class="goal-card-meta">${lastUpdateLabel}</span>
       </div>
       ${overdueBannerHtml(g)}
+      ${needsAttentionPillHtml(g, p)}
       ${renderPaceBar(p.percent_complete ?? null, p.percent_elapsed ?? null, g.areaColour, passFailLabel(g, p))}
       ${g.measure_type === 'pass_fail' ? currentPeriodCheckInHtml(g, p) : quickUpdateFormHtml(g)}
     </div>
