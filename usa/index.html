@@ -6,17 +6,47 @@
 <title>USA 2027</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bevan&family=Oswald:wght@400;500;600;700&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="usflag" viewBox="0 0 60 44">
+    <line x1="3" y1="1" x2="3" y2="43" stroke="#8a7452" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="3" cy="2" r="2.6" fill="#E8A93A"></circle>
+    <rect x="5" y="4" width="50" height="30" fill="#F7EFDD"></rect>
+    <g fill="#C8362E">
+      <rect x="5" y="4" width="50" height="4.286"></rect>
+      <rect x="5" y="12.571" width="50" height="4.286"></rect>
+      <rect x="5" y="21.143" width="50" height="4.286"></rect>
+      <rect x="5" y="29.714" width="50" height="4.286"></rect>
+    </g>
+    <rect x="5" y="4" width="21" height="17.143" fill="#1B2A4A"></rect>
+    <g fill="#F7EFDD">
+      <circle cx="9" cy="7.5" r="1"></circle><circle cx="14" cy="7.5" r="1"></circle><circle cx="19" cy="7.5" r="1"></circle><circle cx="24" cy="7.5" r="1"></circle>
+      <circle cx="11.5" cy="11" r="1"></circle><circle cx="16.5" cy="11" r="1"></circle><circle cx="21.5" cy="11" r="1"></circle>
+      <circle cx="9" cy="14.5" r="1"></circle><circle cx="14" cy="14.5" r="1"></circle><circle cx="19" cy="14.5" r="1"></circle><circle cx="24" cy="14.5" r="1"></circle>
+      <circle cx="11.5" cy="18" r="1"></circle><circle cx="16.5" cy="18" r="1"></circle><circle cx="21.5" cy="18" r="1"></circle>
+    </g>
+  </symbol>
+</svg>
+
+<div class="bunting" aria-hidden="true">
+  <div class="bunting-row" id="buntingRow"></div>
+</div>
+
 <header class="app-header">
   <div class="app-header-top">
     <div class="brand">
-      <span class="brand-title">USA 2027</span>
-      <span class="brand-sub" id="brandSub">Austin &middot; Las Vegas &middot; Los Angeles &middot; Santa Barbara</span>
+      <p class="eyebrow">A trip planner for</p>
+      <p class="brand-title">
+        <svg class="title-flag" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+        USA 2027
+        <svg class="title-flag title-flag-r" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+      </p>
+      <p class="brand-sub" id="brandSub">Austin &middot; Las Vegas &middot; Los Angeles &middot; Santa Barbara</p>
     </div>
     <div class="currency-toggle" id="currencyToggle">
       <span class="fx-note" id="fxNote">Loading rate&hellip;</span>
@@ -26,6 +56,10 @@
       </div>
       <button type="button" class="fx-edit-btn" id="fxEditBtn" title="Edit exchange rate" aria-label="Edit exchange rate">&#9998;</button>
     </div>
+  </div>
+  <div class="masthead-strip">
+    <div class="countdown-slot" id="countdownSlot"></div>
+    <div class="stamp-row" id="stampRow"></div>
   </div>
   <nav class="app-nav">
     <a href="#/overview" data-route="overview">Overview</a>

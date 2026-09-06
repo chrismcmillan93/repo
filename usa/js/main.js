@@ -2,6 +2,15 @@ import { qs, qsa, toast, friendlyError } from './utils.js';
 import { db } from './db.js';
 import { state, getViewCurrency, setViewCurrency, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
+import { renderMasthead } from './views/overview.js';
+
+function renderBunting(){
+  const row = qs('#buntingRow');
+  if (!row) return;
+  let flags = '';
+  for (let i = 0; i < 26; i++) flags += '<svg class="flag-flutter" viewBox="0 0 60 44"><use href="#usflag"></use></svg>';
+  row.innerHTML = flags;
+}
 
 function renderCurrencyToggle(){
   const active = getViewCurrency();
@@ -78,6 +87,7 @@ function wireFxEdit(){
 }
 
 async function boot(){
+  renderBunting();
   wireCurrencyToggle();
   wireFxEdit();
   initRouter();
@@ -90,6 +100,7 @@ async function boot(){
     await loadCore();
     renderFxNote();
     renderBrandSub();
+    renderMasthead();
     renderRoute();
   });
 
@@ -99,6 +110,7 @@ async function boot(){
     await loadCore();
     renderFxNote();
     renderBrandSub();
+    renderMasthead();
   } catch (err) {
     toast(friendlyError(err));
   }

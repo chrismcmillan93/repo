@@ -81,6 +81,13 @@ export function formatDateShort(dateStr){
   return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// Day + month only, no weekday — for tight spaces like the leg stamps.
+export function formatDayMonth(dateStr){
+  if (!dateStr) return '';
+  const d = parseLocalDate(dateStr);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export function formatDateFull(dateStr){
   if (!dateStr) return '';
   const d = parseLocalDate(dateStr);
