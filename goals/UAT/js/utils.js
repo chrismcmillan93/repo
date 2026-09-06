@@ -67,12 +67,14 @@ const STATUS_LABELS = { active: 'Active', paused: 'Paused', achieved: 'Achieved'
 const MEASURE_LABELS = { numeric: 'Numeric', milestone: 'Milestones', pass_fail: 'Pass/fail', narrative: 'Narrative' };
 const DECISION_LABELS = { continue: 'Continue', adjust: 'Adjust', pause: 'Pause', complete: 'Complete', drop: 'Drop' };
 const PERIOD_LABELS = { month: 'Month', quarter: 'Quarter', year: 'Year' };
+const WISHLIST_STATUS_LABELS = { idea: 'Idea', planned: 'Planned', booked: 'Booked', done: 'Done' };
 
 export function horizonLabel(v) { return HORIZON_LABELS[v] || v; }
 export function statusLabel(v) { return STATUS_LABELS[v] || v; }
 export function measureLabel(v) { return MEASURE_LABELS[v] || v; }
 export function decisionLabel(v) { return DECISION_LABELS[v] || v; }
 export function periodTypeLabel(v) { return PERIOD_LABELS[v] || v; }
+export function wishlistStatusLabel(v) { return WISHLIST_STATUS_LABELS[v] || v; }
 
 export function isOverdue(goal) {
   return goal && goal.status === 'active' && goal.target_date && goal.target_date < todayISO();

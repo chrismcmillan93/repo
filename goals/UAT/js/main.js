@@ -18,6 +18,7 @@ import { renderReviewNew, renderReviewFlow } from './views/reviewFlow.js';
 import { renderReviewsArchive, renderReviewDetail } from './views/reviewsArchive.js';
 import { renderSearch } from './views/search.js';
 import { renderNotesHome, renderNoteForm, renderNoteDetail } from './views/notes.js';
+import { renderWishlist } from './views/wishlist.js';
 
 const authScreen = document.getElementById('auth-screen');
 const appShell = document.getElementById('app-shell');
@@ -92,6 +93,7 @@ function registerRoutes() {
   route('/reviews', renderReviewsArchive);
   route('/reviews/:id', renderReviewDetail);
   route('/search', renderSearch);
+  route('/wishlist', renderWishlist);
   route('/notes', renderNotesHome);
   route('/notes/new', renderNoteForm);
   route('/notes/:id', renderNoteDetail);
