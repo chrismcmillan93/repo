@@ -340,3 +340,43 @@ export async function archiveNotePage(id) {
 export async function unarchiveNotePage(id) {
   return updateNotePage(id, { archived_at: null });
 }
+
+// ---------------- wishlist_items ----------------
+// A backlog of ideas — no active progress tracking like a goal, just a
+// status (idea/planned/booked/done) and a rough cost. For things like a
+// travel bucket list, where "am I actually working toward this yet" is
+// the whole question, not a percent-complete.
+
+export async function listWishlistItems({ includeArchived = false } = {}) {
+  let q = supabase.from('wishlist_items').select('*')
+    .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (!includeArchived) q = q.is('archived_at', null);
+  return unwrap(await q);
+}
+
+export async function createWishlistItem({ area_id, title, estimated_cost, unit, target_period, notes }) {
+  const row = {
+    user_id: requireUser(), area_id, title,
+    estimated_cost: estimated_cost === '' || estimated_cost === undefined ? null : estimated_cost,
+    unit: unit || null,
+    target_period: target_period || null,
+    notes: notes || null
+  };
+  return unwrap(await supabase.from('wishlist_items').insert(row).select().single());
+}
+
+export async function updateWishlistItem(id, patch) {
+  return unwrap(await supabase.from('wishlist_items').update(patch).eq('id', id).select().single());
+}
+
+export async function setWishlistStatus(id, status) {
+  return updateWishlistItem(id, { status });
+}
+
+export async function archiveWishlistItem(id) {
+  return updateWishlistItem(id, { archived_at: new Date().toISOString() });
+}
+
+export async function unarchiveWishlistItem(id) {
+  return updateWishlistItem(id, { archived_at: null });
+}

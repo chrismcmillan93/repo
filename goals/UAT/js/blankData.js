@@ -30,7 +30,17 @@ const U = 'demo-user';
 export function buildDemoData() {
   const life_areas = [
     { id: 'area-finance', user_id: U, name: 'Finance', colour: '#c08a3e', sort_order: 1, archived_at: null, created_at: daysAgo(200) },
-    { id: 'area-health', user_id: U, name: 'Health & Fitness', colour: '#3f8f5e', sort_order: 2, archived_at: null, created_at: daysAgo(200) }
+    { id: 'area-health', user_id: U, name: 'Health & Fitness', colour: '#3f8f5e', sort_order: 2, archived_at: null, created_at: daysAgo(200) },
+    { id: 'area-travel', user_id: U, name: 'Travel', colour: '#c2617a', sort_order: 3, archived_at: null, created_at: daysAgo(200) }
+  ];
+
+  // Wishlist — a backlog, not goals: idea/planned/booked/done + a rough
+  // cost. Generic placeholder trips, not anyone's real plans.
+  const wishlist_items = [
+    { id: 'wl-1', user_id: U, area_id: 'area-travel', title: 'Long weekend in Prague', estimated_cost: 600, unit: '£', target_period: '2026', notes: '', status: 'idea', sort_order: 1, archived_at: null, created_at: daysAgo(60), updated_at: daysAgo(60) },
+    { id: 'wl-2', user_id: U, area_id: 'area-travel', title: 'Two weeks in Portugal', estimated_cost: 2200, unit: '£', target_period: 'Summer 2027', notes: 'Coastal, not city — look at the Algarve.', status: 'planned', sort_order: 2, archived_at: null, created_at: daysAgo(45), updated_at: daysAgo(10) },
+    { id: 'wl-3', user_id: U, area_id: 'area-travel', title: 'Christmas markets trip', estimated_cost: 450, unit: '£', target_period: 'Dec 2026', notes: '', status: 'booked', sort_order: 3, archived_at: null, created_at: daysAgo(30), updated_at: daysAgo(5) },
+    { id: 'wl-4', user_id: U, area_id: 'area-travel', title: 'Weekend hiking trip', estimated_cost: 200, unit: '£', target_period: null, notes: '', status: 'done', sort_order: 4, archived_at: null, created_at: daysAgo(90), updated_at: daysAgo(20) }
   ];
 
   const goals = [
@@ -125,7 +135,7 @@ export function buildDemoData() {
     // goal_progress is computed live by demoClient.js on every read (it's a
     // real Postgres VIEW there — this stand-in mirrors that), so no static
     // snapshot is seeded here.
-    reviews, review_goals, note_pages,
+    reviews, review_goals, note_pages, wishlist_items,
     __pending: []
   };
 }

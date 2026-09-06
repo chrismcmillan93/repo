@@ -105,9 +105,22 @@ export function createDemoClient(seed) {
         try {
           if (state.op === 'select') {
             rows = rows_.filter((r) => matchesFilters(r, state.filters));
-            state.order.forEach(({ col, asc }) => {
-              rows.sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * (asc ? 1 : -1));
-            });
+            // A single composite comparator — chained .order() calls mean
+            // "first key primary, second key tie-breaker", same as SQL
+            // ORDER BY a, b. Sorting once per key independently would get
+            // this backwards: each later full re-sort discards the earlier
+            // one except among its own ties, so the *last* .order() call
+            // would silently end up dominant instead of the first.
+            if (state.order.length) {
+              rows.sort((a, b) => {
+                for (const { col, asc } of state.order) {
+                  if (a[col] === b[col]) continue;
+                  const cmp = a[col] > b[col] ? 1 : -1;
+                  return asc ? cmp : -cmp;
+                }
+                return 0;
+              });
+            }
           } else if (state.op === 'insert') {
             const now = new Date().toISOString();
             const row = { id: makeId(), created_at: now, updated_at: now, ...state.payload };

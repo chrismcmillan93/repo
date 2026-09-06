@@ -463,6 +463,31 @@ a{ color: var(--accent); }
 .notes-row-title:hover{ color: var(--accent); }
 .notes-row-meta{ font-size:0.74rem; color: var(--ink-soft); margin:0 0 3px; }
 .notes-row-snippet{ font-size:0.85rem; color: var(--ink-soft); margin:0; }
+
+/* ---------- wishlist ---------- */
+.wishlist-list{ list-style:none; margin:0 0 10px; padding:0; }
+.wishlist-row{ padding:10px 0; border-top:1px solid var(--line); }
+.wishlist-row:first-child{ border-top:none; padding-top:0; }
+.wishlist-row-main{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:6px; }
+.wishlist-title{ font-weight:700; font-size:0.92rem; }
+.wishlist-cost{ font-size:0.85rem; font-weight:600; color: var(--accent); white-space:nowrap; }
+.wishlist-row-meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.wishlist-notes{ font-size:0.82rem; color: var(--ink-soft); margin:6px 0 0; }
+.wishlist-total{ font-size:0.8rem; color: var(--ink-soft); margin:4px 0 14px; padding-top:8px; border-top:1px solid var(--line); }
+.wishlist-add-form{ flex-wrap:wrap; }
+.wishlist-add-form input[name="title"]{ flex:2; min-width:120px; }
+.wishlist-add-form input[name="estimated_cost"], .wishlist-add-form input[name="unit"]{ flex:0 1 60px; min-width:50px; }
+.wishlist-add-form input[name="target_period"]{ flex:1; min-width:100px; }
+.wishlist-add-form input{ border:1px solid var(--line-strong); border-radius:8px; padding:7px 9px; font-size:0.85rem; background: var(--paper); color: var(--ink); }
+
+.wishlist-status-select{
+  border:1px solid var(--line-strong); border-radius:99px; padding:3px 10px; font-size:0.7rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.03em; background: var(--paper-raised); cursor:pointer;
+}
+.wishlist-status-select.status-idea{ color: var(--ink-soft); }
+.wishlist-status-select.status-planned{ color: var(--warn); border-color: rgba(var(--warn-rgb),0.4); }
+.wishlist-status-select.status-booked{ color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); }
+.wishlist-status-select.status-done{ color: var(--good); border-color: rgba(var(--good-rgb),0.4); }
 .notes-view-head{ margin-bottom:14px; }
 .notes-title{ font-family:'Fraunces', serif; font-size:1.3rem; font-weight:600; margin:2px 0 4px; text-wrap:balance; }
 .note-content{ font-size:0.94rem; color: var(--ink); line-height:1.65; }
