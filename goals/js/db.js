@@ -164,6 +164,43 @@ export async function createGoalUpdate({ goal_id, occurred_on, note, value, conf
   return unwrap(await supabase.from('goal_updates').insert(row).select().single());
 }
 
+/**
+ * Period check-ins for pass_fail goals: exactly one goal_updates row per
+ * period, keyed by occurred_on === that period's start date. Lets the UI
+ * show one row per week/month/quarter and know unambiguously whether it's
+ * been logged yet, rather than an open-ended list of arbitrarily-dated
+ * entries.
+ */
+export async function getGoalUpdateForOccurredOn(goalId, occurredOn) {
+  const rows = unwrap(await supabase.from('goal_updates').select('*')
+    .eq('goal_id', goalId).eq('occurred_on', occurredOn));
+  return rows[0] || null;
+}
+
+/** Selects/switches a period's outcome. Pass null to deselect (delete the entry). */
+export async function setPeriodCheckIn(goalId, periodStart, achieved) {
+  const existing = await getGoalUpdateForOccurredOn(goalId, periodStart);
+  if (achieved === null) {
+    if (existing) await deleteGoalUpdate(existing.id);
+    return null;
+  }
+  if (existing) {
+    return unwrap(await supabase.from('goal_updates').update({ value: achieved ? 1 : 0 })
+      .eq('id', existing.id).select().single());
+  }
+  return createGoalUpdate({ goal_id: goalId, occurred_on: periodStart, value: achieved ? 1 : 0 });
+}
+
+export async function deleteGoalUpdate(id) {
+  const { error } = await supabase.from('goal_updates').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Every update across every goal — used by search. Fine to fetch in full at personal-app scale. */
+export async function listAllGoalUpdates() {
+  return unwrap(await supabase.from('goal_updates').select('*').order('occurred_on', { ascending: false }));
+}
+
 // ---------------- views ----------------
 
 export async function listGoalProgress() {
@@ -261,9 +298,85 @@ export async function listReviewGoalsForGoal(goalId) {
   return rgs.map((rg) => ({ ...rg, review: byId.get(rg.review_id) || null }));
 }
 
+/** Every review_goals entry for the user, across every review — used by search. */
+export async function listAllReviewGoals() {
+  return unwrap(await supabase.from('review_goals').select('*'));
+}
+
 export async function upsertReviewGoal(payload) {
   const row = { ...payload, user_id: requireUser() };
   return unwrap(await supabase.from('review_goals')
     .upsert(row, { onConflict: 'review_id,goal_id' })
     .select().single());
+}
+
+// ---------------- note_pages ----------------
+// A running notebook page per life area — freeform text you keep appending
+// to over time, not a series of discrete dated entries like goal_updates.
+
+export async function listNotePages({ includeArchived = false } = {}) {
+  let q = supabase.from('note_pages').select('*').order('updated_at', { ascending: false });
+  if (!includeArchived) q = q.is('archived_at', null);
+  return unwrap(await q);
+}
+
+export async function getNotePage(id) {
+  return unwrap(await supabase.from('note_pages').select('*').eq('id', id).single());
+}
+
+export async function createNotePage({ area_id, title, content }) {
+  const row = { user_id: requireUser(), area_id, title, content: content || '' };
+  return unwrap(await supabase.from('note_pages').insert(row).select().single());
+}
+
+export async function updateNotePage(id, patch) {
+  return unwrap(await supabase.from('note_pages').update(patch).eq('id', id).select().single());
+}
+
+export async function archiveNotePage(id) {
+  return updateNotePage(id, { archived_at: new Date().toISOString() });
+}
+
+export async function unarchiveNotePage(id) {
+  return updateNotePage(id, { archived_at: null });
+}
+
+// ---------------- wishlist_items ----------------
+// A backlog of ideas — no active progress tracking like a goal, just a
+// status (idea/planned/booked/done) and a rough cost. For things like a
+// travel bucket list, where "am I actually working toward this yet" is
+// the whole question, not a percent-complete.
+
+export async function listWishlistItems({ includeArchived = false } = {}) {
+  let q = supabase.from('wishlist_items').select('*')
+    .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (!includeArchived) q = q.is('archived_at', null);
+  return unwrap(await q);
+}
+
+export async function createWishlistItem({ area_id, title, estimated_cost, unit, target_period, notes }) {
+  const row = {
+    user_id: requireUser(), area_id, title,
+    estimated_cost: estimated_cost === '' || estimated_cost === undefined ? null : estimated_cost,
+    unit: unit || null,
+    target_period: target_period || null,
+    notes: notes || null
+  };
+  return unwrap(await supabase.from('wishlist_items').insert(row).select().single());
+}
+
+export async function updateWishlistItem(id, patch) {
+  return unwrap(await supabase.from('wishlist_items').update(patch).eq('id', id).select().single());
+}
+
+export async function setWishlistStatus(id, status) {
+  return updateWishlistItem(id, { status });
+}
+
+export async function archiveWishlistItem(id) {
+  return updateWishlistItem(id, { archived_at: new Date().toISOString() });
+}
+
+export async function unarchiveWishlistItem(id) {
+  return updateWishlistItem(id, { archived_at: null });
 }
