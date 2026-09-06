@@ -8,6 +8,7 @@ import {
 import { setCurrentUser } from './state.js';
 import { route, startRouter } from './router.js';
 import { DEMO_MODE } from './config.js';
+import { bindThemePicker } from './theme.js';
 
 import { renderDashboard } from './views/dashboard.js';
 import { renderAreas } from './views/areas.js';
@@ -16,6 +17,7 @@ import { renderGoalForm } from './views/goalForm.js';
 import { renderReviewNew, renderReviewFlow } from './views/reviewFlow.js';
 import { renderReviewsArchive, renderReviewDetail } from './views/reviewsArchive.js';
 import { renderSearch } from './views/search.js';
+import { renderNotesHome, renderNoteForm, renderNoteDetail } from './views/notes.js';
 
 const authScreen = document.getElementById('auth-screen');
 const appShell = document.getElementById('app-shell');
@@ -35,6 +37,8 @@ const codeSubmit = document.getElementById('code-submit');
 const userEmailEl = document.getElementById('auth-user-email');
 const logoutBtn = document.getElementById('logout-btn');
 const demoBanner = document.getElementById('demo-banner');
+const themeSelect = document.getElementById('theme-select');
+bindThemePicker(themeSelect);
 
 let pendingEmail = '';
 let routerStarted = false;
@@ -88,6 +92,9 @@ function registerRoutes() {
   route('/reviews', renderReviewsArchive);
   route('/reviews/:id', renderReviewDetail);
   route('/search', renderSearch);
+  route('/notes', renderNotesHome);
+  route('/notes/new', renderNoteForm);
+  route('/notes/:id', renderNoteDetail);
 }
 
 function setNavActive() {

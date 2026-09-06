@@ -78,11 +78,65 @@ export function isOverdue(goal) {
   return goal && goal.status === 'active' && goal.target_date && goal.target_date < todayISO();
 }
 
-/** Simple, dependency-free markdown-ish rendering: escapes HTML, then applies
- *  paragraphs, *bold*, and line breaks. Enough for journal-style notes. */
+function inlineFormat(escapedLine) {
+  return escapedLine
+    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_]+)_/g, '<em>$1</em>');
+}
+
+/**
+ * Simple, dependency-free markdown-ish rendering: paragraphs, *bold*,
+ * _italic_, "# / ## / ###" headings, and "- " bullet lists with one level
+ * of nesting via a 2-space (or tab) indent. Enough for journal-style notes
+ * and full notebook pages alike — everything still goes through
+ * escapeHtml() line by line, so raw HTML in a note can never leak through.
+ */
 export function renderNote(text) {
   if (!text) return '';
-  const escaped = escapeHtml(text);
-  const withBold = escaped.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
-  return withBold.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+  const out = [];
+  let para = [];
+  const listStack = [];
+
+  const flushPara = () => {
+    if (para.length) { out.push(`<p>${para.join('<br>')}</p>`); para = []; }
+  };
+  const closeListsAbove = (depth) => {
+    while (listStack.length > depth) { out.push('</ul>'); listStack.pop(); }
+  };
+
+  String(text).split('\n').forEach((line) => {
+    const trimmed = line.trim();
+
+    if (trimmed === '') {
+      flushPara();
+      closeListsAbove(0);
+      return;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
+      flushPara();
+      closeListsAbove(0);
+      const tag = heading[1].length === 1 ? 'h3' : (heading[1].length === 2 ? 'h4' : 'h5');
+      out.push(`<${tag} class="note-heading">${inlineFormat(escapeHtml(heading[2]))}</${tag}>`);
+      return;
+    }
+
+    const item = line.match(/^(\s*)[-•]\s+(.*)$/);
+    if (item) {
+      flushPara();
+      const depth = Math.min(2, Math.floor(item[1].replace(/\t/g, '  ').length / 2));
+      closeListsAbove(depth + 1);
+      while (listStack.length <= depth) { out.push('<ul>'); listStack.push(listStack.length); }
+      out.push(`<li>${inlineFormat(escapeHtml(item[2]))}</li>`);
+      return;
+    }
+
+    closeListsAbove(0);
+    para.push(inlineFormat(escapeHtml(line)));
+  });
+
+  flushPara();
+  closeListsAbove(0);
+  return out.join('');
 }

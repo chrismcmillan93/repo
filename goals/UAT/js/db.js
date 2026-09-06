@@ -309,3 +309,34 @@ export async function upsertReviewGoal(payload) {
     .upsert(row, { onConflict: 'review_id,goal_id' })
     .select().single());
 }
+
+// ---------------- note_pages ----------------
+// A running notebook page per life area — freeform text you keep appending
+// to over time, not a series of discrete dated entries like goal_updates.
+
+export async function listNotePages({ includeArchived = false } = {}) {
+  let q = supabase.from('note_pages').select('*').order('updated_at', { ascending: false });
+  if (!includeArchived) q = q.is('archived_at', null);
+  return unwrap(await q);
+}
+
+export async function getNotePage(id) {
+  return unwrap(await supabase.from('note_pages').select('*').eq('id', id).single());
+}
+
+export async function createNotePage({ area_id, title, content }) {
+  const row = { user_id: requireUser(), area_id, title, content: content || '' };
+  return unwrap(await supabase.from('note_pages').insert(row).select().single());
+}
+
+export async function updateNotePage(id, patch) {
+  return unwrap(await supabase.from('note_pages').update(patch).eq('id', id).select().single());
+}
+
+export async function archiveNotePage(id) {
+  return updateNotePage(id, { archived_at: new Date().toISOString() });
+}
+
+export async function unarchiveNotePage(id) {
+  return updateNotePage(id, { archived_at: null });
+}

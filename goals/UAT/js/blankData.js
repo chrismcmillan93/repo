@@ -95,12 +95,42 @@ export function buildDemoData() {
     { id: 'rg-house-1', user_id: U, review_id: 'review-last-month', goal_id: 'goal-house-deposit', rating: 2, commentary: 'Needs a standing order, not good intentions — keeps slipping.', value_at_review: 400, percent_at_review: 0.13, decision: 'adjust', created_at: monthStart(0) }
   ];
 
+  // One example notebook page — generic placeholder content, illustrating
+  // headings/bullets/nesting/bold and the "keep appending a dated update"
+  // pattern, not real figures.
+  const note_pages = [
+    {
+      id: 'note-finance-actions', user_id: U, area_id: 'area-finance',
+      title: 'Money — general plan',
+      content:
+`# Pots
+- Emergency fund — 4-6 months of bills
+- Everyday spending pot
+- Fun / holidays pot
+  - Split further if a specific trip is booked
+- Long-term investing pot
+
+*Rule of thumb:* move money into pots the day I get paid, not whatever's left over at the end of the month.
+
+## ${monthLabel(1)} update
+- Increased the long-term pot contribution slightly
+- Emergency fund is now fully topped up — redirecting that contribution elsewhere next month
+- Need to actually open a separate account for the next big trip instead of leaving it mixed in with everyday spending`,
+      created_at: monthStart(3), updated_at: monthStart(1), archived_at: null
+    }
+  ];
+
   return {
     life_areas, goals, milestones, goal_updates,
     // goal_progress is computed live by demoClient.js on every read (it's a
     // real Postgres VIEW there — this stand-in mirrors that), so no static
     // snapshot is seeded here.
-    reviews, review_goals,
+    reviews, review_goals, note_pages,
     __pending: []
   };
+}
+
+function monthLabel(monthsBack) {
+  const d = new Date(monthStart(monthsBack) + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
