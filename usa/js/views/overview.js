@@ -1,73 +1,50 @@
 import { db } from '../db.js';
-import { state } from '../state.js';
+import { state, getViewCurrency } from '../state.js';
 import {
-  escapeHtml, formatMoney, convertToView,
-  formatDateShort, formatDateMed, daysUntil
+  qs, escapeHtml, formatMoney, convertToView,
+  formatDayMonth, formatDateMed, daysUntil
 } from '../utils.js';
-import { getViewCurrency } from '../state.js';
 
-function flagSvg(){
-  return `
-  <svg class="hero-flag" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-    <g transform="translate(60,-140) rotate(10)">
-      ${[0,1,2,3,4,5,6].map((i) => `<rect x="-150" y="${i * 54}" width="900" height="27" fill="#B3373C"></rect>`).join('')}
-    </g>
-    <g transform="translate(-90,-70)">
-      <rect x="0" y="0" width="280" height="190" fill="#16233D"></rect>
-      ${Array.from({ length: 5 }).map((_, row) =>
-        Array.from({ length: 6 }).map((_, col) =>
-          `<circle cx="${28 + col * 44}" cy="${26 + row * 34}" r="5" fill="#EDE7D9"></circle>`
-        ).join('')
-      ).join('')}
-    </g>
-  </svg>`;
+// The countdown and the four-leg stamp row live in the persistent masthead
+// (visible on every screen, not just Overview) — see index.html and main.js.
+export function renderMasthead(){
+  renderCountdown();
+  renderStamps();
 }
 
-function countdownBlock(trip){
-  if (!trip) return '';
+function renderCountdown(){
+  const slot = qs('#countdownSlot');
+  if (!slot) return;
+  const trip = state.trip;
+  if (!trip) { slot.innerHTML = ''; return; }
   const toStart = daysUntil(trip.start_date);
   const toEnd = daysUntil(trip.end_date);
   if (toStart > 0) {
-    return `
-      <div class="countdown">
-        <span class="num tabular">${toStart}</span>
-        <span class="unit">day${toStart === 1 ? '' : 's'} to departure</span>
-      </div>`;
-  }
-  if (toStart <= 0 && toEnd >= 0) {
+    slot.innerHTML = `<span class="num tabular">${toStart}</span><span class="unit">day${toStart === 1 ? '' : 's'} to departure</span>`;
+  } else if (toStart <= 0 && toEnd >= 0) {
     const dayNum = Math.abs(toStart) + 1;
-    return `
-      <div class="countdown">
-        <span class="num tabular">Day ${dayNum}</span>
-        <span class="unit">on the road</span>
-      </div>`;
+    slot.innerHTML = `<span class="num tabular">Day ${dayNum}</span><span class="unit">on the road</span>`;
+  } else {
+    slot.innerHTML = `<span class="num">Home</span><span class="unit">trip complete</span>`;
   }
-  return `
-    <div class="countdown">
-      <span class="num">Home</span>
-      <span class="unit">trip complete</span>
-    </div>`;
 }
 
-function routeBand(trip, legs){
-  if (!legs.length) return '';
-  return `
-    <div class="route">
-      ${legs.map((leg) => {
-        const isCurrent = leg.arrive_date && leg.depart_date &&
-          daysUntil(leg.arrive_date) <= 0 && daysUntil(leg.depart_date) >= 0;
-        const dates = leg.arrive_date && leg.depart_date
-          ? `${formatDateShort(leg.arrive_date)} – ${formatDateShort(leg.depart_date)}`
-          : 'Dates TBC';
-        return `
-          <div class="route-stop ${isCurrent ? 'is-current' : ''}">
-            <span class="route-line"></span>
-            <span class="route-num">${leg.sort_order}</span>
-            <span class="route-name">${escapeHtml(leg.city)}</span>
-            <span class="route-dates">${escapeHtml(dates)}</span>
-          </div>`;
-      }).join('')}
-    </div>`;
+function renderStamps(){
+  const row = qs('#stampRow');
+  if (!row || !state.legs.length) return;
+  row.innerHTML = state.legs.map((leg) => {
+    const isCurrent = leg.arrive_date && leg.depart_date &&
+      daysUntil(leg.arrive_date) <= 0 && daysUntil(leg.depart_date) >= 0;
+    const dates = leg.arrive_date && leg.depart_date
+      ? `${formatDayMonth(leg.arrive_date)} – ${formatDayMonth(leg.depart_date)}`
+      : 'Dates TBC';
+    return `
+      <div class="stamp ${isCurrent ? 'is-current' : ''}">
+        <span class="stamp-no">Stop no. ${leg.sort_order}</span>
+        <span class="stamp-city">${escapeHtml(leg.city)}</span>
+        <span class="stamp-dates">${escapeHtml(dates)}</span>
+      </div>`;
+  }).join('');
 }
 
 export async function render(container){
@@ -102,16 +79,7 @@ export async function render(container){
   const nextDeadline = upcomingDeadlines[0];
 
   container.innerHTML = `
-    <section class="hero">
-      ${flagSvg()}
-      <div class="hero-content">
-        <h1 class="sr-only">Trip overview</h1>
-        <p class="hero-eyebrow">${trip ? escapeHtml(trip.name) : 'USA 2027'} &middot; ${trip ? formatDateMed(trip.start_date) + ' – ' + formatDateMed(trip.end_date) : ''}</p>
-        ${countdownBlock(trip)}
-        ${routeBand(trip, state.legs)}
-      </div>
-    </section>
-
+    <h1 class="sr-only">Trip overview</h1>
     <section class="section">
       <div class="section-head">
         <h2>Budget</h2>
@@ -134,17 +102,11 @@ export async function render(container){
     </section>
 
     <section class="section">
-      <div class="section-head"><h2>Outstanding</h2></div>
-      <ul class="list-plain">
-        <li>
-          <span>Checklist items open</span>
-          <strong class="tabular">${openChecklist.length}</strong>
-        </li>
-        <li>
-          <span>Next cancellation deadline</span>
-          <strong>${nextDeadline ? `${formatDateMed(nextDeadline.cancellation_deadline)} — ${escapeHtml(nextDeadline.name)}` : 'None set'}</strong>
-        </li>
-      </ul>
+      <div class="section-head"><h2>Before you go</h2></div>
+      <div class="notice">
+        <div class="notice-row"><span>Open checklist items</span><b>${openChecklist.length}</b></div>
+        <div class="notice-row"><span>Next cancellation deadline</span><b>${nextDeadline ? `${formatDateMed(nextDeadline.cancellation_deadline)} — ${escapeHtml(nextDeadline.name)}` : 'None set'}</b></div>
+      </div>
     </section>
   `;
 }
