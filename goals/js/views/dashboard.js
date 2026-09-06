@@ -3,13 +3,13 @@
 // momentum grid.
 
 import * as db from '../db.js';
-import { escapeHtml, relativeDays } from '../utils.js';
-import { periodLabel } from '../periods.js';
+import { escapeHtml, relativeDays, formatPercent, todayISO } from '../utils.js';
+import { periodLabel, periodBoundsContaining, horizonToPeriodType } from '../periods.js';
 import { renderRadar } from '../charts/radar.js';
 import { renderPaceBar } from '../charts/paceBar.js';
 import { renderMomentumGrid } from '../charts/momentumGrid.js';
 import {
-  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions,
+  loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions, needsAttentionPillHtml,
   pickerHtml, bindPicker, areaDotHtml
 } from './shared.js';
 
@@ -111,17 +111,53 @@ function goalCardHtml(g) {
         <span class="goal-card-meta">${lastUpdateLabel}</span>
       </div>
       ${overdueBannerHtml(g)}
-      ${renderPaceBar(p.percent_complete ?? null, p.percent_elapsed ?? null, g.areaColour)}
-      <button type="button" class="quick-update-toggle" data-action="toggle-quick-update">+ Add update</button>
-      <form class="quick-update-form" hidden data-quick-update-for="${g.id}">
-        <textarea name="note" placeholder="What happened?" rows="2"></textarea>
-        ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="Value${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
-        <label class="picker-label">Confidence</label>
-        ${pickerHtml(`qu-${g.id}`, '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
-        <button type="submit" class="btn btn-primary btn-sm">Save update</button>
-      </form>
+      ${needsAttentionPillHtml(g, p)}
+      ${renderPaceBar(p.percent_complete ?? null, p.percent_elapsed ?? null, g.areaColour, passFailLabel(g, p))}
+      ${g.measure_type === 'pass_fail' ? currentPeriodCheckInHtml(g, p) : quickUpdateFormHtml(g)}
     </div>
   `;
+}
+
+/** Dashboard shortcut for a pass_fail goal: two buttons for *this* period only — full history lives on the goal's own page. */
+function currentPeriodCheckInHtml(g, p) {
+  const periodType = horizonToPeriodType(g.horizon);
+  const period = periodBoundsContaining(periodType, todayISO());
+  // The progress row's last_update_on/current_value mirror whatever the latest
+  // goal_updates row is; if that row's date is this period's start, it's this
+  // period's check-in (setPeriodCheckIn always dates the row at the period start).
+  const isChecked = p.last_update_on === period.start;
+  const achieved = isChecked ? Number(p.current_value) : null;
+  return `
+    <div class="checkin-row" data-checkin-current data-period-start="${period.start}" data-period-type="${periodType}">
+      <span class="checkin-label">This ${periodType}${achieved === null ? '<span class="checkin-pending">Not checked in yet</span>' : ''}</span>
+      <div class="passfail-toggle">
+        <button type="button" class="btn btn-quiet btn-sm ${achieved === 1 ? 'is-selected' : ''}" data-pf-value="1">✓ Achieved</button>
+        <button type="button" class="btn btn-quiet btn-sm ${achieved === 0 ? 'is-selected' : ''}" data-pf-value="0">✗ Not achieved</button>
+      </div>
+    </div>
+  `;
+}
+
+function quickUpdateFormHtml(g) {
+  return `
+    <button type="button" class="quick-update-toggle" data-action="toggle-quick-update">+ Add update</button>
+    <form class="quick-update-form" hidden data-quick-update-for="${g.id}">
+      <textarea name="note" placeholder="What happened?" rows="2"></textarea>
+      ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="Value${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
+      <label class="picker-label">Confidence</label>
+      ${pickerHtml(`qu-${g.id}`, '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
+      <button type="submit" class="btn btn-primary btn-sm">Save update</button>
+    </form>
+  `;
+}
+
+/** Pace-bar caption override for pass_fail goals — "72% complete" doesn't read as a hit-rate. */
+function passFailLabel(g, p) {
+  if (g.measure_type !== 'pass_fail' || !p) return undefined;
+  const total = Number(p.pass_fail_total || 0);
+  if (!total) return 'No periods logged yet';
+  const hits = Number(p.pass_fail_hits || 0);
+  return `${hits} of ${total} periods achieved (${formatPercent(p.percent_complete)})`;
 }
 
 async function renderMomentumSection(goals) {
@@ -169,6 +205,7 @@ function bindDashboardEvents(root, goals) {
     const goalId = form.dataset.quickUpdateFor;
     let confidence = null;
     bindPicker(root, `qu-${goalId}`, (v) => { confidence = v; });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
@@ -180,6 +217,19 @@ function bindDashboardEvents(root, goals) {
         confidence
       });
       renderDashboard(root);
+    });
+  });
+
+  root.querySelectorAll('[data-checkin-current]').forEach((row) => {
+    const goalId = row.closest('[data-goal-card]').dataset.goalCard;
+    const periodStart = row.dataset.periodStart;
+    row.querySelectorAll('[data-pf-value]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const value = Number(btn.dataset.pfValue);
+        const alreadySelected = btn.classList.contains('is-selected');
+        await db.setPeriodCheckIn(goalId, periodStart, alreadySelected ? null : !!value);
+        renderDashboard(root);
+      });
     });
   });
 }

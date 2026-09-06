@@ -8,6 +8,7 @@ import {
 import { setCurrentUser } from './state.js';
 import { route, startRouter } from './router.js';
 import { DEMO_MODE } from './config.js';
+import { bindThemePicker } from './theme.js';
 
 import { renderDashboard } from './views/dashboard.js';
 import { renderAreas } from './views/areas.js';
@@ -15,6 +16,9 @@ import { renderGoalDetail } from './views/goalDetail.js';
 import { renderGoalForm } from './views/goalForm.js';
 import { renderReviewNew, renderReviewFlow } from './views/reviewFlow.js';
 import { renderReviewsArchive, renderReviewDetail } from './views/reviewsArchive.js';
+import { renderSearch } from './views/search.js';
+import { renderNotesHome, renderNoteForm, renderNoteDetail } from './views/notes.js';
+import { renderWishlist } from './views/wishlist.js';
 
 const authScreen = document.getElementById('auth-screen');
 const appShell = document.getElementById('app-shell');
@@ -34,6 +38,8 @@ const codeSubmit = document.getElementById('code-submit');
 const userEmailEl = document.getElementById('auth-user-email');
 const logoutBtn = document.getElementById('logout-btn');
 const demoBanner = document.getElementById('demo-banner');
+const themeSelect = document.getElementById('theme-select');
+bindThemePicker(themeSelect);
 
 let pendingEmail = '';
 let routerStarted = false;
@@ -86,6 +92,11 @@ function registerRoutes() {
   route('/review/:id', renderReviewFlow);
   route('/reviews', renderReviewsArchive);
   route('/reviews/:id', renderReviewDetail);
+  route('/search', renderSearch);
+  route('/wishlist', renderWishlist);
+  route('/notes', renderNotesHome);
+  route('/notes/new', renderNoteForm);
+  route('/notes/:id', renderNoteDetail);
 }
 
 function setNavActive() {
@@ -96,6 +107,39 @@ function setNavActive() {
   });
 }
 window.addEventListener('hashchange', setNavActive);
+
+// Mobile nav: the .app-nav list becomes a dropdown below a hamburger button
+// (see the max-width:640px block in style.css) — this just wires the toggle
+// open/closed. On wide screens the button is hidden by CSS and none of this
+// fires.
+function setupMobileNav() {
+  const navToggle = document.getElementById('nav-toggle');
+  const appNav = document.getElementById('app-nav');
+  if (!navToggle || !appNav) return;
+
+  function closeNav() {
+    appNav.classList.remove('is-open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  navToggle.addEventListener('click', () => {
+    const isOpen = appNav.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+  });
+  appNav.addEventListener('click', (e) => {
+    if (e.target.closest('a')) closeNav();
+  });
+  document.addEventListener('click', (e) => {
+    if (!appNav.classList.contains('is-open')) return;
+    if (appNav.contains(e.target) || navToggle.contains(e.target)) return;
+    closeNav();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNav();
+  });
+  window.addEventListener('hashchange', closeNav);
+}
+setupMobileNav();
 
 function setupAuthForm() {
   authForm.addEventListener('submit', async (e) => {
@@ -170,7 +214,7 @@ async function bootstrap() {
     // Sign-in is temporarily disabled — see config.js to re-enable it.
     if (demoBanner) demoBanner.hidden = false;
     logoutBtn.style.display = 'none';
-    const demoUser = { id: 'demo-user', email: 'Preview — sign-in disabled, no data yet' };
+    const demoUser = { id: 'demo-user', email: 'UAT — sign-in disabled, example data' };
     setCurrentUser(demoUser);
     showApp(demoUser);
     return;

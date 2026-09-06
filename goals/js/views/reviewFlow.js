@@ -159,7 +159,7 @@ async function goalStepHtml(review, goals, index, existingById, progressById, ar
       <li class="timeline-item">
         <div class="timeline-item-head">
           <span class="timeline-date">${formatDateDMY(u.occurred_on)}</span>
-          ${u.value !== null ? `<span class="timeline-value">${u.value}</span>` : ''}
+          ${reviewStepValueHtml(u, g.measure_type)}
         </div>
         ${u.note ? `<div class="timeline-note">${escapeHtml(u.note)}</div>` : ''}
       </li>
@@ -172,7 +172,7 @@ async function goalStepHtml(review, goals, index, existingById, progressById, ar
       <div class="step-dots">${jumpDots}</div>
       <h2 class="goal-title">${areaDotHtml(areaColour)}${escapeHtml(g.title)}</h2>
       ${isOverdue(g) ? `<p class="overdue-pill" style="display:inline-block;">⚠ Overdue</p>` : ''}
-      <p class="measure-detail">Snapshot: ${p.percent_complete !== undefined && p.percent_complete !== null ? Math.round(p.percent_complete * 100) + '%' : '—'} complete${p.current_value !== undefined ? `, current value ${p.current_value}` : ''}</p>
+      <p class="measure-detail">${snapshotLabel(g, p)}</p>
       <p class="card-eyebrow">Updates this period</p>
       ${updatesHtml}
 
@@ -196,6 +196,23 @@ async function goalStepHtml(review, goals, index, existingById, progressById, ar
       </form>
     </section>
   `;
+}
+
+function reviewStepValueHtml(u, measureType) {
+  if (u.value === null || u.value === undefined) return '';
+  if (measureType === 'pass_fail') {
+    return Number(u.value) >= 1 ? `<span class="timeline-value pf-hit">✓ Achieved</span>` : `<span class="timeline-value pf-miss">✗ Not achieved</span>`;
+  }
+  return `<span class="timeline-value">${u.value}</span>`;
+}
+
+function snapshotLabel(g, p) {
+  if (!p || p.percent_complete === undefined || p.percent_complete === null) return 'Snapshot: —';
+  const pct = Math.round(p.percent_complete * 100) + '%';
+  if (g.measure_type === 'pass_fail') {
+    return `Snapshot: ${Number(p.pass_fail_hits || 0)} of ${Number(p.pass_fail_total || 0)} periods achieved (${pct})`;
+  }
+  return `Snapshot: ${pct} complete${p.current_value !== undefined ? `, current value ${p.current_value}` : ''}`;
 }
 
 function bindGoalStep(root, review, goals, index, existingById, handlers) {

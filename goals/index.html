@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Goals &amp; Progress</title>
+<script>
+// Applies a previously-chosen theme before the stylesheet paints anything,
+// so there's no flash of the wrong theme on load. "System" (nothing
+// stored) is left alone — the stylesheet's own prefers-color-scheme query
+// handles that case.
+(function(){
+  try {
+    var t = localStorage.getItem('goals-theme');
+    if (t === 'light' || t === 'dark' || t === 'sepia' || t === 'slate') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
@@ -42,15 +56,28 @@
   <!-- ---------------- signed-in shell ---------------- -->
   <div id="app-shell" style="display:none;">
     <div id="demo-banner" class="demo-banner" hidden>
-      🔧 Preview — no data yet, not connected to Supabase. Sign-in is temporarily switched off (see <code>js/config.js</code>) while the live project is being set up.
+      🔧 Preview mode — example data only, not saved anywhere, sign-in switched off. Flip <code>DEMO_MODE</code> back to false in <code>js/config.js</code> to return to the real app.
     </div>
     <header class="app-header">
-      <nav class="app-nav">
+      <button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="app-nav" aria-label="Menu" title="Menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav class="app-nav" id="app-nav">
         <a href="#/" data-nav="/">Dashboard</a>
         <a href="#/areas" data-nav="/areas">Areas &amp; Goals</a>
+        <a href="#/wishlist" data-nav="/wishlist">Wishlist</a>
+        <a href="#/notes" data-nav="/notes">Notes</a>
         <a href="#/reviews" data-nav="/reviews">Reviews</a>
+        <a href="#/search" data-nav="/search">Search</a>
       </nav>
       <div class="app-header-user">
+        <select id="theme-select" class="theme-select" aria-label="Theme" title="Theme">
+          <option value="">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="sepia">Sepia</option>
+          <option value="slate">Slate</option>
+        </select>
         <span id="auth-user-email" class="user-email"></span>
         <button type="button" id="logout-btn" class="btn btn-quiet">Sign out</button>
       </div>
