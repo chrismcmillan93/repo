@@ -9,6 +9,17 @@
 // as the primary key in goals.playbook_progress — never change an existing
 // book's `key` or reorder its directives, or past progress will silently
 // detach from the directive it was tracking.
+//
+// Each directive also carries a `kind`: 'habit' (a genuine recurring cadence
+// — daily/weekly/monthly/quarterly — that fits a pass/fail goal) or
+// 'principle' (an ongoing mental stance or situational judgment call, applied
+// whenever it's relevant rather than on a schedule — no natural "did I do
+// this this week?" check-in, so it has no business being forced into one).
+// Omitted `kind` defaults to 'principle' in allDirectives() below. Only
+// habit-kind directives offer "turn into a goal" in the UI; principles are
+// tracked by status + note alone. About a quarter of the 167 directives are
+// genuine habits — most of this material is a way of thinking, not a
+// checklist, and the split reflects that rather than forcing an even mix.
 
 export const PILLARS = [
   {
@@ -21,11 +32,11 @@ export const PILLARS = [
         blurb: "A Roman emperor's private journal of reasoning himself back to virtue — proof that self-mastery isn't a state you arrive at, but a discipline repeated every morning. Core argument: disturbance comes from your judgment about events, not the events themselves.",
         directives: [
           { text: 'Separate the event from the judgment.', detail: 'Before reacting to a setback, name what part is fact and what part is your interpretation, then respond to the fact only.' },
-          { text: 'Write a morning brief to yourself.', detail: 'Each morning, name the specific friction or difficult people you expect that day, so irritation never arrives as a surprise.' },
+          { text: 'Write a morning brief to yourself.', detail: 'Each morning, name the specific friction or difficult people you expect that day, so irritation never arrives as a surprise.', kind: 'habit' },
           { text: 'Treat obstacles as material, not injury.', detail: 'When blocked, ask what the obstacle lets you practice — patience, resourcefulness, restraint — instead of asking why it happened to you.' },
-          { text: 'Rehearse loss in advance.', detail: 'Periodically picture losing something you value, not to be morbid, but so gratitude and calm precede the actual event rather than panic.' },
+          { text: 'Rehearse loss in advance.', detail: 'Periodically picture losing something you value, not to be morbid, but so gratitude and calm precede the actual event rather than panic.', kind: 'habit' },
           { text: 'Answer insults with a question, not a defense.', detail: "When criticized, privately check whether the charge is true before responding; a true charge is information, a false one is noise." },
-          { text: 'Review your day at night without self-flattery.', detail: 'Before sleep, name one moment you acted from reason and one where you acted from impulse, without decorating either.' },
+          { text: 'Review your day at night without self-flattery.', detail: 'Before sleep, name one moment you acted from reason and one where you acted from impulse, without decorating either.', kind: 'habit' },
           { text: 'Do the next right action, not the whole plan.', detail: 'When overwhelmed, narrow your attention to the single task in front of you and perform it well.' },
           { text: 'Remember your mortality to set priorities.', detail: "Let your finite time decide, in the moment, whether an argument or a grudge actually deserves the hours you're about to give it." }
         ]
@@ -50,7 +61,7 @@ export const PILLARS = [
         blurb: "Argues psychological and social order emerges from the accumulation of small individual disciplines, and that a person who can't manage their own life has no standing to blame the world for its chaos. Voluntary responsibility, not comfort, is what gives a life stability.",
         directives: [
           { text: 'Fix one visible piece of disorder today.', detail: 'Pick the single most neglected corner of your life and correct it fully before starting anything more ambitious.' },
-          { text: 'Compare yourself to who you were yesterday.', detail: 'Replace ranking yourself against others with a private daily log of one thing done better or worse than the day before.' },
+          { text: 'Compare yourself to who you were yesterday.', detail: 'Replace ranking yourself against others with a private daily log of one thing done better or worse than the day before.', kind: 'habit' },
           { text: 'Say what you actually mean.', detail: 'Before agreeing to a plan to keep the peace, state the honest answer instead, even at the cost of short-term friction.' },
           { text: 'Correct your posture and presence deliberately.', detail: "Notice when you're shrinking in a room and consciously reset your voice, eye contact, and stance." },
           { text: 'Choose friends who want you to improve.', detail: 'Audit your closest relationships for whether each one supports your discipline or enables your worst habits.' },
@@ -83,13 +94,13 @@ export const PILLARS = [
         blurb: 'Goggins\' transformation from an abused, overweight young man into a Navy SEAL and ultra-endurance athlete, arguing the mind quits long before the body does. His "40% Rule": when you feel done, you\'ve typically used only 40 percent of your actual capacity.',
         directives: [
           { text: 'Apply the 40% Rule to your next quitting point.', detail: "The next time you want to stop, commit to 10 more minutes or reps past the urge before you're allowed to decide." },
-          { text: 'Keep an "accountability mirror."', detail: 'Write your specific excuses on a note by your mirror and read them aloud daily until the behavior changes, not just the discomfort.' },
-          { text: 'Callous your mind through chosen discomfort.', detail: 'Schedule one voluntarily uncomfortable physical task per week purely to practice not negotiating with yourself.' },
+          { text: 'Keep an "accountability mirror."', detail: 'Write your specific excuses on a note by your mirror and read them aloud daily until the behavior changes, not just the discomfort.', kind: 'habit' },
+          { text: 'Callous your mind through chosen discomfort.', detail: 'Schedule one voluntarily uncomfortable physical task per week purely to practice not negotiating with yourself.', kind: 'habit' },
           { text: 'Turn past pain into a fuel log.', detail: 'Write down a specific past humiliation and use it as a reference point during a hard set, instead of suppressing the memory.' },
           { text: 'Take the "cookie jar" inventory.', detail: 'Before a major challenge, list three past moments you overcame something hard, and pull one out any time you want to quit.' },
-          { text: 'Stop negotiating with your alarm.', detail: 'Set a wake-up time and rise at the first alarm for 30 days straight, treating snooze as a rule violation.' },
+          { text: 'Stop negotiating with your alarm.', detail: 'Set a wake-up time and rise at the first alarm for 30 days straight, treating snooze as a rule violation.', kind: 'habit' },
           { text: 'Volunteer for the task nobody wants.', detail: "Take on the assignment your group is avoiding, specifically because that's where your comfort zone is hiding." },
-          { text: 'Track effort, not just outcome.', detail: 'Keep a private log rating your actual effort after each session, and treat a low effort score as the real failure.' }
+          { text: 'Track effort, not just outcome.', detail: 'Keep a private log rating your actual effort after each session, and treat a low effort score as the real failure.', kind: 'habit' }
         ]
       },
       {
@@ -97,9 +108,9 @@ export const PILLARS = [
         focus: 'Discipline / Self-Leadership',
         blurb: 'A former Navy SEAL commander argues discipline isn\'t the opposite of freedom but its source — the disciplined man earns options the undisciplined one never has. Written as short, blunt directives meant to be acted on immediately, not contemplated.',
         directives: [
-          { text: 'Win the first hour of the day.', detail: 'Wake earlier than required and use that margin for training or planning before anyone else makes demands on you.' },
+          { text: 'Win the first hour of the day.', detail: 'Wake earlier than required and use that margin for training or planning before anyone else makes demands on you.', kind: 'habit' },
           { text: 'Default to action over analysis.', detail: 'Once a decision is sufficiently thought through, execute immediately — further deliberation is usually procrastination in disguise.' },
-          { text: 'Treat your body as mission-critical equipment.', detail: 'Schedule training as a non-negotiable calendar block, the same priority as a meeting you cannot miss.' },
+          { text: 'Treat your body as mission-critical equipment.', detail: 'Schedule training as a non-negotiable calendar block, the same priority as a meeting you cannot miss.', kind: 'habit' },
           { text: 'Break the goal into the next ten minutes.', detail: 'Execute only the smallest sub-task you can start right now, rather than waiting to feel ready for the whole thing.' },
           { text: 'Detach from outcome mid-crisis.', detail: 'When a plan goes wrong, state the problem in one sentence and give the next order to yourself calmly.' },
           { text: 'Extreme-own every failure before assigning blame.', detail: 'After something goes wrong, write the specific decision you made that contributed to it first.' },
@@ -112,11 +123,11 @@ export const PILLARS = [
         blurb: 'Argues modern medicine reacts to the "Four Horsemen" — heart disease, cancer, neurodegeneration, metabolic dysfunction — after they appear, when the real leverage is decades earlier. Exercise, sleep, and nutrition reframed as the highest-leverage preventive medicine available.',
         directives: [
           { text: 'Train for your "Centenarian Decathlon."', detail: 'Identify the physical tasks you want to still perform at 80, and reverse-engineer today\'s training from that target.' },
-          { text: 'Build a strength floor, not just cardio.', detail: 'Add two dedicated resistance sessions per week focused on compound lifts — grip and muscle mass predict longevity.' },
-          { text: 'Protect Zone 2 cardio time weekly.', detail: "Schedule several hours of easy, sustained aerobic effort to build the mitochondrial base high intensity alone doesn't build." },
-          { text: 'Treat sleep as a medical intervention.', detail: "Set a fixed sleep and wake window and defend it the way you'd defend a prescribed medication." },
+          { text: 'Build a strength floor, not just cardio.', detail: 'Add two dedicated resistance sessions per week focused on compound lifts — grip and muscle mass predict longevity.', kind: 'habit' },
+          { text: 'Protect Zone 2 cardio time weekly.', detail: "Schedule several hours of easy, sustained aerobic effort to build the mitochondrial base high intensity alone doesn't build.", kind: 'habit' },
+          { text: 'Treat sleep as a medical intervention.', detail: "Set a fixed sleep and wake window and defend it the way you'd defend a prescribed medication.", kind: 'habit' },
           { text: 'Get ahead of metabolic markers early.', detail: 'Request bloodwork on markers like ApoB in your 30s and 40s rather than waiting for symptoms.' },
-          { text: 'Train balance and stability on purpose.', detail: 'Add single-leg and stability work specifically to reduce fall risk decades from now.' },
+          { text: 'Train balance and stability on purpose.', detail: 'Add single-leg and stability work specifically to reduce fall risk decades from now.', kind: 'habit' },
           { text: 'Define your "marginal decade" now.', detail: 'Write what you want your final ten years to physically look like, and let that decide what you train for today.' }
         ]
       },
@@ -125,11 +136,11 @@ export const PILLARS = [
         focus: 'Health / Discomfort & Resilience',
         blurb: 'Argues modern convenience has removed nearly all friction from daily life, quietly driving anxiety and lost resilience. Built around a 33-day Arctic hunt: deliberately reintroducing scarcity and physical strain restores capacities comfort has eroded.',
         directives: [
-          { text: 'Schedule a "misogi" once a year.', detail: 'Pick one extremely difficult physical challenge annually with roughly a 50% chance of failure.' },
-          { text: 'Practice being bored on purpose.', detail: 'Leave your phone behind for a walk once a week and let your mind wander unstimulated.' },
-          { text: 'Walk further than convenient, regularly.', detail: 'Replace one short car trip a week with an hour-long walk as a deliberate stressor.' },
-          { text: 'Carry weight over distance.', detail: 'Add a weighted backpack to a regular walk or hike once a week to combine cardio and load-bearing strength.' },
-          { text: 'Practice hunger instead of eliminating it.', detail: 'Let yourself go a few hours past your normal eating time occasionally and notice the sensation without fixing it.' },
+          { text: 'Schedule a "misogi" once a year.', detail: 'Pick one extremely difficult physical challenge annually with roughly a 50% chance of failure.', kind: 'habit' },
+          { text: 'Practice being bored on purpose.', detail: 'Leave your phone behind for a walk once a week and let your mind wander unstimulated.', kind: 'habit' },
+          { text: 'Walk further than convenient, regularly.', detail: 'Replace one short car trip a week with an hour-long walk as a deliberate stressor.', kind: 'habit' },
+          { text: 'Carry weight over distance.', detail: 'Add a weighted backpack to a regular walk or hike once a week to combine cardio and load-bearing strength.', kind: 'habit' },
+          { text: 'Practice hunger instead of eliminating it.', detail: 'Let yourself go a few hours past your normal eating time occasionally and notice the sensation without fixing it.', kind: 'habit' },
           { text: 'Choose the harder, slower option when available.', detail: 'When a shortcut and an effortful option both solve a problem, default to the effortful one.' }
         ]
       }
@@ -144,10 +155,10 @@ export const PILLARS = [
         focus: 'Finance / Behavioral Money Psychology',
         blurb: 'Argues financial success is a soft skill, driven by behavior and temperament far more than intelligence or formulas — how you feel about money matters more than what you know. Doing reasonably well consistently beats doing brilliantly occasionally.',
         directives: [
-          { text: 'Set a savings rate independent of income growth.', detail: 'Fix a percentage of every raise to go directly to savings before your lifestyle can absorb it.' },
+          { text: 'Set a savings rate independent of income growth.', detail: 'Fix a percentage of every raise to go directly to savings before your lifestyle can absorb it.', kind: 'habit' },
           { text: 'Define "enough" in writing.', detail: 'Write the specific number or lifestyle that would satisfy you, so ambition has a stopping point.' },
           { text: 'Build a margin of safety into every plan.', detail: 'Add a buffer to your financial plan specifically to survive being wrong, not just unlucky.' },
-          { text: 'Judge decisions by process, not outcome.', detail: 'After a win or loss, write whether the decision was sound at the time, separate from how it turned out.' },
+          { text: 'Judge decisions by process, not outcome.', detail: 'After a win or loss, write whether the decision was sound at the time, separate from how it turned out.', kind: 'habit' },
           { text: 'Automate your investing.', detail: "Set up automatic contributions on a fixed schedule so compounding doesn't depend on your mood about the market." },
           { text: 'Hold through boredom, not just downturns.', detail: "Pre-commit to a minimum multi-year holding period so ordinary boredom isn't mistaken for a sell signal." },
           { text: "Separate your money story from someone else's.", detail: 'Before copying a strategy you admire, check whether their goals and timeline actually match yours.' }
@@ -159,9 +170,9 @@ export const PILLARS = [
         blurb: 'Contrasts two father figures to argue financial education, not formal schooling, determines whether you work for money or make money work for you. Core distinction: assets put money in your pocket, liabilities take it out, regardless of appearances.',
         directives: [
           { text: 'Audit purchases as assets or liabilities.', detail: 'Before a major purchase, classify it honestly by whether it generates income or drains it monthly.' },
-          { text: 'Pay yourself first, literally.', detail: 'Move a set amount into savings the moment income arrives, before paying any other bill.' },
+          { text: 'Pay yourself first, literally.', detail: 'Move a set amount into savings the moment income arrives, before paying any other bill.', kind: 'habit' },
           { text: 'Buy income-producing assets before status liabilities.', detail: 'Redirect a status-purchase budget toward an asset that produces cash flow until that asset can fund the purchase itself.' },
-          { text: 'Treat financial literacy as an ongoing skill.', detail: "Set aside weekly time to study a financial topic you don't understand, rather than assuming common sense covers it." },
+          { text: 'Treat financial literacy as an ongoing skill.', detail: "Set aside weekly time to study a financial topic you don't understand, rather than assuming common sense covers it.", kind: 'habit' },
           { text: 'Use debt as a tool, evaluated by purpose.', detail: 'Before taking on debt, classify it as funding an asset or a liability.' },
           { text: "Start a side business to learn the owner's mindset.", detail: 'Take on one small income-generating project outside your job specifically to practice thinking like an owner.' }
         ]
@@ -171,8 +182,8 @@ export const PILLARS = [
         focus: 'Finance & Mindset / Achievement Psychology',
         blurb: 'Based on interviews with early-20th-century self-made millionaires: wealth begins as a definite, burning desire converted into a specific plan. The gap between those who achieve big goals and those who don\'t is the intensity and specificity of that initial desire.',
         directives: [
-          { text: 'Write a specific, dated financial goal.', detail: "State the exact amount, the exact date, and what you'll give in return, then read it aloud twice daily." },
-          { text: 'Form a "mastermind" of two or more people.', detail: 'Meet regularly with others pursuing similarly ambitious goals, rather than working in isolation.' },
+          { text: 'Write a specific, dated financial goal.', detail: "State the exact amount, the exact date, and what you'll give in return, then read it aloud twice daily.", kind: 'habit' },
+          { text: 'Form a "mastermind" of two or more people.', detail: 'Meet regularly with others pursuing similarly ambitious goals, rather than working in isolation.', kind: 'habit' },
           { text: 'Convert every setback into a lesson before moving on.', detail: 'After a failure, write the specific advantage hidden in it before allowing yourself to feel discouraged.' },
           { text: 'Make a decision and set a deadline.', detail: "For any pending choice you've been avoiding, set a firm decision date this week." },
           { text: 'Name your specific fear in writing.', detail: "An unnamed fear controls you more than a named one — write down exactly what you're afraid of." },
@@ -186,10 +197,10 @@ export const PILLARS = [
         blurb: 'Based on research into actual millionaire households: most live well below their means and prioritize savings over status. Wealth is what you accumulate, not what you spend — and the two are often inversely related.',
         directives: [
           { text: 'Calculate your expected net worth formula.', detail: 'Multiply age by pre-tax income, divide by 10, and compare it honestly to your actual net worth.' },
-          { text: 'Budget before you buy, every time.', detail: 'Set a discretionary spending category in advance and check purchases against it, rather than deciding case by case.' },
+          { text: 'Budget before you buy, every time.', detail: 'Set a discretionary spending category in advance and check purchases against it, rather than deciding case by case.', kind: 'habit' },
           { text: 'Choose a modest home relative to income.', detail: "Cap housing cost at a fixed percentage of income well below what you're approved for." },
           { text: "Stop financing your children's adult lifestyle.", detail: "If you're regularly funding adult children's expenses, set a firm cutoff date and communicate it." },
-          { text: 'Track your spending by category monthly.', detail: 'Keep an actual written log of where money goes each month, not an approximation.' },
+          { text: 'Track your spending by category monthly.', detail: 'Keep an actual written log of where money goes each month, not an approximation.', kind: 'habit' },
           { text: 'Pick a business or career for its economics, not its prestige.', detail: "Weight actual income and ownership potential higher than the title's perceived status." }
         ]
       }
@@ -204,12 +215,12 @@ export const PILLARS = [
         focus: 'Relationships / Masculine Purpose',
         blurb: "Argues a man's ability to show up fully in relationships is inseparable from whether he's living in alignment with a mission bigger than his own comfort. Frames masculine growth as choosing your deepest purpose and living from it, even under emotional pressure.",
         directives: [
-          { text: "Name your life's mission in one sentence.", detail: 'Write the specific purpose you\'re moving toward outside the relationship, and revisit it monthly.' },
+          { text: "Name your life's mission in one sentence.", detail: 'Write the specific purpose you\'re moving toward outside the relationship, and revisit it monthly.', kind: 'habit' },
           { text: 'Stay present instead of placating during conflict.', detail: "When your partner is upset, practice staying present without immediately trying to fix or escape the feeling." },
           { text: 'Keep commitments to yourself before commitments to others.', detail: "Maintain one personal discipline even when a partner's mood pressures you to drop it." },
           { text: 'Communicate desire directly, not through hints.', detail: 'State what you want plainly rather than expecting a partner to infer it.' },
           { text: "Don't outsource your emotional stability.", detail: "Before reacting to your partner's mood, check whether you're regulating yourself or waiting for her to regulate you." },
-          { text: 'Choose depth of attention over frequency of reassurance.', detail: 'Give full, undistracted attention for a set period daily, rather than scattered attention all day.' }
+          { text: 'Choose depth of attention over frequency of reassurance.', detail: 'Give full, undistracted attention for a set period daily, rather than scattered attention all day.', kind: 'habit' }
         ]
       },
       {
@@ -269,10 +280,10 @@ export const PILLARS = [
           { text: 'Stack new habits onto existing ones.', detail: 'Attach a new small habit directly after an existing automatic one instead of anchoring it to a random time.' },
           { text: 'Make good habits easier to start.', detail: 'Reduce the friction of the first two minutes of a habit rather than optimizing the full session.' },
           { text: 'Make bad habits harder to access.', detail: "Add one deliberate step of friction to a habit you're breaking instead of relying on willpower alone." },
-          { text: 'Track the habit, not just the outcome.', detail: 'Keep a visible streak or checklist marking each day you did the behavior.' },
+          { text: 'Track the habit, not just the outcome.', detail: 'Keep a visible streak or checklist marking each day you did the behavior.', kind: 'habit' },
           { text: 'Never miss twice.', detail: 'If you break a streak once, treat getting back on track the very next day as the actual rule.' },
           { text: 'Redesign your environment before your willpower.', detail: 'Change the physical layout of a space to make the desired behavior the path of least resistance.' },
-          { text: 'Vote for the identity, not the outcome.', detail: 'After completing a habit, note the identity it reinforces, not just the task completed.' },
+          { text: 'Vote for the identity, not the outcome.', detail: 'After completing a habit, note the identity it reinforces, not just the task completed.', kind: 'habit' },
           { text: 'Use temptation bundling.', detail: 'Pair an action you need to do with one you want to do, so the habit reinforces itself.' }
         ]
       },
@@ -281,13 +292,13 @@ export const PILLARS = [
         focus: 'Productivity / Focused Attention',
         blurb: 'Argues the ability to focus without distraction on cognitively demanding tasks is increasingly rare and valuable, and most knowledge workers default to shallow, reactive work because it\'s easier. Deep work produces disproportionate results compared to the same hours spent fragmented.',
         directives: [
-          { text: 'Schedule fixed deep work blocks in advance.', detail: 'Block specific hours each week for uninterrupted focused work, as unmovable as a client meeting.' },
+          { text: 'Schedule fixed deep work blocks in advance.', detail: 'Block specific hours each week for uninterrupted focused work, as unmovable as a client meeting.', kind: 'habit' },
           { text: 'Quantify the true cost of a shallow task.', detail: 'Before agreeing to a meeting, estimate how much deep work time it will fragment, not just its own duration.' },
-          { text: 'Batch shallow work into a fixed window.', detail: 'Designate one block for email and admin, and decline to touch it outside that window.' },
-          { text: 'Set a hard shutdown ritual.', detail: "End your workday with a specific signal that shutdown is complete, so tasks don't bleed into your evening." },
+          { text: 'Batch shallow work into a fixed window.', detail: 'Designate one block for email and admin, and decline to touch it outside that window.', kind: 'habit' },
+          { text: 'Set a hard shutdown ritual.', detail: "End your workday with a specific signal that shutdown is complete, so tasks don't bleed into your evening.", kind: 'habit' },
           { text: 'Practice productive meditation.', detail: 'During a walk, deliberately hold and work through one professional problem instead of consuming media.' },
           { text: 'Quit or drastically reduce low-value social media.', detail: "Apply a 30-day test: if a platform's absence causes no real loss, remove it permanently." },
-          { text: 'Measure your day in deep work hours.', detail: 'Log distraction-free focused hours, not total hours at your desk, as your real productivity metric.' }
+          { text: 'Measure your day in deep work hours.', detail: 'Log distraction-free focused hours, not total hours at your desk, as your real productivity metric.', kind: 'habit' }
         ]
       },
       {
@@ -296,12 +307,12 @@ export const PILLARS = [
         blurb: 'Argues lasting effectiveness comes from character and principles, not personality tactics, moving a person from dependence through independence to interdependence. Distinguishes urgent from important, arguing effective people organize their lives around the latter.',
         directives: [
           { text: 'Write a personal mission statement.', detail: 'Draft your core values and the person you want to be, and use it as the filter for major decisions.' },
-          { text: 'Sort your week by the time-management quadrant.', detail: 'Categorize planned tasks by urgent/important, and schedule "important, not urgent" work before it becomes a crisis.' },
+          { text: 'Sort your week by the time-management quadrant.', detail: 'Categorize planned tasks by urgent/important, and schedule "important, not urgent" work before it becomes a crisis.', kind: 'habit' },
           { text: 'Begin any collaboration by understanding first.', detail: "Restate the other person's position accurately before presenting your own." },
           { text: 'Negotiate for win-win, or walk away.', detail: 'Explicitly look for a third option that serves both parties before accepting a lose-win.' },
-          { text: 'Sharpen one of the four dimensions weekly.', detail: 'Schedule renewal time for physical, mental, social, or spiritual dimensions, rotating through all four.' },
+          { text: 'Sharpen one of the four dimensions weekly.', detail: 'Schedule renewal time for physical, mental, social, or spiritual dimensions, rotating through all four.', kind: 'habit' },
           { text: 'Start with the end in mind.', detail: 'Before major work, write a one-paragraph description of what success looks like at completion.' },
-          { text: 'Put first things first, literally on the calendar.', detail: 'Schedule your highest-priority, non-urgent tasks before smaller requests fill the space.' },
+          { text: 'Put first things first, literally on the calendar.', detail: 'Schedule your highest-priority, non-urgent tasks before smaller requests fill the space.', kind: 'habit' },
           { text: 'Seek synergy instead of compromise.', detail: 'In group decisions, ask for a third option neither side has proposed before settling for 50/50.' }
         ]
       },
@@ -312,10 +323,10 @@ export const PILLARS = [
         directives: [
           { text: 'Apply the 90% rule to new commitments.', detail: "Rate an opportunity 0–100; if it's not a 90 or above, treat it as a no." },
           { text: 'Replace "I have to" with "I choose to."', detail: "Reframe a recurring obligation as a choice, surfacing whether you'd choose it again if optional." },
-          { text: 'Protect an "essential intent" for each quarter.', detail: 'Write one concrete, measurable priority for the next three months and filter requests against it.' },
+          { text: 'Protect an "essential intent" for each quarter.', detail: 'Write one concrete, measurable priority for the next three months and filter requests against it.', kind: 'habit' },
           { text: 'Say no with a graceful, clear script.', detail: 'Prepare a short, non-apologetic phrase in advance for declining requests.' },
           { text: 'Build in a buffer for the unexpected.', detail: 'Add 50% more time than feels necessary to important project estimates.' },
-          { text: 'Do a quarterly commitment audit.', detail: 'Every three months, cut at least one recurring commitment that no longer serves your essential intent.' },
+          { text: 'Do a quarterly commitment audit.', detail: 'Every three months, cut at least one recurring commitment that no longer serves your essential intent.', kind: 'habit' },
           { text: 'Design small wins before big pushes.', detail: 'Identify the smallest concrete first step you can complete this week, to build momentum.' }
         ]
       }
@@ -362,7 +373,7 @@ export const PILLARS = [
           { text: 'Praise the process, not the trait.', detail: 'When acknowledging a success, name the specific effort or strategy used, not an innate quality like "smart."' },
           { text: 'Treat a plateau as a signal to change method, not identity.', detail: "When progress stalls, ask what specific approach needs to change instead of concluding you've hit your ceiling." },
           { text: 'Seek out feedback that stings a little.', detail: "Deliberately ask for the critical feedback you've been avoiding, and treat discomfort as a sign it's useful." },
-          { text: 'Track effort and strategy, not just results.', detail: 'Log what you tried and adjusted, not just whether you succeeded, so setbacks read as data.' },
+          { text: 'Track effort and strategy, not just results.', detail: 'Log what you tried and adjusted, not just whether you succeeded, so setbacks read as data.', kind: 'habit' },
           { text: "Reframe a rival's success as information.", detail: "When someone else succeeds where you didn't, extract one specific thing they did differently." }
         ]
       },
@@ -373,7 +384,7 @@ export const PILLARS = [
         directives: [
           { text: 'Name the emotion before you act on it.', detail: 'In a moment of frustration, silently label the specific emotion rather than just reacting to it.' },
           { text: 'Build a pause before your default reaction.', detail: 'Practice a fixed physical cue — a breath, a count to five — between a trigger and your response.' },
-          { text: 'Track your emotional triggers in writing.', detail: 'Keep a short log of situations that reliably spike your stress or anger, to recognize the pattern before it recurs.' },
+          { text: 'Track your emotional triggers in writing.', detail: 'Keep a short log of situations that reliably spike your stress or anger, to recognize the pattern before it recurs.', kind: 'habit' },
           { text: 'Practice reading a room before speaking.', detail: 'In your next meeting, spend the first few minutes observing tone and body language before contributing.' },
           { text: 'Check in on your motivation source.', detail: "Before a demanding task, identify whether you're driven by an internal standard or external approval." },
           { text: 'Ask what someone is feeling, not just what happened.', detail: 'In a difficult conversation, explicitly ask how the other person feels, not only for the facts.' },
@@ -384,7 +395,7 @@ export const PILLARS = [
   }
 ];
 
-/** Flat list of every directive with its stable key and parent book/pillar context — the shape views actually iterate over. */
+/** Flat list of every directive with its stable key, parent book/pillar context, and kind — the shape views actually iterate over. */
 export function allDirectives() {
   const out = [];
   for (const pillar of PILLARS) {
@@ -392,7 +403,7 @@ export function allDirectives() {
       book.directives.forEach((d, i) => {
         out.push({
           key: `${book.key}-${String(i + 1).padStart(2, '0')}`,
-          text: d.text, detail: d.detail,
+          text: d.text, detail: d.detail, kind: d.kind || 'principle',
           bookKey: book.key, bookTitle: book.title, bookAuthor: book.author,
           pillarKey: pillar.key, pillarTitle: pillar.title
         });

@@ -59,7 +59,7 @@ function pillarHtml(pillar, progress) {
 function bookHtml(book, progress) {
   const expanded = expandedBooks.has(book.key);
   const directives = book.directives.map((d, i) => ({
-    key: `${book.key}-${String(i + 1).padStart(2, '0')}`, text: d.text, detail: d.detail
+    key: `${book.key}-${String(i + 1).padStart(2, '0')}`, text: d.text, detail: d.detail, kind: d.kind || 'principle'
   }));
   const adoptedCount = directives.filter((d) => (progress.get(d.key) || {}).status === 'adopted').length;
 
@@ -84,17 +84,23 @@ function directiveHtml(book, d, row) {
   const note = row ? row.note : '';
   const linkedGoalId = row ? row.linked_goal_id : null;
   const noteOpen = openNotes.has(d.key) || !!note;
+  const isHabit = d.kind === 'habit';
 
   return `
     <li class="pb-directive">
-      <p class="pb-directive-text"><strong>${escapeHtml(d.text)}</strong> ${escapeHtml(d.detail)}</p>
+      <p class="pb-directive-text">
+        <strong>${escapeHtml(d.text)}</strong> ${escapeHtml(d.detail)}
+        ${isHabit ? `<span class="pb-kind-tag">Recurring</span>` : ''}
+      </p>
       <div class="pb-directive-controls">
         <select class="pb-status-select status-${status}" data-pb-status="${d.key}">
           ${STATUSES.map((s) => `<option value="${s}" ${s === status ? 'selected' : ''}>${playbookStatusLabel(s)}</option>`).join('')}
         </select>
         ${linkedGoalId
           ? `<a class="pill-quiet" href="#/goal/${linkedGoalId}">→ Tracking as goal</a>`
-          : `<button type="button" class="btn btn-quiet btn-sm" data-pb-goal="${d.key}" data-book="${book.key}">→ Turn into goal</button>`}
+          : isHabit
+            ? `<button type="button" class="btn btn-quiet btn-sm" data-pb-goal="${d.key}" data-book="${book.key}">→ Turn into goal</button>`
+            : `<span class="pb-principle-note">A mindset to hold, not a scheduled goal</span>`}
         <button type="button" class="btn btn-quiet btn-sm" data-pb-note-toggle="${d.key}">${note ? 'Edit note' : '+ Note'}</button>
       </div>
       <div class="pb-note-box" ${noteOpen ? '' : 'hidden'}>
