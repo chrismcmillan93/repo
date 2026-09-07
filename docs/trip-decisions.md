@@ -127,6 +127,27 @@ Itinerary screen itself. Added:
   went with collapsed since a day is primarily about your own plan and someone
   else's shouldn't compete for attention unless asked for.
 
+## Bug: shared badge showed "Someone" instead of a name (2026-09-07)
+Reported immediately after the above shipped: the Itinerary badge and Overview's
+"Also there" both showed generically ("Someone has plans today") instead of the
+real name. Root cause was a missing RLS policy, not a missing name: `usa.trips`
+only had the owner-scoped `own trip` policy, with no exception for a shared leg's
+owning trip the way `legs`/`itinerary_items`/`places` already had one. So every
+query that embeds `trips(name, traveller_name)` from a shared leg or item got
+`null` back for that embed under RLS, and `travellerLabel()` correctly fell back
+to its last resort. Fixed with an additive `"shared leg trip read"` SELECT policy
+on `usa.trips` (same "is there a shared leg pointing at this row" shape as the
+`places` one) — see `CLAUDE.md`.
+
+This slipped through because the whole feature was verified against a mocked
+Supabase client that doesn't enforce RLS at all — the mock always returns full
+joined data regardless of which account is asking, so it can validate rendering
+logic but can't catch a real permissions gap. Worth remembering for any future
+cross-trip feature: the mock proves the UI does the right thing *with* the data;
+it says nothing about whether the real database will actually hand that data
+over. `get_advisors` after every RLS change, and ideally a real second account,
+are the only things that actually check that.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
