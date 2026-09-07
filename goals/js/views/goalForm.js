@@ -4,6 +4,7 @@ import * as db from '../db.js';
 import { escapeHtml, todayISO, horizonLabel, measureLabel, statusLabel } from '../utils.js';
 import { navigate } from '../router.js';
 import { loadingHtml, errorHtml } from './shared.js';
+import { consumeGoalFormPrefill } from '../state.js';
 
 const HORIZONS = ['weekly', 'monthly', 'quarterly', 'annual', 'long_term'];
 const MEASURES = ['numeric', 'milestone', 'pass_fail', 'narrative'];
@@ -27,8 +28,9 @@ export async function renderGoalForm(root, params) {
       return;
     }
 
-    root.innerHTML = formHtml(areas, goal);
-    bindForm(root, areas, goal, isEdit);
+    const prefill = isEdit ? null : consumeGoalFormPrefill();
+    root.innerHTML = formHtml(areas, goal, prefill);
+    bindForm(root, areas, goal, isEdit, prefill);
   } catch (err) {
     root.innerHTML = errorHtml(err);
   }
@@ -38,12 +40,13 @@ function opt(value, label, selected) {
   return `<option value="${escapeHtml(value)}" ${value === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
 }
 
-function formHtml(areas, goal) {
+function formHtml(areas, goal, prefill) {
   const g = goal || {
     area_id: areas[0].id, title: '', description: '', why: '',
     horizon: 'monthly', status: 'active', start_date: todayISO(), target_date: '',
     measure_type: 'numeric', target_value: '', start_value: 0, unit: '', direction: 'increase',
-    priority: 3
+    priority: 3,
+    ...prefill
   };
   const isEdit = !!goal;
   const numericVisible = g.measure_type === 'numeric';
@@ -138,7 +141,7 @@ function formHtml(areas, goal) {
   `;
 }
 
-function bindForm(root, areas, goal, isEdit) {
+function bindForm(root, areas, goal, isEdit, prefill) {
   const form = root.querySelector('#goal-form');
   const measureSelect = form.querySelector('[name="measure_type"]');
   const numericFields = root.querySelector('#numeric-fields');
@@ -219,6 +222,9 @@ function bindForm(root, areas, goal, isEdit) {
         navigate(`/goal/${updated.id}`);
       } else {
         const created = await db.createGoal(payload);
+        if (prefill && prefill.__playbookDirectiveKey) {
+          await db.linkPlaybookGoal(prefill.__playbookDirectiveKey, created.id);
+        }
         navigate(`/goal/${created.id}`);
       }
     } catch (err) {
