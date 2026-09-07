@@ -48,11 +48,24 @@ full access" policies are gone. Current shape:
 - every child table (`legs`, `flights`, `accommodations`, `transport`, `places`,
   `itinerary_items`, `checklist_items`, `expenses`): `trip_id in (select id from
   usa.trips where user_id = auth.uid())`, all operations.
-- **Exception, additive and read-only:** `legs` where `is_shared = true`, and
-  `itinerary_items` whose `leg_id` points at such a leg, get an extra SELECT-only
-  policy readable by any authenticated user regardless of trip ownership — the
-  mechanism behind "everyone's Vegas stop is visible to everyone, nothing else is."
-  Nobody can edit a leg they don't own via this policy, only read it.
+- **Exception, additive and read-only:** `legs` where `is_shared = true`,
+  `itinerary_items` whose `leg_id` points at such a leg, `places` referenced by
+  such an item's `place_id`, and — as of `usa_shared_leg_trip_read` — the `trips`
+  row that owns such a leg, each get an extra SELECT-only policy readable by any
+  authenticated user regardless of trip ownership. This is the mechanism behind
+  "everyone's Vegas stop is visible to everyone, nothing else is." Nobody can edit
+  a leg (or anything under it) they don't own via these policies, only read it.
+  The `trips` exception is row-level like the others, so it exposes the *whole*
+  trip row (dates, `fx_rate`, `notes`) once any one leg is shared, not just the
+  `name`/`traveller_name` the UI actually reads from it — an accepted trade-off
+  for a two-person app where sharing a leg is already a mutual, explicit opt-in.
+  Forgetting this one specifically is exactly what happened here: `legs` and
+  `itinerary_items` were shared correctly, but the embedded `trips(...)` join
+  those queries rely on to label *whose* plan it is came back `null` under RLS
+  until this policy landed, silently degrading the display to a generic
+  "Someone" — a gap the mocked Playwright test suite can't catch, since the
+  mock doesn't enforce RLS at all. Trust `get_advisors` and, ideally, a real
+  second account over the mock for anything cross-trip.
 - Anon grants on the `usa` schema are revoked — the app requires a real session,
   full stop. This landed together with reassigning Chris's original (pre-auth,
   `user_id = null`) trip to his real account, once he completed his first sign-in —
