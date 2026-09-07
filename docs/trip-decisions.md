@@ -166,6 +166,28 @@ before either of you books it than after).
   shortlisted/candidate places in it, not seeded in this repo — confirms the
   feature has something real to show once the sister's account is live.
 
+## Incident: RLS recursion broke the whole app (2026-09-07)
+Reported as "infinite recursion detected" shortly after the trips-sharing fix
+above shipped. Root cause: that fix's `"shared leg trip read"` policy on
+`usa.trips` queried `usa.legs` directly (`id in (select trip_id from usa.legs
+where is_shared = true)`) — and `usa.legs`' own `"own trip rows"` policy queries
+`usa.trips` right back. Evaluating either table's RLS required evaluating the
+other's, forever. Since every child table's own-row policy also queries
+`usa.trips`, this took down RLS for the entire schema — not a degraded shared
+view like the last two incidents, but every single query failing, full stop.
+
+Fixed by moving the check into a `SECURITY DEFINER` function
+(`usa.trip_has_shared_leg`) that the policy calls instead of querying `legs`
+inline — it runs as its own privileged owner, which bypasses `legs`' RLS rather
+than re-triggering it, breaking the cycle. See `CLAUDE.md` for why this matters
+for any future cross-table policy, not just this one.
+
+Verified directly against the real database rather than the mock this time
+(`execute_sql` with `set local role authenticated` + `request.jwt.claim.sub` to
+actually exercise RLS as both Chris's account and the shared-Vegas test account)
+— the mock can't catch this class of bug at all, since it doesn't implement RLS.
+Three RLS incidents in one day made that limitation impossible to ignore twice.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
