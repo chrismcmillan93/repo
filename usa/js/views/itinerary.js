@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { getViewCurrency } from '../state.js';
 import {
   qs, qsa, escapeHtml, toast, friendlyError, renderMoney,
-  formatTime, formatDateShort, formatDateFull, dateRange
+  formatTime, formatDateShort, formatDateFull, dateRange, typePillClass
 } from '../utils.js';
 
 let itemsByDay = new Map();
@@ -14,10 +14,6 @@ let addOptionForGroup = null; // choice_group_id currently showing an "add anoth
 
 function legForDay(day){
   return state.legs.find((l) => l.arrive_date && l.depart_date && day >= l.arrive_date && day <= l.depart_date) || null;
-}
-
-function typePillClass(type){
-  return type === 'fixed' ? 'pill-fixed' : type === 'planned' ? 'pill-planned' : 'pill-idea';
 }
 
 // Groups a day's flat item list into render units: a standalone item, or one

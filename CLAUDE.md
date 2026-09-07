@@ -106,6 +106,32 @@ account, not just its owner — see the RLS policies above. `db.legs.listSharedE
 leg(s); the Overview screen's "Also there" section is the only place this is
 surfaced today. Read-only by design — nobody edits a leg they don't own.
 
+The "Also there" cards show full item detail, not just a title and time: time range,
+type, notes, estimated cost (in the item's own currency — never converted through this
+trip's `fx_rate`, since it's someone else's spend on someone else's trip), and the
+linked place's name/address/rating/map link when the item has one. A `places` row is
+only readable cross-trip via the additive **"shared leg place read"** policy, which
+opens up a place row only when it's actually referenced (`itinerary_items.place_id`)
+from a shared leg's itinerary — the same narrow, read-only shape as the leg/item
+policies, not a general grant to someone else's places shortlist.
+
+## PDF export
+
+Two "Export PDF" actions — one per stop (the 📄 icon in each stops-panel row) and one
+for the whole trip (utility bar, top of every screen) — both call into `usa/js/print.js`
+and both do the same thing at different scope: build a day-by-day timeline merging
+`itinerary_items`, `flights`, `accommodations` and `transport` into one document (a
+flight's departure/arrival, a stay's check-in/check-out, a transport pickup/dropoff,
+and the day's confirmed itinerary items, sorted by time within the day) and open it as
+a standalone page in a new tab, then call `window.print()` so the browser's own
+"Save as PDF" does the actual conversion. No PDF library and no build step — matches
+this app's existing "no bundler" rule. An unpicked choice-group alternative is
+excluded, same rule as the cost totals. Flights/accommodation/transport have no
+`leg_id` tie strong enough to scope a document by leg (flights don't have a `leg_id`
+column at all), so both scopes use the same date-matching logic — the trip-wide
+export just passes a wider date range than the per-leg one, which avoids a booking
+on a leg-boundary date (e.g. a flight day) being duplicated across two leg sections.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.

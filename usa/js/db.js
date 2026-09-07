@@ -94,10 +94,15 @@ export const db = {
   itineraryItems: {
     list: (tripId) => listByTrip('itinerary_items', tripId, { order: { column: 'sort_order' } }),
     // Items on a leg marked is_shared, belonging to someone else's trip.
+    // Joins places(...) for location detail -- readable under the matching
+    // "shared leg place read" RLS policy, which only opens up a place when
+    // it's actually referenced from a shared leg's itinerary (see
+    // usa_shared_leg_place_read migration), same read-only shape as the
+    // leg/item policies themselves.
     async listSharedElsewhere(tripId){
       const { data, error } = await supabase
         .from('itinerary_items')
-        .select('*, legs!inner(is_shared, name, city), trips(name)')
+        .select('*, legs!inner(is_shared, name, city), trips(name), places(name, address, maps_url, rating)')
         .eq('legs.is_shared', true)
         .neq('trip_id', tripId);
       checkError(error);

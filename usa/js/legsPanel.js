@@ -4,6 +4,7 @@
 import { db } from './db.js';
 import { state, notifyTripChanged } from './state.js';
 import { qs, escapeHtml, toast, friendlyError, formatDateMed } from './utils.js';
+import { exportLegPdf } from './print.js';
 
 let panelOpen = false;
 let addOpen = false;
@@ -55,6 +56,7 @@ function rowHtml(leg, idx, total){
       <div class="stop-row-actions">
         <button type="button" data-action="up" ${idx === 0 ? 'disabled' : ''} aria-label="Move earlier">&#9650;</button>
         <button type="button" data-action="down" ${idx === total - 1 ? 'disabled' : ''} aria-label="Move later">&#9660;</button>
+        <button type="button" data-action="export" aria-label="Export stop as PDF">&#128196;</button>
         <button type="button" data-action="edit" aria-label="Edit stop">&#9998;</button>
         <button type="button" data-action="delete" aria-label="Delete stop">&#10005;</button>
       </div>
@@ -110,6 +112,13 @@ async function handleClick(e){
   if (action === 'cancel-add') { addOpen = false; render(); return; }
   if (action === 'edit') { editingId = e.target.closest('[data-id]').dataset.id; addOpen = false; render(); return; }
   if (action === 'cancel-edit') { editingId = null; render(); return; }
+
+  if (action === 'export') {
+    const id = e.target.closest('[data-id]').dataset.id;
+    const leg = state.legs.find((l) => l.id === id);
+    if (leg) exportLegPdf(leg);
+    return;
+  }
 
   if (action === 'save-add' || action === 'save-edit') {
     const form = btn.closest('[data-id], [data-mode]');

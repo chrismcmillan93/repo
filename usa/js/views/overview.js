@@ -2,7 +2,7 @@ import { db } from '../db.js';
 import { state, getViewCurrency } from '../state.js';
 import {
   qs, escapeHtml, formatMoney, convertToView,
-  formatDayMonth, formatDateMed, formatTime, daysUntil
+  formatDayMonth, formatDateMed, formatTime, daysUntil, typePillClass
 } from '../utils.js';
 
 // The countdown and the four-leg stamp row live in the persistent masthead
@@ -47,13 +47,34 @@ function renderStamps(){
   }).join('');
 }
 
+// A shared item's cost is shown in its own native currency, never converted
+// through this trip's fx_rate -- it's someone else's spend, on someone
+// else's trip, and applying our rate to it would misrepresent their figure.
+function sharedItemHtml(item){
+  const place = item.places || null;
+  const timeText = item.start_time ? `${formatTime(item.start_time)}${item.end_time ? '–' + formatTime(item.end_time) : ''}` : '';
+  return `
+    <li class="shared-item">
+      <div class="shared-item-head">
+        <span class="shared-item-date">${escapeHtml(formatDateMed(item.day))}${timeText ? ' &middot; ' + escapeHtml(timeText) : ''}</span>
+        <span class="pill ${typePillClass(item.type)}">${escapeHtml(item.type)}</span>
+      </div>
+      <div class="shared-item-title">${escapeHtml(item.title)}</div>
+      ${place ? `<div class="row-card-meta">${escapeHtml(place.name)}${place.address ? ' &middot; ' + escapeHtml(place.address) : ''}${place.rating ? ` &middot; ★ ${escapeHtml(String(place.rating))}` : ''}${place.maps_url ? ` &middot; <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener">Map</a>` : ''}</div>` : ''}
+      ${item.notes ? `<div class="row-card-meta">${escapeHtml(item.notes)}</div>` : ''}
+      ${item.estimated_cost ? `<div class="row-card-meta">${escapeHtml(formatMoney(item.estimated_cost, item.currency))}</div>` : ''}
+    </li>`;
+}
+
 function sharedElsewhereHtml(sharedLegs, sharedItems){
   return `
     <section class="section">
       <div class="section-head"><h2>Also there</h2><span class="section-note">Shared stops from someone else's trip</span></div>
       ${sharedLegs.map((leg) => {
         const items = sharedItems
-          .filter((i) => i.leg_id === leg.id)
+          // An unpicked choice-group alternative isn't part of the plan --
+          // same rule as the cost totals (see costs.js).
+          .filter((i) => i.leg_id === leg.id && i.is_selected !== false)
           .sort((a, b) => a.day === b.day ? a.sort_order - b.sort_order : a.day.localeCompare(b.day));
         const dates = leg.arrive_date && leg.depart_date
           ? `${formatDateMed(leg.arrive_date)} – ${formatDateMed(leg.depart_date)}`
@@ -67,8 +88,8 @@ function sharedElsewhereHtml(sharedLegs, sharedItems){
               </div>
             </div>
             ${items.length ? `
-              <ul class="list-plain" style="margin-top:10px;">
-                ${items.map((i) => `<li><span>${escapeHtml(formatDateMed(i.day))}${i.start_time ? ' &middot; ' + escapeHtml(formatTime(i.start_time)) : ''} &mdash; ${escapeHtml(i.title)}</span></li>`).join('')}
+              <ul class="list-plain shared-item-list" style="margin-top:10px;">
+                ${items.map(sharedItemHtml).join('')}
               </ul>
             ` : '<p class="section-note" style="margin-top:8px;">Nothing planned there yet.</p>'}
           </div>`;

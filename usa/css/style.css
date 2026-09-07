@@ -123,6 +123,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap; flex-shrink:0;
 }
 .signout-btn:hover{ border-color: var(--paper); color: var(--paper); }
+.export-btn{
+  background:transparent; border:1px solid rgba(232,169,58,0.5); color: var(--gold);
+  font-family: var(--font-label); font-size: var(--fs-tiny); font-weight:600; letter-spacing:0.03em;
+  text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+}
+.export-btn:hover{ border-color: var(--gold); background: rgba(232,169,58,0.12); }
 
 .currency-toggle{ display:flex; align-items:center; gap: var(--sp-2); flex-shrink:0; }
 .currency-toggle .fx-note{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.55); white-space:nowrap; }
@@ -357,6 +363,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .list-plain{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: var(--sp-2); }
 .list-plain li{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-3); background:#fffdf7; border:1.5px solid var(--line); border-radius:6px; padding:10px 14px; font-size: var(--fs-small); }
+
+/* A shared item card needs several stacked lines (date/type, title, place,
+   notes, cost) rather than the single-row layout list-plain li assumes. */
+.list-plain li.shared-item{ display:block; }
+.shared-item-head{ display:flex; align-items:center; justify-content:space-between; gap: var(--sp-2); }
+.shared-item-date{ font-family: var(--font-label); font-size: var(--fs-small); color: var(--ink-60); }
+.shared-item-title{ font-weight:600; margin-top:4px; }
 
 .sr-only{
   position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
