@@ -28,9 +28,44 @@ Supabase CLI). Never hand-edit the schema in the dashboard. Use `execute_sql` on
 reads and one-off data checks. Run `get_advisors` (security) after any DDL change to
 this schema and fix anything it flags — in particular, every table needs RLS enabled.
 
-**No auth in this release.** Every table has a nullable `user_id uuid` column (unused)
-and RLS enabled with a permissive policy for the anon key, marked
-`-- TODO: tighten when auth lands`. Don't build sign-in for this app yet.
+**Auth: magic-link, multi-tenant, one trip per account.** Real accounts landed —
+email magic link / 6-digit code via Supabase Auth, same pattern as `goals/js/auth.js`
+(ported into `usa/js/auth.js`, don't fork a third copy of this — fix bugs in both if
+found). Each account has at most one trip; there's no trip-switcher UI and none is
+planned. A signed-in account with no trip yet gets a "create your trip" form instead
+of an error — this is how a second person (or more, later) gets their own trip without
+a migration each time.
+
+**Every list query is scoped by `trip_id` client-side** (`usa/js/db.js`), not just by
+RLS — every `list()` call takes the trip id explicitly (always `state.trip.id`). Keep
+this when adding new tables or queries: never `select('*')` without a trip (or
+`is_shared`) filter, even once RLS is fully tightened — belt and suspenders, not
+either/or.
+
+**RLS: transitional as of the auth rollout, tighten before adding more accounts.**
+The original "anon full access" policies (`-- TODO: tighten when auth lands`) are
+still in place as of the migration that added `legs.is_shared` — auth landed first,
+RLS tightening is the very next migration, blocking on one manual step: the existing
+"USA 2027" trip's `user_id` is still `null` (it predates auth) and has to be
+reassigned to Chris's real `auth.users.id` — which only exists after he actually
+completes a sign-in once (Supabase Auth users can't be created any other way). Once
+that reassignment lands, RLS gets tightened to real ownership in the same pass:
+- `trips`: `user_id = auth.uid()` for select/insert/update/delete.
+- every child table (`legs`, `flights`, `accommodations`, `transport`, `places`,
+  `itinerary_items`, `checklist_items`, `expenses`): `trip_id in (select id from
+  usa.trips where user_id = auth.uid())`.
+- **Exception, additive:** `legs` where `is_shared = true`, and `itinerary_items`
+  whose `leg_id` points at such a leg, get an extra SELECT-only policy readable by
+  any authenticated user regardless of trip ownership — the mechanism behind
+  "everyone's Vegas stop is visible to everyone, nothing else is." Nobody can edit a
+  leg they don't own via this policy, only read it.
+- Anon grants get revoked once this lands — from that point on the app requires a
+  real session, full stop.
+
+**Do not send a second person's sign-in link until the reassignment + RLS tightening
+above is done.** Until then, a new account's trip and an existing account's trip
+aren't actually isolated by the database — only by the client always filtering by
+`trip_id`, which is a real but weaker guarantee than RLS.
 
 **One-time manual step (not doable via any MCP tool available to Claude):** the `usa`
 schema must be added to the project's exposed schemas — Dashboard → Project Settings →

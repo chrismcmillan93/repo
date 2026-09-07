@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>USA 2027</title>
+<title>Trip planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bevan&family=Oswald:wght@400;500;600;700&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
@@ -37,49 +37,105 @@
   <div class="bunting-row" id="buntingRow"></div>
 </div>
 
-<header class="app-header">
-  <div class="app-header-top">
-    <div class="brand">
-      <p class="eyebrow">A trip planner for</p>
-      <p class="brand-title">
-        <svg class="title-flag" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
-        USA 2027
-        <svg class="title-flag title-flag-r" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
-      </p>
-      <p class="brand-sub" id="brandSub">Austin &middot; Las Vegas &middot; Los Angeles &middot; Santa Barbara</p>
+<!-- Sign-in screen. Shown until a session exists. -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <p class="eyebrow">Sign in</p>
+    <p class="auth-title">
+      <svg class="title-flag" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+      Trip planner
+      <svg class="title-flag title-flag-r" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+    </p>
+    <p class="auth-lede">Enter your email and we'll send you a link to sign in &mdash; no password needed.</p>
+
+    <form id="authForm" class="auth-form">
+      <div class="field"><label for="authEmail">Email</label><input type="email" id="authEmail" name="email" autocomplete="email" required></div>
+      <button type="submit" class="btn btn-primary btn-block" id="authSubmit">Send sign-in link</button>
+      <p class="form-error" id="authError" hidden></p>
+    </form>
+
+    <div id="authSent" class="auth-sent" hidden>
+      <p class="auth-lede">Check your email for a sign-in link &mdash; or enter the 6-digit code from the same email below.</p>
+      <form id="codeForm" class="auth-form">
+        <div class="field"><label for="authCode">Code</label><input type="text" id="authCode" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="codeSubmit">Verify code</button>
+        <p class="form-error" id="codeError" hidden></p>
+      </form>
+      <button type="button" id="authRetry" class="btn btn-quiet btn-block">Use a different email</button>
     </div>
-    <div class="currency-toggle" id="currencyToggle">
-      <span class="fx-note" id="fxNote">Loading rate&hellip;</span>
-      <div class="toggle-pair" role="group" aria-label="Display currency">
-        <button type="button" data-currency="GBP">GBP</button>
-        <button type="button" data-currency="USD">USD</button>
+  </div>
+</div>
+
+<!-- Shown once signed in, only if this account has no trip yet. -->
+<div id="createTripScreen" class="auth-screen" hidden>
+  <div class="auth-card">
+    <p class="eyebrow">Welcome</p>
+    <p class="auth-title">Start your trip</p>
+    <p class="auth-lede">No trip on this account yet. Set the basics &mdash; you can add stops, flights and everything else as you go, and change any of this later.</p>
+    <form id="createTripForm" class="auth-form">
+      <div class="field"><label for="tripName">Trip name</label><input type="text" id="tripName" placeholder="e.g. Sister's USA trip" required></div>
+      <div class="field-row">
+        <div class="field"><label for="tripStart">Start date</label><input type="date" id="tripStart" required></div>
+        <div class="field"><label for="tripEnd">End date</label><input type="date" id="tripEnd" required></div>
       </div>
-      <button type="button" class="fx-edit-btn" id="fxEditBtn" title="Edit exchange rate" aria-label="Edit exchange rate">&#9998;</button>
+      <button type="submit" class="btn btn-primary btn-block" id="createTripSubmit">Create trip</button>
+      <p class="form-error" id="createTripError" hidden></p>
+    </form>
+    <button type="button" id="createTripSignOut" class="btn btn-quiet btn-block" style="margin-top:10px;">Sign out</button>
+  </div>
+</div>
+
+<div id="appShell" hidden>
+  <header class="app-header">
+    <div class="app-header-top">
+      <div class="brand">
+        <p class="eyebrow">A trip planner for</p>
+        <p class="brand-title" id="brandTitle">
+          <svg class="title-flag" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+          <span id="brandTitleText">Your trip</span>
+          <svg class="title-flag title-flag-r" viewBox="0 0 60 44" aria-hidden="true"><use href="#usflag"></use></svg>
+        </p>
+        <p class="brand-sub" id="brandSub"></p>
+      </div>
+      <div class="header-actions">
+        <div class="currency-toggle" id="currencyToggle">
+          <span class="fx-note" id="fxNote">Loading rate&hellip;</span>
+          <div class="toggle-pair" role="group" aria-label="Display currency">
+            <button type="button" data-currency="GBP">GBP</button>
+            <button type="button" data-currency="USD">USD</button>
+          </div>
+          <button type="button" class="fx-edit-btn" id="fxEditBtn" title="Edit exchange rate" aria-label="Edit exchange rate">&#9998;</button>
+        </div>
+        <div class="account-row">
+          <span class="signed-in-as" id="signedInAs"></span>
+          <button type="button" class="fx-edit-btn" id="signOutBtn" title="Sign out" aria-label="Sign out">&#9211;</button>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="masthead-strip">
-    <div class="countdown-slot" id="countdownSlot"></div>
-    <div class="stamp-row" id="stampRow"></div>
-  </div>
-</header>
+    <div class="masthead-strip">
+      <div class="countdown-slot" id="countdownSlot"></div>
+      <div class="stamp-row" id="stampRow"></div>
+    </div>
+  </header>
 
-<!-- Sibling of <header>, not nested inside it: a sticky element only
-     stays pinned within its own parent's box, so the nav needs the whole
-     page as its parent to stay stuck past the header's height. -->
-<nav class="app-nav">
-  <div class="app-nav-inner">
-    <a href="#/overview" data-route="overview">Overview</a>
-    <a href="#/itinerary" data-route="itinerary">Itinerary</a>
-    <a href="#/bookings" data-route="bookings">Bookings</a>
-    <a href="#/places" data-route="places">Places</a>
-    <a href="#/costs" data-route="costs">Costs</a>
-    <a href="#/checklist" data-route="checklist">Checklist</a>
-  </div>
-</nav>
+  <!-- Sibling of <header>, not nested inside it: a sticky element only
+       stays pinned within its own parent's box, so the nav needs the whole
+       page as its parent to stay stuck past the header's height. -->
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <a href="#/overview" data-route="overview">Overview</a>
+      <a href="#/itinerary" data-route="itinerary">Itinerary</a>
+      <a href="#/bookings" data-route="bookings">Bookings</a>
+      <a href="#/places" data-route="places">Places</a>
+      <a href="#/costs" data-route="costs">Costs</a>
+      <a href="#/checklist" data-route="checklist">Checklist</a>
+    </div>
+  </nav>
 
-<main class="app-main" id="app-main">
-  <p class="section-note">Loading&hellip;</p>
-</main>
+  <main class="app-main" id="app-main">
+    <p class="section-note">Loading&hellip;</p>
+  </main>
+</div>
 
 <div id="toast-host" aria-live="polite"></div>
 

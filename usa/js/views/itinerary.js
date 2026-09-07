@@ -140,7 +140,7 @@ function readForm(form){
 }
 
 async function reload(){
-  const [items, places] = await Promise.all([db.itineraryItems.list(), db.places.list()]);
+  const [items, places] = await Promise.all([db.itineraryItems.list(state.trip.id), db.places.list(state.trip.id)]);
   placesById = new Map(places.map((p) => [p.id, p]));
   itemsByDay = new Map();
   items.forEach((item) => {

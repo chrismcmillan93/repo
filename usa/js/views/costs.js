@@ -44,7 +44,8 @@ function rowsHtml(buckets, order, labelFn){
 
 export async function render(container){
   const [flights, accommodations, transport, itineraryItems, expenses] = await Promise.all([
-    db.flights.list(), db.accommodations.list(), db.transport.list(), db.itineraryItems.list(), db.expenses.list()
+    db.flights.list(state.trip.id), db.accommodations.list(state.trip.id), db.transport.list(state.trip.id),
+    db.itineraryItems.list(state.trip.id), db.expenses.list(state.trip.id)
   ]);
 
   const trip = state.trip;

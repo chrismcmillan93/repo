@@ -34,6 +34,32 @@ laundry was preferred over a hotel. One laundry day is scheduled at the end of t
 Austin leg (19 May) specifically to cover laundry for the rest of the trip, since
 Vegas/LA/Santa Barbara accommodation won't reliably have laundry.
 
+## Multi-tenant: sister's trip (2026-09-07)
+The app now supports more than one account/trip: sister is planning her own
+(much longer, ~3 week, many-stop, mostly-unconfirmed) USA trip and gets her
+own account and her own trip in the same app, built out herself rather than
+hand-seeded like the original one was.
+
+- **One trip per account.** No trip-switcher UI. A new account with no trip
+  yet is shown a small "create your trip" form (name + dates) instead of an
+  error, and builds it out from there — stops (legs), flights, dates, all
+  editable, nothing pre-seeded.
+- **Cross-visibility is narrow and deliberate: the Vegas stop only.** Both
+  trips are going through Vegas for the same wedding. Either side can mark
+  their Vegas leg `is_shared`, which makes that leg's dates and itinerary
+  items (only — not accommodation, cost, or anything on any other leg)
+  readable by the other account. Read-only: marking a leg shared doesn't let
+  the other person edit it, just see it, for coordinating who's doing what
+  and when while both are in town. See `CLAUDE.md` for the RLS mechanism.
+- **Sequencing matters here.** Real accounts require a live sign-in before
+  RLS can be correctly scoped to that account's own trip (Supabase can't
+  provision an `auth.users` row any other way). Chris signs in first, his
+  existing trip's ownership gets reassigned, RLS gets tightened — only then
+  does sister's sign-in link go out. Don't skip that order.
+- **Longer-trip itinerary formatting** (3 weeks vs. the original 14 nights)
+  is flagged but not yet designed — revisit once her real stop count and
+  trip shape are in the system, rather than guessing at it now.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date

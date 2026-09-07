@@ -1,9 +1,11 @@
-// Supabase connection for the USA 2027 trip planner.
+// Supabase connection for the USA trip planner.
 //
 // This shares a Supabase project (and therefore an origin, and therefore
-// localStorage) with the other anonymous dashboards and apps in this repo.
-// None of them use auth today, so there's no live collision, but this app
-// still doesn't touch localStorage for anything auth-shaped.
+// localStorage) with the other apps in this repo -- goals already uses real
+// auth here too. auth.users is project-wide, not per-app: signing in with
+// the same email on goals and here resolves to the same account, which is
+// expected (same person). A distinct storageKey (see supabaseClient.js)
+// keeps this app's session token in its own localStorage slot regardless.
 //
 // db.schema scopes every query through the client at `usa.*` — the anon key
 // below is the same one used everywhere else in this repo; access is
