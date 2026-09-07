@@ -1,12 +1,15 @@
 import { db } from '../db.js';
 import { state, legLabel } from '../state.js';
 import { getViewCurrency } from '../state.js';
-import { qs, qsa, escapeHtml, toast, friendlyError, renderMoney, mapsSearchUrl } from '../utils.js';
+import { qs, qsa, escapeHtml, toast, friendlyError, renderMoney, formatMoney, mapsSearchUrl } from '../utils.js';
+import { travellerLabel } from '../sharedItemCard.js';
 
 const CATEGORIES = ['activity', 'hike', 'national_park', 'restaurant', 'bbq', 'coffee', 'bar', 'comedy', 'shopping', 'landmark', 'other'];
 const PRICE_OPTIONS = ['', '$', '$$', '$$$', '$$$$'];
 
 let places = [];
+let sharedLegs = []; // other accounts' is_shared legs, for the "Also there" shortlist section below
+let sharedPlaces = [];
 let filterLeg = 'all';
 let filterCategory = 'all';
 let showRejected = false;
@@ -155,6 +158,53 @@ function matchesFilter(p){
   return true;
 }
 
+// Read-only: nobody edits a place on a leg they don't own, only browses it.
+// Cost shows in its own currency, never converted through this trip's
+// fx_rate -- it's someone else's estimate, on someone else's trip.
+function sharedPlaceHtml(p){
+  const rating = p.rating ? `★ ${p.rating}${p.rating_count ? ` (${p.rating_count})` : ''}` : '<span class="unrated">Not rated yet</span>';
+  return `
+    <div class="place-card">
+      <div class="place-card-top">
+        <div>
+          <div class="place-name">${escapeHtml(p.name)}</div>
+          <div class="place-category">${escapeHtml(categoryLabel(p.category))}${p.is_rejected ? ' &middot; Rejected' : ''}</div>
+        </div>
+        <div class="place-rating">${rating}</div>
+      </div>
+      ${p.description ? `<div class="place-desc">${escapeHtml(p.description)}</div>` : ''}
+      ${p.is_rejected && p.rejection_reason ? `<div class="rejected-reason">${escapeHtml(p.rejection_reason)}</div>` : ''}
+      <div class="place-meta-row">
+        <span>${p.price_indicator ? escapeHtml(p.price_indicator) : ''}${p.booking_required ? ' · Booking required' : ''}</span>
+        ${p.estimated_cost ? escapeHtml(formatMoney(p.estimated_cost, p.currency)) : ''}
+      </div>
+      ${p.maps_url ? `<a class="place-maps-link" href="${escapeHtml(p.maps_url)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ''}
+    </div>`;
+}
+
+function sharedElsewherePlacesHtml(){
+  if (!sharedLegs.length) return '';
+  return `
+    <section class="section" style="margin-top:24px;">
+      <div class="section-head"><h2>Also there</h2><span class="section-note">Someone else's shortlist for a shared stop</span></div>
+      ${sharedLegs.map((leg) => {
+        const items = sharedPlaces.filter((p) => p.leg_id === leg.id);
+        return `
+          <div class="row-card" style="margin-bottom:12px;">
+            <div class="row-card-head">
+              <div>
+                <div class="row-card-title">${escapeHtml(leg.name)}</div>
+                <div class="row-card-meta">${escapeHtml(travellerLabel(leg))}</div>
+              </div>
+            </div>
+            ${items.length
+              ? `<div class="place-grid" style="margin-top:10px;">${items.map(sharedPlaceHtml).join('')}</div>`
+              : '<p class="section-note" style="margin-top:8px;">Nothing shortlisted there yet.</p>'}
+          </div>`;
+      }).join('')}
+    </section>`;
+}
+
 function renderAll(){
   const active = places.filter((p) => !p.is_rejected && matchesFilter(p));
   const rejected = places.filter((p) => p.is_rejected && matchesFilter(p));
@@ -172,6 +222,7 @@ function renderAll(){
       </div>
       <button type="button" class="rejected-toggle" data-action="toggle-rejected">${showRejected ? '▾' : '▸'} Rejected (${rejected.length})</button>
       ${showRejected ? `<div class="place-grid rejected-list">${rejected.length ? rejected.map((p) => placeCardHtml(p, { rejected: true })).join('') : '<div class="empty-state">Nothing rejected yet.</div>'}</div>` : ''}
+      ${sharedElsewherePlacesHtml()}
     </div>
   `;
   wireEvents();
@@ -281,7 +332,14 @@ async function handleClick(e){
 }
 
 async function reload(){
-  places = await db.places.list(state.trip.id);
+  const [own, legsElsewhere, placesElsewhere] = await Promise.all([
+    db.places.list(state.trip.id),
+    db.legs.listSharedElsewhere(state.trip.id),
+    db.places.listSharedElsewhere(state.trip.id)
+  ]);
+  places = own;
+  sharedLegs = legsElsewhere;
+  sharedPlaces = placesElsewhere;
 }
 
 export async function render(container){

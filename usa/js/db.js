@@ -87,6 +87,19 @@ export const db = {
   },
   places: {
     list: (tripId) => listByTrip('places', tripId, { order: { column: 'name' } }),
+    // A shared leg's own shortlist -- shortlisted, undecided or rejected,
+    // not just what's made it into the itinerary -- readable under the
+    // widened "shared leg place read" policy (see
+    // usa_shared_leg_place_read_widen_to_shortlist migration).
+    async listSharedElsewhere(tripId){
+      const { data, error } = await supabase
+        .from('places')
+        .select('*, legs!inner(is_shared, name, city), trips(name, traveller_name)')
+        .eq('legs.is_shared', true)
+        .neq('trip_id', tripId);
+      checkError(error);
+      return data || [];
+    },
     create: (values) => insertOne('places', values),
     update: (id, values) => updateOne('places', id, values),
     remove: (id) => removeOne('places', id)
