@@ -188,6 +188,27 @@ actually exercise RLS as both Chris's account and the shared-Vegas test account)
 — the mock can't catch this class of bug at all, since it doesn't implement RLS.
 Three RLS incidents in one day made that limitation impossible to ignore twice.
 
+## Bug: live fx rate stuck on "unavailable" (2026-09-07)
+Reported as "the live currency conversion doesn't seem to be working". Confirmed
+with a real device screenshot: a freshly re-created account, fresh trip, fx note
+showing "Live rate unavailable right now" — no manual override was possible on
+that account, so this wasn't the sticky-override behaviour working as designed.
+
+Root cause in `usa/js/fxRate.js`: a failed fetch cleared the cached rate but not
+the `fetchPromise` variable, so `getLiveRate()`'s existing-promise check kept
+returning that same failed promise forever afterwards. One bad request — on the
+very first page load, a network blip, anything — permanently disabled the live
+rate for the rest of that page's lifetime; every later attempt (each edit
+anywhere in the app fires one via `usa:tripchange`) just replayed the same
+failure instead of trying again.
+
+Fixed by clearing `fetchPromise` on failure too, and added `open.er-api.com` as a
+second free/keyless source tried if frankfurter.app fails, so one provider being
+flaky doesn't take the feature out entirely. Verified with Playwright mocking
+both real network failures (this sandbox can't reach either real API to confirm
+which one, if either, was actually down in production) and a controlled
+fail-then-succeed sequence to prove the retry now actually happens.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
