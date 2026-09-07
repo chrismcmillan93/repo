@@ -10,7 +10,16 @@ export const state = {
   session: null,
   trip: null,
   legs: [],
-  sharedLegsElsewhere: [] // other people's is_shared legs (e.g. their Vegas stop)
+  sharedLegsElsewhere: [], // other people's is_shared legs (e.g. their Vegas stop)
+  // True while state.trip.fx_rate holds a live-fetched rate applied in
+  // memory only (see main.js applyLiveRate) rather than the value saved in
+  // the DB. Never persisted itself — just changes how the rate is labelled.
+  fxIsLive: false,
+  // Sticky for the rest of this page load once the user explicitly clicks
+  // Save on the fx editor — stops applyLiveRate() from re-overlaying a live
+  // rate over their deliberate choice the next time something (e.g. adding
+  // a stop) triggers a reload. Cleared only by a fresh page load.
+  fxManualOverride: false
 };
 
 export function getViewCurrency(){
@@ -34,6 +43,9 @@ export function setViewCurrency(code){
 export async function loadCore(userId){
   const trip = await db.trips.getFirst(userId);
   state.trip = trip;
+  // This is the saved DB value — any live overlay from a previous
+  // applyLiveRate() call no longer applies to this fresh trip object.
+  state.fxIsLive = false;
   if (!trip) { state.legs = []; state.sharedLegsElsewhere = []; return null; }
   const [legs, sharedElsewhere] = await Promise.all([
     db.legs.list(trip.id),

@@ -43,10 +43,30 @@ function renderFxNote(){
   const note = qs('#fxNote');
   if (!note) return;
   if (state.trip && state.trip.fx_rate) {
-    note.textContent = `1 GBP = ${Number(state.trip.fx_rate).toFixed(4)} USD`;
+    const label = state.fxIsLive ? ' (live)' : '';
+    note.textContent = `1 GBP = ${Number(state.trip.fx_rate).toFixed(4)} USD${label}`;
   } else {
     note.textContent = 'Rate not set';
   }
+}
+
+// Applies a freshly-fetched GBP->USD rate to state.trip.fx_rate in memory
+// only — never written to the DB — so every screen's conversions update
+// without the user having to open the fx editor at all. If the fetch fails
+// (or the trip has no fx_rate at all yet) this is a silent no-op and the
+// last saved rate keeps being used. Skipped entirely once the user has
+// explicitly saved a rate this page load (state.fxManualOverride) — an
+// unrelated edit elsewhere (adding a stop, ticking off a checklist item)
+// re-runs loadCore()/applyLiveRate() too, and that must never silently
+// swap a deliberately-chosen rate back to live.
+async function applyLiveRate(){
+  if (!state.trip || state.fxManualOverride) return;
+  const rate = await getLiveRate();
+  if (!rate || !state.trip || state.fxManualOverride) return;
+  state.trip.fx_rate = rate;
+  state.fxIsLive = true;
+  renderFxNote();
+  renderRoute();
 }
 
 function renderBrandSub(){
@@ -83,25 +103,22 @@ function wireFxEdit(){
         <button type="button" class="fx-save">Save</button>
         <button type="button" class="fx-cancel">Cancel</button>
       </span>
-      <span class="fx-live-hint" hidden></span>
+      <span class="fx-live-hint"></span>
     `;
     btn.replaceWith(form);
     const input = qs('input', form);
     input.focus();
     input.select();
 
-    // Live rate is a suggestion only — never overwrites the field on its
-    // own, just offers a one-click fill-in. Fails silently if unreachable.
+    // The field is already pre-filled with today's live rate whenever one
+    // was fetched successfully (see applyLiveRate) — this is just a status
+    // line explaining what that number is, and what Save will do to it.
     const hint = qs('.fx-live-hint', form);
-    getLiveRate().then((rate) => {
-      if (!rate || !document.body.contains(form)) return;
-      hint.hidden = false;
-      hint.innerHTML = `Live rate: 1 GBP = ${rate.toFixed(4)} USD <button type="button">Use this</button>`;
-      qs('button', hint).addEventListener('click', () => {
-        input.value = rate.toFixed(4);
-        input.focus();
-      });
-    });
+    hint.textContent = state.fxIsLive
+      ? "This is today's live rate, updating automatically. Save to fix it instead."
+      : state.fxManualOverride
+        ? "Showing your saved rate — live updates are off until you reload the page."
+        : "Live rate unavailable right now — showing the last saved rate.";
 
     function close(restoreBtn){
       form.replaceWith(btn);
@@ -113,6 +130,8 @@ function wireFxEdit(){
       if (!val || val <= 0) { toast('Enter a rate greater than zero'); return; }
       try {
         state.trip = await db.trips.update(state.trip.id, { fx_rate: val });
+        state.fxIsLive = false;
+        state.fxManualOverride = true;
         renderFxNote();
         toast('Exchange rate updated');
         close(true);
@@ -249,6 +268,10 @@ async function enterApp(){
   renderBrandTitle();
   renderMasthead();
   qs('#signedInAs').textContent = state.session.user.email || '';
+  // Fire-and-forget: don't hold up the first render on a network round
+  // trip. renderFxNote()/renderRoute() re-run inside applyLiveRate() once
+  // (if) it resolves, so the displayed conversions just update in place.
+  applyLiveRate();
 
   if (!routerStarted) {
     routerStarted = true;
@@ -266,6 +289,7 @@ async function enterApp(){
       renderMasthead();
       refreshStopsPanel();
       renderRoute();
+      applyLiveRate();
     });
   }
 
