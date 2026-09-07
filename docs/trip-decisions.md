@@ -60,6 +60,13 @@ hand-seeded like the original one was.
   is flagged but not yet designed — revisit once her real stop count and
   trip shape are in the system, rather than guessing at it now.
 
+## Chris's account reassignment + RLS cutover (2026-09-07)
+Chris signed in, hit the (expected) "no trip yet" screen since his original
+trip predates auth, and created a duplicate. Reassigned his real trip's
+`user_id` to his new account, deleted the empty duplicate, and tightened
+RLS to real per-user ownership in the same migration — see `CLAUDE.md`.
+Sister's sign-in link is safe to send now that this has landed.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
