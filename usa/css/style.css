@@ -109,7 +109,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .header-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
 .account-row{ display:flex; align-items:center; gap:8px; }
-.signed-in-as{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.5); }
+.signed-in-as{
+  font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.5);
+  max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.signout-btn{
+  background:transparent; border:1px solid rgba(247,239,221,0.3); color: rgba(247,239,221,0.75);
+  font-family: var(--font-label); font-size: var(--fs-tiny); font-weight:600; letter-spacing:0.03em;
+  text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap;
+}
+.signout-btn:hover{ border-color: var(--paper); color: var(--paper); }
 
 .currency-toggle{ display:flex; align-items:center; gap: var(--sp-2); flex-shrink:0; }
 .currency-toggle .fx-note{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.55); white-space:nowrap; }
@@ -148,6 +157,38 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .stamp .stamp-no{ font-family: var(--font-label); font-size:0.58rem; letter-spacing:0.1em; color: var(--gold); font-weight:700; }
 .stamp .stamp-city{ font-family: var(--font-head); font-size:0.92rem; line-height:1.05; margin-top:2px; padding:0 6px; color: var(--paper); }
 .stamp .stamp-dates{ font-family: var(--font-label); font-size:0.56rem; line-height:1.2; color: rgba(247,239,221,0.6); margin-top:3px; }
+
+/* ---- stops (legs) panel, in the masthead so it lives where the stamps do ---- */
+.stops-toggle{
+  margin-top:14px; background:transparent; border:1.5px dashed rgba(247,239,221,0.35);
+  color: rgba(247,239,221,0.75); font-family: var(--font-label); font-size: var(--fs-small);
+  font-weight:600; letter-spacing:0.03em; text-transform:uppercase; padding:8px 16px; border-radius:999px;
+}
+.stops-toggle:hover{ border-color: var(--gold); color: var(--gold); }
+.stops-panel{ margin-top:14px; padding-top:14px; border-top:1px solid rgba(247,239,221,0.16); }
+.stop-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid rgba(247,239,221,0.1); }
+.stop-row:last-of-type{ border-bottom:none; }
+.stop-row-main{ flex:1; min-width:0; }
+.stop-row-name{ font-family: var(--font-head); font-size:1rem; font-weight:400; color: var(--paper); }
+.stop-row-meta{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.55); margin-top:2px; }
+.stop-row-actions{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
+.stop-row-actions button{
+  background:transparent; border:none; color: rgba(247,239,221,0.6); width:26px; height:26px;
+  border-radius:7px; font-size:0.85rem; display:flex; align-items:center; justify-content:center;
+}
+.stop-row-actions button:hover{ background: rgba(247,239,221,0.14); color: var(--paper); }
+.stop-row-actions button:disabled{ opacity:0.3; }
+.stop-form{
+  background: rgba(16,27,50,0.55); border:1px solid rgba(247,239,221,0.22); border-radius: var(--radius);
+  padding: var(--sp-4); margin-top:10px; display:flex; flex-direction:column; gap: var(--sp-3);
+}
+.stop-form .field label{ color: rgba(247,239,221,0.6); }
+.stop-form .field-checkbox label{ color: rgba(247,239,221,0.8); text-transform:none; font-family: var(--font-body); font-size: var(--fs-small); }
+/* .btn-quiet is styled for a light form on a light page — on this dark
+   masthead form its navy text was nearly invisible against the dark
+   background. */
+.stop-form .btn-quiet{ color: rgba(247,239,221,0.8); border-color: rgba(247,239,221,0.35); }
+.stop-form .btn-quiet:hover{ border-color: var(--paper); color: var(--paper); }
 
 /* ---- tab bar ---- */
 /* Only the slim tab strip stays pinned on scroll — the flags/title/
@@ -398,6 +439,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (max-width: 640px){
   .brand-title{ font-size:1.6rem; }
   .title-flag{ width:26px; }
+  .signed-in-as{ display:none; }
   .stat-grid{ grid-template-columns: 1fr 1fr; }
   .field-row{ grid-template-columns: 1fr; }
   .countdown-slot .num{ font-size:1.8rem; }

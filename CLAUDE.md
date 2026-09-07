@@ -42,30 +42,25 @@ this when adding new tables or queries: never `select('*')` without a trip (or
 `is_shared`) filter, even once RLS is fully tightened — belt and suspenders, not
 either/or.
 
-**RLS: transitional as of the auth rollout, tighten before adding more accounts.**
-The original "anon full access" policies (`-- TODO: tighten when auth lands`) are
-still in place as of the migration that added `legs.is_shared` — auth landed first,
-RLS tightening is the very next migration, blocking on one manual step: the existing
-"USA 2027" trip's `user_id` is still `null` (it predates auth) and has to be
-reassigned to Chris's real `auth.users.id` — which only exists after he actually
-completes a sign-in once (Supabase Auth users can't be created any other way). Once
-that reassignment lands, RLS gets tightened to real ownership in the same pass:
-- `trips`: `user_id = auth.uid()` for select/insert/update/delete.
+**RLS: tightened to real per-user ownership (2026-09-07).** The transitional "anon
+full access" policies are gone. Current shape:
+- `trips`: `user_id = auth.uid()`, all operations.
 - every child table (`legs`, `flights`, `accommodations`, `transport`, `places`,
   `itinerary_items`, `checklist_items`, `expenses`): `trip_id in (select id from
-  usa.trips where user_id = auth.uid())`.
-- **Exception, additive:** `legs` where `is_shared = true`, and `itinerary_items`
-  whose `leg_id` points at such a leg, get an extra SELECT-only policy readable by
-  any authenticated user regardless of trip ownership — the mechanism behind
-  "everyone's Vegas stop is visible to everyone, nothing else is." Nobody can edit a
-  leg they don't own via this policy, only read it.
-- Anon grants get revoked once this lands — from that point on the app requires a
-  real session, full stop.
+  usa.trips where user_id = auth.uid())`, all operations.
+- **Exception, additive and read-only:** `legs` where `is_shared = true`, and
+  `itinerary_items` whose `leg_id` points at such a leg, get an extra SELECT-only
+  policy readable by any authenticated user regardless of trip ownership — the
+  mechanism behind "everyone's Vegas stop is visible to everyone, nothing else is."
+  Nobody can edit a leg they don't own via this policy, only read it.
+- Anon grants on the `usa` schema are revoked — the app requires a real session,
+  full stop. This landed together with reassigning Chris's original (pre-auth,
+  `user_id = null`) trip to his real account, once he completed his first sign-in —
+  see `docs/trip-decisions.md` for that sequencing and why it couldn't happen sooner.
 
-**Do not send a second person's sign-in link until the reassignment + RLS tightening
-above is done.** Until then, a new account's trip and an existing account's trip
-aren't actually isolated by the database — only by the client always filtering by
-`trip_id`, which is a real but weaker guarantee than RLS.
+It's now safe to send a second person's sign-in link — a new account's trip and an
+existing account's trip are isolated by the database, not just by the client always
+filtering by `trip_id` (which still happens too — belt and suspenders).
 
 **One-time manual step (not doable via any MCP tool available to Claude):** the `usa`
 schema must be added to the project's exposed schemas — Dashboard → Project Settings →

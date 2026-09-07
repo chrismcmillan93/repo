@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { state, getViewCurrency, setViewCurrency, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import { renderMasthead } from './views/overview.js';
+import { initStopsPanel, refreshStopsPanel } from './legsPanel.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -235,6 +236,7 @@ async function enterApp(){
   if (!routerStarted) {
     routerStarted = true;
     initRouter();
+    initStopsPanel();
     window.addEventListener('usa:currencychange', () => {
       renderCurrencyToggle();
       renderRoute();
@@ -245,6 +247,7 @@ async function enterApp(){
       renderBrandSub();
       renderBrandTitle();
       renderMasthead();
+      refreshStopsPanel();
       renderRoute();
     });
   }
