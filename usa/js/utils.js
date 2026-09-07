@@ -187,3 +187,9 @@ export function mapsSearchUrl(name, city, region){
   const q = [name, city, region].filter(Boolean).join(', ');
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
 }
+
+// Itinerary item type -> pill CSS class. Shared between the Itinerary view
+// (your own items) and the Overview "Also there" section (someone else's).
+export function typePillClass(type){
+  return type === 'fixed' ? 'pill-fixed' : type === 'planned' ? 'pill-planned' : 'pill-idea';
+}

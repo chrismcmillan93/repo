@@ -5,6 +5,7 @@ import { initRouter, renderRoute } from './router.js';
 import { renderMasthead } from './views/overview.js';
 import { initStopsPanel, refreshStopsPanel } from './legsPanel.js';
 import { getLiveRate } from './fxRate.js';
+import { exportTripPdf } from './print.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -151,6 +152,10 @@ function wireSignOutButtons(){
   qsa('#signOutBtn, #createTripSignOut').forEach((btn) => {
     btn.addEventListener('click', () => signOut());
   });
+}
+
+function wireExportButton(){
+  qs('#exportTripBtn').addEventListener('click', () => exportTripPdf());
 }
 
 /* ---------------- sign-in / sign-up forms ---------------- */
@@ -315,6 +320,7 @@ async function boot(){
   wireAuthForms();
   wireCreateTripForm();
   wireSignOutButtons();
+  wireExportButton();
   renderCurrencyToggle();
 
   const urlError = readAuthErrorFromUrl();

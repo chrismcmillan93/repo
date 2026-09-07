@@ -90,6 +90,25 @@ remaining pieces now rather than waiting:
   this" suggestion — never auto-applied, so a deliberately-budgeted rate
   is never silently overwritten.
 
+## Trip renamed, richer shared view, PDF export shipped (2026-09-07)
+- **Trip renamed.** Chris's trip is now just "USA trip" (was "USA 2027") — a one-off
+  data rename, no schema change.
+- **Richer "Also there".** After testing the shared-Vegas view from a second account,
+  a title + date + time wasn't enough to actually plan around — the section now shows
+  the full item (time range, type, notes, cost in its own currency, and the linked
+  place's name/address/rating/map). Needed a small additive RLS policy so a shared
+  item's linked `places` row is readable too (`usa_shared_leg_place_read` migration) —
+  still narrow and read-only, only for a place actually referenced from a shared leg's
+  itinerary. Deliberately still one-way/read-only, not real co-editing of the shared
+  leg — that's a bigger step (would mean two accounts both writing to one leg) and
+  wasn't what was asked for; revisit if "richer view" turns out not to be enough once
+  the sister's account is actually in use.
+- **PDF export.** Per-stop and whole-trip "Export PDF" actions build a day-by-day
+  timeline (itinerary + flights + accommodation + transport, chronological) and use
+  the browser's own print-to-PDF rather than a new library — see `CLAUDE.md`. Meant to
+  be something to have to hand on the day ("it's Wednesday, this flight, this hotel"),
+  not a budgeting or checklist document, so costs/checklist/places aren't included.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
