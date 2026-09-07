@@ -5,9 +5,12 @@ import {
   qs, qsa, escapeHtml, toast, friendlyError, renderMoney,
   formatTime, formatDateShort, formatDateFull, dateRange, typePillClass
 } from '../utils.js';
+import { sharedItemHtml, travellerLabel } from '../sharedItemCard.js';
 
 let itemsByDay = new Map();
 let placesById = new Map();
+let sharedItemsByDay = new Map(); // other accounts' items, on a leg they've marked shared -- see "Also there" in overview.js for the richer version of this same data
+let expandedSharedDays = new Set(); // days whose "X has plans today" badge is currently open
 let openAddDay = null;
 let editingId = null;
 let addOptionForGroup = null; // choice_group_id currently showing an "add another option" form
@@ -212,6 +215,21 @@ function addFormHtml(day){
     </div>`;
 }
 
+// Collapsed by default -- names only, expanding to the full shared-item
+// cards (same markup as Overview's "Also there") on click. Someone else's
+// items only ever show up here at all if they've marked a leg is_shared.
+function sharedBadgeHtml(day){
+  const items = (sharedItemsByDay.get(day) || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  if (!items.length) return '';
+  const names = [...new Set(items.map(travellerLabel))];
+  const isOpen = expandedSharedDays.has(day);
+  return `
+    <button type="button" class="also-badge" data-action="toggle-shared" aria-expanded="${isOpen}">
+      ${escapeHtml(names.join(' & '))} ${names.length === 1 ? 'has' : 'have'} plans today ${isOpen ? '&#9650;' : '&#9660;'}
+    </button>
+    ${isOpen ? `<ul class="list-plain shared-item-list also-detail">${items.map((i) => sharedItemHtml(i, { showDate: false })).join('')}</ul>` : ''}`;
+}
+
 function dayGroupHtml(day){
   const items = (itemsByDay.get(day) || []).slice();
   const units = buildUnits(items);
@@ -222,6 +240,7 @@ function dayGroupHtml(day){
         <span class="dow">${formatDateShort(day)}</span>
         ${leg ? `<span class="leg-tag">${escapeHtml(leg.city)}</span>` : ''}
       </div>
+      ${sharedBadgeHtml(day)}
       ${units.length
         ? units.map((u, idx) => u.kind === 'choice' ? choiceCardHtml(u, idx, units.length) : itemRowHtml(u.item, u, idx, units.length)).join('')
         : '<p class="section-note">Nothing planned yet.</p>'}
@@ -257,13 +276,26 @@ function readOptionForm(form){
 /* ---------------- data + render lifecycle ---------------- */
 
 async function reload(){
-  const [items, places] = await Promise.all([db.itineraryItems.list(state.trip.id), db.places.list(state.trip.id)]);
+  const [items, places, sharedItems] = await Promise.all([
+    db.itineraryItems.list(state.trip.id),
+    db.places.list(state.trip.id),
+    db.itineraryItems.listSharedElsewhere(state.trip.id)
+  ]);
   placesById = new Map(places.map((p) => [p.id, p]));
   itemsByDay = new Map();
   items.forEach((item) => {
     if (!itemsByDay.has(item.day)) itemsByDay.set(item.day, []);
     itemsByDay.get(item.day).push(item);
   });
+  sharedItemsByDay = new Map();
+  sharedItems
+    // An unpicked choice-group alternative isn't part of the plan -- same
+    // rule as the cost totals and Overview's "Also there" section.
+    .filter((i) => i.is_selected !== false)
+    .forEach((item) => {
+      if (!sharedItemsByDay.has(item.day)) sharedItemsByDay.set(item.day, []);
+      sharedItemsByDay.get(item.day).push(item);
+    });
 }
 
 let containerRef = null;
@@ -289,6 +321,12 @@ function wireEvents(){
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       const action = btn.dataset.action;
+
+      if (action === 'toggle-shared') {
+        if (expandedSharedDays.has(day)) expandedSharedDays.delete(day); else expandedSharedDays.add(day);
+        renderAll();
+        return;
+      }
 
       /* ---- add to day ---- */
       if (action === 'open-add') { openAddDay = day; editingId = null; addOptionForGroup = null; renderAll(); return; }
@@ -453,6 +491,7 @@ export async function render(container){
   openAddDay = null;
   editingId = null;
   addOptionForGroup = null;
+  expandedSharedDays = new Set();
   await reload();
   renderAll();
 }

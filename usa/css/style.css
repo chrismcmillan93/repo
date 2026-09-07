@@ -383,6 +383,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .day-group-head .full-date{ font-family: var(--font-label); font-size: var(--fs-small); color: var(--ink-40); }
 .day-group-head .leg-tag{ margin-left:auto; font-family: var(--font-label); font-size: var(--fs-tiny); font-weight:700; color: var(--ink-40); text-transform:uppercase; letter-spacing:0.05em; }
 
+/* Collapsed by default so someone else's plan never competes with your own
+   for attention -- expands in place to the same card used on Overview. */
+.also-badge{
+  display:inline-flex; align-items:center; gap:6px; background: var(--gold-18); color:#8a5f14;
+  border:none; border-radius:999px; font-family: var(--font-label); font-size: var(--fs-tiny);
+  font-weight:600; letter-spacing:0.02em; padding:5px 12px; margin-bottom: var(--sp-2);
+}
+.also-detail{ margin-bottom: var(--sp-3); }
+
 .itin-item{ display:flex; gap: var(--sp-3); padding: 10px 0; border-bottom:1px solid var(--line); }
 .itin-item:last-of-type{ border-bottom:none; }
 .itin-item.type-fixed{ background: var(--red-10); margin: 0 -14px; padding: 12px 14px; border-radius:6px; border-bottom:none; border-left:4px solid var(--red); }

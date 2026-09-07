@@ -57,7 +57,7 @@ export const db = {
     async listSharedElsewhere(tripId){
       const { data, error } = await supabase
         .from('legs')
-        .select('*, trips(name)')
+        .select('*, trips(name, traveller_name)')
         .eq('is_shared', true)
         .neq('trip_id', tripId);
       checkError(error);
@@ -102,7 +102,7 @@ export const db = {
     async listSharedElsewhere(tripId){
       const { data, error } = await supabase
         .from('itinerary_items')
-        .select('*, legs!inner(is_shared, name, city), trips(name), places(name, address, maps_url, rating)')
+        .select('*, legs!inner(is_shared, name, city), trips(name, traveller_name), places(name, address, maps_url, rating)')
         .eq('legs.is_shared', true)
         .neq('trip_id', tripId);
       checkError(error);

@@ -2,8 +2,9 @@ import { db } from '../db.js';
 import { state, getViewCurrency } from '../state.js';
 import {
   qs, escapeHtml, formatMoney, convertToView,
-  formatDayMonth, formatDateMed, formatTime, daysUntil, typePillClass
+  formatDayMonth, formatDateMed, daysUntil
 } from '../utils.js';
+import { sharedItemHtml, travellerLabel } from '../sharedItemCard.js';
 
 // The countdown and the four-leg stamp row live in the persistent masthead
 // (visible on every screen, not just Overview) — see index.html and main.js.
@@ -47,25 +48,6 @@ function renderStamps(){
   }).join('');
 }
 
-// A shared item's cost is shown in its own native currency, never converted
-// through this trip's fx_rate -- it's someone else's spend, on someone
-// else's trip, and applying our rate to it would misrepresent their figure.
-function sharedItemHtml(item){
-  const place = item.places || null;
-  const timeText = item.start_time ? `${formatTime(item.start_time)}${item.end_time ? '–' + formatTime(item.end_time) : ''}` : '';
-  return `
-    <li class="shared-item">
-      <div class="shared-item-head">
-        <span class="shared-item-date">${escapeHtml(formatDateMed(item.day))}${timeText ? ' &middot; ' + escapeHtml(timeText) : ''}</span>
-        <span class="pill ${typePillClass(item.type)}">${escapeHtml(item.type)}</span>
-      </div>
-      <div class="shared-item-title">${escapeHtml(item.title)}</div>
-      ${place ? `<div class="row-card-meta">${escapeHtml(place.name)}${place.address ? ' &middot; ' + escapeHtml(place.address) : ''}${place.rating ? ` &middot; ★ ${escapeHtml(String(place.rating))}` : ''}${place.maps_url ? ` &middot; <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener">Map</a>` : ''}</div>` : ''}
-      ${item.notes ? `<div class="row-card-meta">${escapeHtml(item.notes)}</div>` : ''}
-      ${item.estimated_cost ? `<div class="row-card-meta">${escapeHtml(formatMoney(item.estimated_cost, item.currency))}</div>` : ''}
-    </li>`;
-}
-
 function sharedElsewhereHtml(sharedLegs, sharedItems){
   return `
     <section class="section">
@@ -84,7 +66,7 @@ function sharedElsewhereHtml(sharedLegs, sharedItems){
             <div class="row-card-head">
               <div>
                 <div class="row-card-title">${escapeHtml(leg.name)}</div>
-                <div class="row-card-meta">${leg.trips ? escapeHtml(leg.trips.name) + ' &middot; ' : ''}${escapeHtml(dates)}</div>
+                <div class="row-card-meta">${escapeHtml(travellerLabel(leg))} &middot; ${escapeHtml(dates)}</div>
               </div>
             </div>
             ${items.length ? `
