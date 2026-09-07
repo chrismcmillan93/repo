@@ -68,6 +68,7 @@ const MEASURE_LABELS = { numeric: 'Numeric', milestone: 'Milestones', pass_fail:
 const DECISION_LABELS = { continue: 'Continue', adjust: 'Adjust', pause: 'Pause', complete: 'Complete', drop: 'Drop' };
 const PERIOD_LABELS = { month: 'Month', quarter: 'Quarter', year: 'Year' };
 const WISHLIST_STATUS_LABELS = { idea: 'Idea', planned: 'Planned', booked: 'Booked', done: 'Done' };
+const PLAYBOOK_STATUS_LABELS = { not_started: 'Not started', working_on_it: 'Working on it', adopted: 'Adopted' };
 
 export function horizonLabel(v) { return HORIZON_LABELS[v] || v; }
 export function statusLabel(v) { return STATUS_LABELS[v] || v; }
@@ -75,6 +76,7 @@ export function measureLabel(v) { return MEASURE_LABELS[v] || v; }
 export function decisionLabel(v) { return DECISION_LABELS[v] || v; }
 export function periodTypeLabel(v) { return PERIOD_LABELS[v] || v; }
 export function wishlistStatusLabel(v) { return WISHLIST_STATUS_LABELS[v] || v; }
+export function playbookStatusLabel(v) { return PLAYBOOK_STATUS_LABELS[v] || v; }
 
 export function isOverdue(goal) {
   return goal && goal.status === 'active' && goal.target_date && goal.target_date < todayISO();
