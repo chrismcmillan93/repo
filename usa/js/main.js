@@ -4,6 +4,7 @@ import { state, getViewCurrency, setViewCurrency, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import { renderMasthead } from './views/overview.js';
 import { initStopsPanel, refreshStopsPanel } from './legsPanel.js';
+import { getLiveRate } from './fxRate.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -77,14 +78,30 @@ function wireFxEdit(){
     const form = document.createElement('span');
     form.className = 'fx-edit-form';
     form.innerHTML = `
-      <input type="number" step="0.0001" min="0.0001" value="${current || ''}" aria-label="GBP to USD rate">
-      <button type="button" class="fx-save">Save</button>
-      <button type="button" class="fx-cancel">Cancel</button>
+      <span class="fx-edit-row">
+        <input type="number" step="0.0001" min="0.0001" value="${current || ''}" aria-label="GBP to USD rate">
+        <button type="button" class="fx-save">Save</button>
+        <button type="button" class="fx-cancel">Cancel</button>
+      </span>
+      <span class="fx-live-hint" hidden></span>
     `;
     btn.replaceWith(form);
     const input = qs('input', form);
     input.focus();
     input.select();
+
+    // Live rate is a suggestion only — never overwrites the field on its
+    // own, just offers a one-click fill-in. Fails silently if unreachable.
+    const hint = qs('.fx-live-hint', form);
+    getLiveRate().then((rate) => {
+      if (!rate || !document.body.contains(form)) return;
+      hint.hidden = false;
+      hint.innerHTML = `Live rate: 1 GBP = ${rate.toFixed(4)} USD <button type="button">Use this</button>`;
+      qs('button', hint).addEventListener('click', () => {
+        input.value = rate.toFixed(4);
+        input.focus();
+      });
+    });
 
     function close(restoreBtn){
       form.replaceWith(btn);

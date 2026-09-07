@@ -2,7 +2,7 @@ import { db } from '../db.js';
 import { state, getViewCurrency } from '../state.js';
 import {
   qs, escapeHtml, formatMoney, convertToView,
-  formatDayMonth, formatDateMed, daysUntil
+  formatDayMonth, formatDateMed, formatTime, daysUntil
 } from '../utils.js';
 
 // The countdown and the four-leg stamp row live in the persistent masthead
@@ -47,12 +47,43 @@ function renderStamps(){
   }).join('');
 }
 
+function sharedElsewhereHtml(sharedLegs, sharedItems){
+  return `
+    <section class="section">
+      <div class="section-head"><h2>Also there</h2><span class="section-note">Shared stops from someone else's trip</span></div>
+      ${sharedLegs.map((leg) => {
+        const items = sharedItems
+          .filter((i) => i.leg_id === leg.id)
+          .sort((a, b) => a.day === b.day ? a.sort_order - b.sort_order : a.day.localeCompare(b.day));
+        const dates = leg.arrive_date && leg.depart_date
+          ? `${formatDateMed(leg.arrive_date)} – ${formatDateMed(leg.depart_date)}`
+          : 'Dates TBC';
+        return `
+          <div class="row-card">
+            <div class="row-card-head">
+              <div>
+                <div class="row-card-title">${escapeHtml(leg.name)}</div>
+                <div class="row-card-meta">${leg.trips ? escapeHtml(leg.trips.name) + ' &middot; ' : ''}${escapeHtml(dates)}</div>
+              </div>
+            </div>
+            ${items.length ? `
+              <ul class="list-plain" style="margin-top:10px;">
+                ${items.map((i) => `<li><span>${escapeHtml(formatDateMed(i.day))}${i.start_time ? ' &middot; ' + escapeHtml(formatTime(i.start_time)) : ''} &mdash; ${escapeHtml(i.title)}</span></li>`).join('')}
+              </ul>
+            ` : '<p class="section-note" style="margin-top:8px;">Nothing planned there yet.</p>'}
+          </div>`;
+      }).join('')}
+    </section>`;
+}
+
 export async function render(container){
-  const [flights, accommodations, transport, checklistItems] = await Promise.all([
+  const [flights, accommodations, transport, checklistItems, sharedLegs, sharedItems] = await Promise.all([
     db.flights.list(state.trip.id),
     db.accommodations.list(state.trip.id),
     db.transport.list(state.trip.id),
-    db.checklistItems.list(state.trip.id)
+    db.checklistItems.list(state.trip.id),
+    db.legs.listSharedElsewhere(state.trip.id),
+    db.itineraryItems.listSharedElsewhere(state.trip.id)
   ]);
 
   const trip = state.trip;
@@ -100,6 +131,8 @@ export async function render(container){
         </div>
       </div>
     </section>
+
+    ${sharedLegs.length ? sharedElsewhereHtml(sharedLegs, sharedItems) : ''}
 
     <section class="section">
       <div class="section-head"><h2>Before you go</h2></div>

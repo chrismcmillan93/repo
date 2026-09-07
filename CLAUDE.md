@@ -77,6 +77,25 @@ Goals app). Without this, every PostgREST call scoped to `db: { schema: 'usa' }`
   `numeric(12,2)`, never as a JS float persisted to the DB.
 - Always show the fx rate in use next to the toggle so a converted figure is never
   mistaken for a real one.
+- `trips.fx_rate` is still manually set — `usa/js/fxRate.js` fetches a live GBP→USD
+  rate from frankfurter.app (free, no key) purely as a one-click suggestion in the
+  fx-edit popover. It never writes `fx_rate` itself; only a Save click does.
+
+## Itinerary options (choice groups)
+
+`itinerary_items.choice_group_id` + `is_selected` support undecided alternatives for
+one slot (e.g. "UFC vs. the Sphere, same night") — rows sharing a `choice_group_id`
+are alternatives; exactly one should have `is_selected = true`. Cost/summary screens
+must filter on `is_selected` when summing `itinerary_items.estimated_cost`, or an
+unpicked alternative double-counts against the trip budget.
+
+## Cross-trip sharing
+
+`legs.is_shared` makes a leg (and its `itinerary_items`) readable by any authenticated
+account, not just its owner — see the RLS policies above. `db.legs.listSharedElsewhere`
+/ `db.itineraryItems.listSharedElsewhere` in `db.js` fetch another account's shared
+leg(s); the Overview screen's "Also there" section is the only place this is
+surfaced today. Read-only by design — nobody edits a leg they don't own.
 
 ## Trip decisions
 

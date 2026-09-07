@@ -90,7 +90,10 @@ export async function render(container){
   });
 
   itineraryItems.forEach((i) => {
-    if (!i.estimated_cost) return;
+    // An unselected option in a choice group (e.g. the UFC-vs-Sphere
+    // alternative you didn't pick) shouldn't double-count against the one
+    // you did.
+    if (!i.estimated_cost || !i.is_selected) return;
     addToBucket(byCategory, 'activities', i.estimated_cost, 0, trip, viewCurrency, i.currency);
     const b = legBucket(i.leg_id);
     b.budgeted += convertToView(i.estimated_cost, i.currency, trip, viewCurrency);
