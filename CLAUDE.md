@@ -108,11 +108,25 @@ Goals app). Without this, every PostgREST call scoped to `db: { schema: 'usa' }`
   mistaken for a real one.
 - `trips.fx_rate` is the manually-saved value in the DB, but the rate actually
   **displayed** updates on its own: `usa/js/fxRate.js` fetches a live GBP→USD rate
-  from frankfurter.app (free, no key) on every load, and `main.js`'s
-  `applyLiveRate()` overlays it onto `state.trip.fx_rate` **in memory only**
-  (`state.fxIsLive = true`) — this never writes to the DB. The fx note always shows
-  which is in effect, with a "(live)" suffix when it is. If the fetch fails, the
-  last saved rate keeps being used, silently.
+  on every load, and `main.js`'s `applyLiveRate()` overlays it onto
+  `state.trip.fx_rate` **in memory only** (`state.fxIsLive = true`) — this never
+  writes to the DB. The fx note always shows which is in effect, with a "(live)"
+  suffix when it is. If the fetch fails, the last saved rate keeps being used,
+  silently.
+- Two free, keyless, CORS-enabled sources are tried in order — frankfurter.app
+  first, `open.er-api.com` as a fallback — so one provider being down, rate-limited,
+  or moved doesn't take out the whole feature. **Critical: a failed fetch must clear
+  both `cached` and `fetchPromise` in `fxRate.js`, not just `cached`.** An earlier
+  version only reset `cached`, leaving the stale rejected `fetchPromise` object in
+  place — since `getLiveRate()` returns that existing promise whenever it's
+  truthy, one single failed request (a network blip on the very first page load,
+  say) permanently disabled the live rate for the rest of that page's lifetime,
+  with every later `applyLiveRate()` call (every `usa:tripchange`) just replaying
+  the same failed result instead of trying again. This is exactly what broke it in
+  production the first time — confirmed via a real device screenshot showing
+  "Live rate unavailable" on a brand-new account/trip where no manual override was
+  possible. Fixed by clearing `fetchPromise` in both the success and failure
+  branches, so every call after a failure is a genuine retry.
 - Once the user explicitly clicks Save in the fx-edit popover, `state.fxManualOverride`
   goes sticky for the rest of that page load: `applyLiveRate()` stops overlaying
   anything, even when an unrelated edit elsewhere (adding a stop, ticking a checklist
