@@ -259,7 +259,7 @@ async function handleClick(e){
     if (!day) { toast('Pick a day first'); return; }
     const place = places.find((p) => p.id === id);
     try {
-      const existing = await db.itineraryItems.list();
+      const existing = await db.itineraryItems.list(state.trip.id);
       const dayItems = existing.filter((i) => i.day === day);
       const maxSort = dayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
       await db.itineraryItems.create({
@@ -281,7 +281,7 @@ async function handleClick(e){
 }
 
 async function reload(){
-  places = await db.places.list();
+  places = await db.places.list(state.trip.id);
 }
 
 export async function render(container){

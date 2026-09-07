@@ -387,7 +387,7 @@ function wireEvents(){
 }
 
 async function reload(tab){
-  cache[tab] = await TAB_CONFIG[tab].table.list();
+  cache[tab] = await TAB_CONFIG[tab].table.list(state.trip.id);
 }
 
 export async function render(container){
@@ -395,7 +395,7 @@ export async function render(container){
   openAddForTab = new Set();
   editingId = null;
   const [flights, accommodations, transport] = await Promise.all([
-    db.flights.list(), db.accommodations.list(), db.transport.list()
+    db.flights.list(state.trip.id), db.accommodations.list(state.trip.id), db.transport.list(state.trip.id)
   ]);
   cache = { flights, accommodations, transport };
   renderAll();

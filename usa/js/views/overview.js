@@ -49,10 +49,10 @@ function renderStamps(){
 
 export async function render(container){
   const [flights, accommodations, transport, checklistItems] = await Promise.all([
-    db.flights.list(),
-    db.accommodations.list(),
-    db.transport.list(),
-    db.checklistItems.list()
+    db.flights.list(state.trip.id),
+    db.accommodations.list(state.trip.id),
+    db.transport.list(state.trip.id),
+    db.checklistItems.list(state.trip.id)
   ]);
 
   const trip = state.trip;

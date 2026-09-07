@@ -41,6 +41,11 @@
 }
 
 *{ box-sizing: border-box; }
+/* An author rule setting `display` on an element (e.g. .auth-screen{display:flex})
+   otherwise beats the UA stylesheet's [hidden]{display:none} outright, since
+   author origin always wins regardless of specificity — so toggling the
+   `hidden` attribute alone wouldn't hide it. This restores that. */
+[hidden]{ display:none !important; }
 html,body{ margin:0; padding:0; }
 body{
   background: var(--paper);
@@ -101,6 +106,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .title-flag{ width:34px; height:auto; flex-shrink:0; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); transform: rotate(-4deg); }
 .title-flag-r{ transform: rotate(4deg) scaleX(-1); }
 .brand-sub{ font-family: var(--font-label); font-size: var(--fs-small); letter-spacing:0.02em; color: rgba(247,239,221,0.65); }
+
+.header-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+.account-row{ display:flex; align-items:center; gap:8px; }
+.signed-in-as{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.5); }
 
 .currency-toggle{ display:flex; align-items:center; gap: var(--sp-2); flex-shrink:0; }
 .currency-toggle .fx-note{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.55); white-space:nowrap; }
@@ -363,6 +372,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .check-row.is-done .check-title{ text-decoration:line-through; color: var(--ink-40); }
 .check-title{ font-weight:600; font-size: var(--fs-body); }
 .check-meta{ font-family: var(--font-label); font-size: var(--fs-tiny); color: var(--ink-40); margin-top:2px; }
+
+/* ---------------- auth / onboarding screens ---------------- */
+.auth-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding: var(--sp-5); background: var(--paper);
+}
+.auth-card{
+  max-width:380px; width:100%; background:#fffdf7; border:1.5px solid var(--line);
+  border-radius: var(--radius); padding: var(--sp-6) var(--sp-5); text-align:center;
+}
+.auth-card .eyebrow{ color:#8a6a34; }
+.auth-title{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  font-family: var(--font-head); font-size:1.8rem; font-weight:400; color: var(--navy);
+  margin:8px 0 14px;
+}
+.auth-title .title-flag{ width:30px; transform:none; filter:none; }
+.auth-lede{ font-size: var(--fs-small); color: var(--ink-60); margin-bottom: var(--sp-4); line-height:1.5; }
+.auth-form{ display:flex; flex-direction:column; gap: var(--sp-3); text-align:left; }
+.auth-sent{ margin-top: var(--sp-4); }
+.form-error{ color: var(--red); font-size: var(--fs-small); margin:0; }
 
 /* ---------------- responsive ---------------- */
 @media (max-width: 640px){

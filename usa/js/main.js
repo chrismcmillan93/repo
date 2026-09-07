@@ -3,6 +3,24 @@ import { db } from './db.js';
 import { state, getViewCurrency, setViewCurrency, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import { renderMasthead } from './views/overview.js';
+import {
+  requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
+} from './auth.js';
+
+const authScreen = qs('#authScreen');
+const createTripScreen = qs('#createTripScreen');
+const appShell = qs('#appShell');
+
+let pendingEmail = '';
+let routerStarted = false;
+
+function showScreen(name){
+  authScreen.hidden = name !== 'auth';
+  createTripScreen.hidden = name !== 'createTrip';
+  appShell.hidden = name !== 'app';
+}
+
+/* ---------------- header bits (currency, fx rate, bunting, brand) ---------------- */
 
 function renderBunting(){
   const row = qs('#buntingRow');
@@ -31,8 +49,15 @@ function renderFxNote(){
 
 function renderBrandSub(){
   const sub = qs('#brandSub');
-  if (!sub || !state.legs.length) return;
-  sub.textContent = state.legs.map((l) => l.name).join(' · ');
+  if (!sub) return;
+  sub.textContent = state.legs.length ? state.legs.map((l) => l.name).join(' · ') : '';
+}
+
+function renderBrandTitle(){
+  const name = state.trip ? state.trip.name : 'Your trip';
+  const el = qs('#brandTitleText');
+  if (el) el.textContent = name;
+  document.title = name;
 }
 
 function wireCurrencyToggle(){
@@ -44,7 +69,6 @@ function wireCurrencyToggle(){
 }
 
 function wireFxEdit(){
-  const wrap = qs('#currencyToggle');
   const btn = qs('#fxEditBtn');
   btn.addEventListener('click', () => {
     if (qs('.fx-edit-form')) return; // already open
@@ -86,36 +110,185 @@ function wireFxEdit(){
   });
 }
 
+function wireSignOutButtons(){
+  qsa('#signOutBtn, #createTripSignOut').forEach((btn) => {
+    btn.addEventListener('click', () => signOut());
+  });
+}
+
+/* ---------------- sign-in / sign-up forms ---------------- */
+
+function wireAuthForms(){
+  const authForm = qs('#authForm');
+  const authError = qs('#authError');
+  const authSent = qs('#authSent');
+  const codeForm = qs('#codeForm');
+  const codeError = qs('#codeError');
+  const authRetry = qs('#authRetry');
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authError.hidden = true;
+    const email = qs('#authEmail').value.trim();
+    if (!email) return;
+    const btn = qs('#authSubmit');
+    btn.disabled = true;
+    try {
+      await requestSignIn(email);
+      pendingEmail = email;
+      authForm.hidden = true;
+      authSent.hidden = false;
+    } catch (err) {
+      authError.textContent = friendlyError(err);
+      authError.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  codeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    codeError.hidden = true;
+    const code = qs('#authCode').value.trim();
+    if (!code) return;
+    const btn = qs('#codeSubmit');
+    btn.disabled = true;
+    try {
+      await verifyCode(pendingEmail, code);
+      // Success fires onAuthStateChange, which swaps in the app shell.
+    } catch (err) {
+      codeError.textContent = friendlyError(err);
+      codeError.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  authRetry.addEventListener('click', () => {
+    authForm.hidden = false;
+    authForm.reset();
+    authSent.hidden = true;
+    pendingEmail = '';
+  });
+}
+
+function wireCreateTripForm(){
+  const form = qs('#createTripForm');
+  const error = qs('#createTripError');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    error.hidden = true;
+    const name = qs('#tripName').value.trim();
+    const start = qs('#tripStart').value;
+    const end = qs('#tripEnd').value;
+    if (!name || !start || !end) return;
+    if (end < start) {
+      error.textContent = 'End date must be on or after the start date.';
+      error.hidden = false;
+      return;
+    }
+    const btn = qs('#createTripSubmit');
+    btn.disabled = true;
+    try {
+      await db.trips.create({
+        user_id: state.session.user.id,
+        name,
+        start_date: start,
+        end_date: end,
+        home_currency: 'GBP',
+        spend_currency: 'USD',
+        fx_rate: 1.27
+      });
+      await enterApp();
+    } catch (err) {
+      error.textContent = friendlyError(err);
+      error.hidden = false;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+/* ---------------- boot sequencing ---------------- */
+
+async function enterApp(){
+  try {
+    await loadCore(state.session.user.id);
+  } catch (err) {
+    toast(friendlyError(err));
+    return;
+  }
+
+  if (!state.trip) {
+    showScreen('createTrip');
+    return;
+  }
+
+  showScreen('app');
+  renderFxNote();
+  renderBrandSub();
+  renderBrandTitle();
+  renderMasthead();
+  qs('#signedInAs').textContent = state.session.user.email || '';
+
+  if (!routerStarted) {
+    routerStarted = true;
+    initRouter();
+    window.addEventListener('usa:currencychange', () => {
+      renderCurrencyToggle();
+      renderRoute();
+    });
+    window.addEventListener('usa:tripchange', async () => {
+      await loadCore(state.session.user.id);
+      renderFxNote();
+      renderBrandSub();
+      renderBrandTitle();
+      renderMasthead();
+      renderRoute();
+    });
+  }
+
+  await renderRoute();
+}
+
+async function handleSession(session){
+  state.session = session;
+  if (session && session.user) {
+    await enterApp();
+  } else {
+    routerStarted = false;
+    showScreen('auth');
+    qs('#authForm').hidden = false;
+    qs('#authSent').hidden = true;
+  }
+}
+
 async function boot(){
   renderBunting();
   wireCurrencyToggle();
   wireFxEdit();
-  initRouter();
-
-  window.addEventListener('usa:currencychange', () => {
-    renderCurrencyToggle();
-    renderRoute();
-  });
-  window.addEventListener('usa:tripchange', async () => {
-    await loadCore();
-    renderFxNote();
-    renderBrandSub();
-    renderMasthead();
-    renderRoute();
-  });
-
+  wireAuthForms();
+  wireCreateTripForm();
+  wireSignOutButtons();
   renderCurrencyToggle();
 
-  try {
-    await loadCore();
-    renderFxNote();
-    renderBrandSub();
-    renderMasthead();
-  } catch (err) {
-    toast(friendlyError(err));
-  }
+  const urlError = readAuthErrorFromUrl();
 
-  await renderRoute();
+  onAuthStateChange((session) => {
+    handleSession(session).catch((err) => toast(friendlyError(err)));
+  });
+
+  const session = await getCurrentSession();
+  await handleSession(session);
+
+  if (!session && urlError) {
+    const authError = qs('#authError');
+    authError.textContent = urlError.error_description
+      ? urlError.error_description.replace(/\+/g, ' ')
+      : 'That sign-in link has expired or was already used — request a new one.';
+    authError.hidden = false;
+  }
 }
 
 boot();

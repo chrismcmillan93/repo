@@ -143,7 +143,7 @@ async function handleClick(e){
 }
 
 async function reload(){
-  items = await db.checklistItems.list();
+  items = await db.checklistItems.list(state.trip.id);
 }
 
 export async function render(container){
