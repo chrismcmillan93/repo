@@ -49,9 +49,10 @@ full access" policies are gone. Current shape:
   `itinerary_items`, `checklist_items`, `expenses`): `trip_id in (select id from
   usa.trips where user_id = auth.uid())`, all operations.
 - **Exception, additive and read-only:** `legs` where `is_shared = true`,
-  `itinerary_items` whose `leg_id` points at such a leg, `places` referenced by
-  such an item's `place_id`, and — as of `usa_shared_leg_trip_read` — the `trips`
-  row that owns such a leg, each get an extra SELECT-only policy readable by any
+  `itinerary_items` whose `leg_id` points at such a leg, `places` whose own
+  `leg_id` points at such a leg (or that are referenced by such an item's
+  `place_id`, for a place assigned to no leg of its own), and the `trips` row
+  that owns such a leg, each get an extra SELECT-only policy readable by any
   authenticated user regardless of trip ownership. This is the mechanism behind
   "everyone's Vegas stop is visible to everyone, nothing else is." Nobody can edit
   a leg (or anything under it) they don't own via these policies, only read it.
@@ -66,6 +67,21 @@ full access" policies are gone. Current shape:
   "Someone" — a gap the mocked Playwright test suite can't catch, since the
   mock doesn't enforce RLS at all. Trust `get_advisors` and, ideally, a real
   second account over the mock for anything cross-trip.
+- **The `trips` exception's `using` clause is a SECURITY DEFINER function,
+  `usa.trip_has_shared_leg(trip_id)`, not an inline subquery — this is load-
+  bearing, not stylistic.** An inline `id in (select trip_id from usa.legs
+  where is_shared = true)` on `trips` creates a circular RLS dependency:
+  evaluating that policy requires querying `legs`, and `legs`' own `"own trip
+  rows"` policy requires querying `trips` right back, forever. Since every
+  child table's own-row policy also queries `trips`, that recursion broke RLS
+  for the *entire* schema for a period on 2026-09-07 ("infinite recursion
+  detected in policy for relation ..."), not just sharing — fixed in
+  `usa_fix_trips_legs_rls_recursion`. The function sidesteps this because it
+  runs as its own (RLS-bypassing) owner rather than the querying role, so its
+  internal query against `legs` doesn't re-trigger `legs`' RLS. **Any future
+  policy on one table that needs to query another table which itself queries
+  back to the first must go through a SECURITY DEFINER function the same
+  way** — never an inline subquery — or the cycle repeats.
 - Anon grants on the `usa` schema are revoked — the app requires a real session,
   full stop. This landed together with reassigning Chris's original (pre-auth,
   `user_id = null`) trip to his real account, once he completed his first sign-in —
