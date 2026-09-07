@@ -377,6 +377,32 @@ export async function archiveWishlistItem(id) {
   return updateWishlistItem(id, { archived_at: new Date().toISOString() });
 }
 
+// ---------------- playbook_progress ----------------
+// Per-directive status/note/goal-link for the Playbook section. The
+// directive text itself lives in playbookContent.js, not the database —
+// only the user's progress against it is real, saved data. Each write is a
+// partial-column upsert keyed on (user_id, directive_key), so setting the
+// status doesn't clobber an existing note and vice versa.
+
+export async function listPlaybookProgress() {
+  return unwrap(await supabase.from('playbook_progress').select('*'));
+}
+
+export async function setPlaybookStatus(directive_key, status) {
+  const row = { user_id: requireUser(), directive_key, status };
+  return unwrap(await supabase.from('playbook_progress').upsert(row, { onConflict: 'user_id,directive_key' }).select().single());
+}
+
+export async function setPlaybookNote(directive_key, note) {
+  const row = { user_id: requireUser(), directive_key, note: note || null };
+  return unwrap(await supabase.from('playbook_progress').upsert(row, { onConflict: 'user_id,directive_key' }).select().single());
+}
+
+export async function linkPlaybookGoal(directive_key, goal_id) {
+  const row = { user_id: requireUser(), directive_key, linked_goal_id: goal_id, status: 'working_on_it' };
+  return unwrap(await supabase.from('playbook_progress').upsert(row, { onConflict: 'user_id,directive_key' }).select().single());
+}
+
 export async function unarchiveWishlistItem(id) {
   return updateWishlistItem(id, { archived_at: null });
 }
