@@ -551,6 +551,12 @@ a{ color: var(--accent); }
 .pb-status-select.status-not_started{ color: var(--ink-soft); }
 .pb-status-select.status-working_on_it{ color: var(--warn); border-color: rgba(var(--warn-rgb),0.4); }
 .pb-status-select.status-adopted{ color: var(--good); border-color: rgba(var(--good-rgb),0.4); }
+.pb-kind-tag{
+  display:inline-block; margin-left:6px; padding:1px 7px; border-radius:99px; vertical-align:middle;
+  font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;
+  color: var(--accent); background: rgba(var(--accent-rgb),0.12);
+}
+.pb-principle-note{ font-size:0.74rem; color: var(--ink-soft); font-style:italic; }
 .pb-note-box textarea{
   width:100%; border:1px solid var(--line-strong); border-radius:8px; padding:8px 10px; font-size:0.84rem;
   font-family:inherit; color: var(--ink); background: var(--paper); resize:vertical;
