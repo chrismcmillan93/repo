@@ -67,6 +67,29 @@ trip predates auth, and created a duplicate. Reassigned his real trip's
 RLS to real per-user ownership in the same migration — see `CLAUDE.md`.
 Sister's sign-in link is safe to send now that this has landed.
 
+## Options/choice-groups + shared-Vegas display shipped (2026-09-07)
+Sister won't be using the app for a while yet, but built and tested both
+remaining pieces now rather than waiting:
+
+- **Itinerary options.** `itinerary_items` gained `choice_group_id` +
+  `is_selected`. Items sharing a `choice_group_id` render as one card with
+  a pill toggle (e.g. UFC 310 vs. the Sphere); switching pills flips which
+  option counts toward cost totals — an unselected alternative never
+  double-counts. "+ Add an alternative option" on any plain item turns it
+  into the start of a group; removing options back down to one dissolves
+  the group again. Any item/option can be turned into a choice, not just
+  itinerary-seeded ones.
+- **Shared-Vegas display.** Overview now has an "Also there" section
+  showing any other account's `is_shared` leg (name, dates, whose trip it
+  is, and its itinerary) — read-only. Uses the `db.legs.listSharedElsewhere`
+  / `db.itineraryItems.listSharedElsewhere` queries that existed since the
+  `is_shared` migration but weren't wired into any screen until now.
+- **Live FX rate.** Manual entry stays the source of truth for
+  `trips.fx_rate`, but the fx-rate editor now fetches a live GBP→USD rate
+  from frankfurter.app (free, no key) and offers it as a one-click "use
+  this" suggestion — never auto-applied, so a deliberately-budgeted rate
+  is never silently overwritten.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
