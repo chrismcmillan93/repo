@@ -115,6 +115,26 @@ opens up a place row only when it's actually referenced (`itinerary_items.place_
 from a shared leg's itinerary — the same narrow, read-only shape as the leg/item
 policies, not a general grant to someone else's places shortlist.
 
+`trips.traveller_name` labels whose plan a shared item is — a person's name, not the
+trip's own title, since "Sister's USA Trip" reads oddly from the other account and a
+trip's title is that trip owner's own choice of words, not necessarily their name.
+Captured once as a required field on the "create your trip" onboarding form (real
+sign-in here is just an email link, so trip creation is the actual first-setup
+moment) and never editable after that today. `sharedItemCard.js`'s `travellerLabel()`
+falls back to `trips.name` for any trip predating this column, then to `'Someone'` so
+this never renders blank. `usa/js/sharedItemCard.js` holds the one `sharedItemHtml()`
+renderer shared between Overview's "Also there" section and the Itinerary's per-day
+badge (below) — so a shared item looks the same wherever it surfaces.
+
+Itinerary shows the same shared data inline, per day, rather than only in one
+dedicated Overview section: each day-group whose date has a shared item from another
+account gets a collapsed **"\<name\> has/have plans today"** badge (gold pill, `.also-badge`)
+under the day header, naming whoever it is — expanding in place, on click, to the
+same `sharedItemHtml()` cards Overview uses (with the date suppressed, since the day
+heading already shows it). Collapsed by default so someone else's plan never
+competes for attention with your own day, and the expanded state resets every time
+the Itinerary view is re-entered (never persisted, never surprises you open).
+
 ## PDF export
 
 Two "Export PDF" actions — one per stop (the 📄 icon in each stops-panel row) and one

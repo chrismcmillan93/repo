@@ -109,6 +109,24 @@ remaining pieces now rather than waiting:
   be something to have to hand on the day ("it's Wednesday, this flight, this hotel"),
   not a budgeting or checklist document, so costs/checklist/places aren't included.
 
+## Itinerary shows shared plans inline, by name (2026-09-07)
+Overview's "Also there" section was the only place cross-trip sharing showed up —
+not much use for actually coordinating a specific day while looking at the
+Itinerary screen itself. Added:
+- `trips.traveller_name` — a person's name, asked once on the "create your trip"
+  form, required going forward. Chris's trip was backfilled to "Chris". Used
+  instead of the trip's own title to label whose plan a shared item is
+  (`travellerLabel()` in the new `usa/js/sharedItemCard.js`).
+- Each day in the Itinerary view that has a shared item from someone else's
+  account (i.e. on a leg they've marked shared) gets a small collapsed badge —
+  "\<name\> has plans today" — that expands to the same detail card Overview
+  shows. Collapsed by default, resets on re-entering the view. No change to what's
+  shared or who can see it: still only an `is_shared` leg's own items, still
+  read-only.
+- Considered showing full detail inline by default instead of a collapsed badge;
+  went with collapsed since a day is primarily about your own plan and someone
+  else's shouldn't compete for attention unless asked for.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date

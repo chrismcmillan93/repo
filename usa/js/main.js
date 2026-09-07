@@ -221,10 +221,11 @@ function wireCreateTripForm(){
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     error.hidden = true;
+    const travellerName = qs('#travellerName').value.trim();
     const name = qs('#tripName').value.trim();
     const start = qs('#tripStart').value;
     const end = qs('#tripEnd').value;
-    if (!name || !start || !end) return;
+    if (!travellerName || !name || !start || !end) return;
     if (end < start) {
       error.textContent = 'End date must be on or after the start date.';
       error.hidden = false;
@@ -235,6 +236,7 @@ function wireCreateTripForm(){
     try {
       await db.trips.create({
         user_id: state.session.user.id,
+        traveller_name: travellerName,
         name,
         start_date: start,
         end_date: end,
