@@ -113,20 +113,29 @@ unpicked alternative double-counts against the trip budget.
 
 ## Cross-trip sharing
 
-`legs.is_shared` makes a leg (and its `itinerary_items`) readable by any authenticated
-account, not just its owner — see the RLS policies above. `db.legs.listSharedElsewhere`
-/ `db.itineraryItems.listSharedElsewhere` in `db.js` fetch another account's shared
-leg(s); the Overview screen's "Also there" section is the only place this is
-surfaced today. Read-only by design — nobody edits a leg they don't own.
+`legs.is_shared` makes a leg readable by any authenticated account, not just its
+owner — see the RLS policies above. Three more tables extend that same read-only
+exception outward from a shared leg: `itinerary_items` on that leg, `places` whose
+own `leg_id` points at it (or that are referenced from one of its itinerary items —
+kept for a place assigned to no leg of its own), and the `trips` row that owns it
+(needed so `trips(name, traveller_name)` embeds resolve at all — see the RLS
+section above for the incident that exposed this gap). `db.legs.listSharedElsewhere` / `db.itineraryItems.listSharedElsewhere` /
+`db.places.listSharedElsewhere` in `db.js` fetch another account's shared leg data;
+surfaced today in Overview's "Also there" section (itinerary items), the Itinerary
+screen's per-day badge (itinerary items), and the Places screen's own "Also there"
+section (the shortlist). Read-only by design — nobody edits a leg, item, or place
+they don't own via these policies, only read it.
 
-The "Also there" cards show full item detail, not just a title and time: time range,
-type, notes, estimated cost (in the item's own currency — never converted through this
-trip's `fx_rate`, since it's someone else's spend on someone else's trip), and the
-linked place's name/address/rating/map link when the item has one. A `places` row is
-only readable cross-trip via the additive **"shared leg place read"** policy, which
-opens up a place row only when it's actually referenced (`itinerary_items.place_id`)
-from a shared leg's itinerary — the same narrow, read-only shape as the leg/item
-policies, not a general grant to someone else's places shortlist.
+The item cards (Overview, Itinerary) show full detail, not just a title and time:
+time range, type, notes, estimated cost (in the item's own currency — never
+converted through this trip's `fx_rate`, since it's someone else's spend on
+someone else's trip), and the linked place's name/address/rating/map link when the
+item has one. The Places "Also there" section shows the same shape of card as the
+screen's own places (name, category, rating, price, cost, map link), plus a
+"Rejected" marker and reason when the other account has ruled something out —
+useful to see even before anything's been decided or turned into an itinerary
+item, which is the whole point of sharing the shortlist rather than just the
+confirmed plan.
 
 `trips.traveller_name` labels whose plan a shared item is — a person's name, not the
 trip's own title, since "Sister's USA Trip" reads oddly from the other account and a

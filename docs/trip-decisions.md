@@ -148,6 +148,24 @@ it says nothing about whether the real database will actually hand that data
 over. `get_advisors` after every RLS change, and ideally a real second account,
 are the only things that actually check that.
 
+## Places shortlist shared on a shared leg, not just confirmed items (2026-09-07)
+Sharing previously only reached as far as a leg's confirmed itinerary — a place
+only became visible cross-trip once it was actually linked from an itinerary item.
+That meant no way to compare notes on a shared stop before either side had turned
+anything into a plan, which is exactly the stage two people are most likely to want
+to coordinate at ("don't bother with X, we already ruled it out" is more useful
+before either of you books it than after).
+
+- Widened the `"shared leg place read"` RLS policy: a place now also qualifies by
+  its own `leg_id` pointing at a shared leg, on top of the original
+  itinerary-reference condition.
+- New `db.places.listSharedElsewhere()`, and a matching "Also there" section on
+  the Places screen itself — same place-card shape as your own shortlist, plus a
+  "Rejected" marker and reason where relevant. Still read-only.
+- Real data check while building this: Chris's actual Vegas leg already had 12
+  shortlisted/candidate places in it, not seeded in this repo — confirms the
+  feature has something real to show once the sister's account is live.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date
