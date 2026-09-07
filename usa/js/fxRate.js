@@ -1,7 +1,10 @@
-// Live GBP -> USD rate, offered as a one-click suggestion only -- it never
-// overwrites the manually-set trips.fx_rate on its own. frankfurter.app is
-// free, keyless and CORS-enabled (ECB-based daily rates), matching the
-// same "no API key, no billing" rule already followed for place ratings.
+// Live GBP -> USD rate. Applied automatically to the in-memory display
+// value by main.js's applyLiveRate() -- this module itself never touches
+// trips.fx_rate in the DB, and stops being consulted at all once the user
+// has manually saved a rate this page load (state.fxManualOverride).
+// frankfurter.app is free, keyless and CORS-enabled (ECB-based daily
+// rates), matching the same "no API key, no billing" rule already
+// followed for place ratings.
 let cached = null;
 let fetchPromise = null;
 

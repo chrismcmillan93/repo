@@ -77,9 +77,18 @@ Goals app). Without this, every PostgREST call scoped to `db: { schema: 'usa' }`
   `numeric(12,2)`, never as a JS float persisted to the DB.
 - Always show the fx rate in use next to the toggle so a converted figure is never
   mistaken for a real one.
-- `trips.fx_rate` is still manually set — `usa/js/fxRate.js` fetches a live GBP→USD
-  rate from frankfurter.app (free, no key) purely as a one-click suggestion in the
-  fx-edit popover. It never writes `fx_rate` itself; only a Save click does.
+- `trips.fx_rate` is the manually-saved value in the DB, but the rate actually
+  **displayed** updates on its own: `usa/js/fxRate.js` fetches a live GBP→USD rate
+  from frankfurter.app (free, no key) on every load, and `main.js`'s
+  `applyLiveRate()` overlays it onto `state.trip.fx_rate` **in memory only**
+  (`state.fxIsLive = true`) — this never writes to the DB. The fx note always shows
+  which is in effect, with a "(live)" suffix when it is. If the fetch fails, the
+  last saved rate keeps being used, silently.
+- Once the user explicitly clicks Save in the fx-edit popover, `state.fxManualOverride`
+  goes sticky for the rest of that page load: `applyLiveRate()` stops overlaying
+  anything, even when an unrelated edit elsewhere (adding a stop, ticking a checklist
+  item) triggers another `loadCore()`/`usa:tripchange`. A saved rate is never
+  silently swapped back to live mid-session — only a fresh page load re-enables it.
 
 ## Itinerary options (choice groups)
 
