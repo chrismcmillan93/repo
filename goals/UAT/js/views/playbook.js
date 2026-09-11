@@ -17,51 +17,67 @@ import { PILLARS, allDirectives } from '../playbookContent.js';
 const STATUSES = ['not_started', 'working_on_it', 'adopted'];
 
 // In-memory only — which books are expanded and which notes are open.
-// Resets on a fresh page load, survives re-renders within a visit (every
-// status/note change re-renders the whole view, same as Wishlist/Notes).
+// Resets on a fresh page load, survives repaints within a visit.
 const expandedBooks = new Set();
 const openNotes = new Set();
+
+// A local cache of directive_key -> progress row, refreshed from the network
+// only when the route is entered (renderPlaybook below). Expanding a book,
+// changing a status, or saving a note all repaint from this cache instead of
+// re-fetching and flashing a loading state — that full-page collapse-then-
+// rebuild was what reset scroll position to the top on every tap. Status/note
+// writes still hit the network, but they patch this cache with the response
+// rather than re-fetching everything.
+let cachedProgress = null;
 
 export async function renderPlaybook(root) {
   root.innerHTML = loadingHtml('Loading your playbook…');
   try {
     const progressRows = await db.listPlaybookProgress();
-    const progress = new Map(progressRows.map((r) => [r.directive_key, r]));
-
-    const all = allDirectives();
-    const adopted = all.filter((d) => (progress.get(d.key) || {}).status === 'adopted').length;
-    const working = all.filter((d) => (progress.get(d.key) || {}).status === 'working_on_it').length;
-
-    root.innerHTML = `
-      <section class="card pb-summary">
-        <p class="card-eyebrow">Playbook</p>
-        <p class="pb-summary-line">${all.length} directives across ${PILLARS.reduce((n, p) => n + p.books.length, 0)} books —
-          <strong>${adopted} adopted</strong>, ${working} in progress.</p>
-      </section>
-      ${PILLARS.map((pillar) => pillarHtml(pillar, progress)).join('')}
-    `;
-    bindPage(root, progress);
+    cachedProgress = new Map(progressRows.map((r) => [r.directive_key, r]));
+    paint(root);
   } catch (err) {
     root.innerHTML = errorHtml(err);
   }
 }
 
-function pillarHtml(pillar, progress) {
+/** Rebuilds the DOM from cachedProgress + the module's expand/open state — no network call. Preserves scroll position across the rebuild. */
+function paint(root) {
+  const scrollY = window.scrollY;
+
+  const all = allDirectives();
+  const adopted = all.filter((d) => (cachedProgress.get(d.key) || {}).status === 'adopted').length;
+  const working = all.filter((d) => (cachedProgress.get(d.key) || {}).status === 'working_on_it').length;
+
+  root.innerHTML = `
+    <section class="card pb-summary">
+      <p class="card-eyebrow">Playbook</p>
+      <p class="pb-summary-line">${all.length} directives across ${PILLARS.reduce((n, p) => n + p.books.length, 0)} books —
+        <strong>${adopted} adopted</strong>, ${working} in progress.</p>
+    </section>
+    ${PILLARS.map((pillar) => pillarHtml(pillar)).join('')}
+  `;
+  bindPage(root);
+
+  window.scrollTo(0, scrollY);
+}
+
+function pillarHtml(pillar) {
   return `
     <section class="card pb-pillar">
       <p class="card-eyebrow">${pillar.numeral} · ${escapeHtml(pillar.title)}</p>
       <p class="pb-pillar-blurb">${escapeHtml(pillar.blurb)}</p>
-      <div class="pb-books">${pillar.books.map((b) => bookHtml(b, progress)).join('')}</div>
+      <div class="pb-books">${pillar.books.map((b) => bookHtml(b)).join('')}</div>
     </section>
   `;
 }
 
-function bookHtml(book, progress) {
+function bookHtml(book) {
   const expanded = expandedBooks.has(book.key);
   const directives = book.directives.map((d, i) => ({
     key: `${book.key}-${String(i + 1).padStart(2, '0')}`, text: d.text, detail: d.detail, kind: d.kind || 'principle'
   }));
-  const adoptedCount = directives.filter((d) => (progress.get(d.key) || {}).status === 'adopted').length;
+  const adoptedCount = directives.filter((d) => (cachedProgress.get(d.key) || {}).status === 'adopted').length;
 
   return `
     <div class="pb-book">
@@ -73,7 +89,7 @@ function bookHtml(book, progress) {
       </button>
       ${expanded ? `
         <p class="pb-book-blurb">${escapeHtml(book.blurb)}</p>
-        <ul class="pb-directive-list">${directives.map((d) => directiveHtml(book, d, progress.get(d.key))).join('')}</ul>
+        <ul class="pb-directive-list">${directives.map((d) => directiveHtml(book, d, cachedProgress.get(d.key))).join('')}</ul>
       ` : ''}
     </div>
   `;
@@ -110,19 +126,21 @@ function directiveHtml(book, d, row) {
   `;
 }
 
-function bindPage(root, progress) {
+function bindPage(root) {
   root.querySelectorAll('[data-pb-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.pbToggle;
       if (expandedBooks.has(key)) expandedBooks.delete(key); else expandedBooks.add(key);
-      renderPlaybook(root);
+      paint(root);
     });
   });
 
   root.querySelectorAll('[data-pb-status]').forEach((sel) => {
     sel.addEventListener('change', async () => {
-      await db.setPlaybookStatus(sel.dataset.pbStatus, sel.value);
-      renderPlaybook(root);
+      const key = sel.dataset.pbStatus;
+      const updated = await db.setPlaybookStatus(key, sel.value);
+      cachedProgress.set(key, updated);
+      paint(root);
     });
   });
 
@@ -138,8 +156,10 @@ function bindPage(root, progress) {
 
   root.querySelectorAll('[data-pb-note]').forEach((ta) => {
     ta.addEventListener('blur', async () => {
-      await db.setPlaybookNote(ta.dataset.pbNote, ta.value.trim());
-      renderPlaybook(root);
+      const key = ta.dataset.pbNote;
+      const updated = await db.setPlaybookNote(key, ta.value.trim());
+      cachedProgress.set(key, updated);
+      paint(root);
     });
   });
 
