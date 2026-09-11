@@ -1,11 +1,7 @@
 import { qs, esc, toast, friendlyError } from './utils.js';
 import { state, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
-import { APP_PIN } from './config.js';
 
-const PIN_KEY = 'thailand-uat-pin-ok';
-const pinScreen = qs('#pinScreen');
-const appShell = qs('#appShell');
 let routerStarted = false;
 let countdownTimer = null;
 
@@ -39,43 +35,6 @@ function renderFlightCard() {
   qs('#flightCard').innerHTML = rows;
 }
 
-/* ---------------- PIN gate ---------------- */
-
-function showApp(show) {
-  pinScreen.hidden = show;
-  appShell.hidden = !show;
-}
-
-function wirePinForm() {
-  const form = qs('#pinForm');
-  const error = qs('#pinError');
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const val = qs('#pinInput').value.trim();
-    if (val !== APP_PIN) {
-      error.textContent = "That's not the right PIN.";
-      error.hidden = false;
-      return;
-    }
-    error.hidden = true;
-    try { window.sessionStorage.setItem(PIN_KEY, '1'); } catch (e2) { /* ignore */ }
-    showApp(true);
-    enterApp();
-  });
-}
-
-function wireLockButton() {
-  qs('#lockBtn').addEventListener('click', () => {
-    try { window.sessionStorage.removeItem(PIN_KEY); } catch (e) { /* ignore */ }
-    qs('#pinInput').value = '';
-    showApp(false);
-  });
-}
-
-function pinAlreadyOk() {
-  try { return window.sessionStorage.getItem(PIN_KEY) === '1'; } catch (e) { return false; }
-}
-
 /* ---------------- boot sequencing ---------------- */
 
 async function enterApp() {
@@ -103,16 +62,6 @@ async function enterApp() {
   await renderRoute();
 }
 
-async function boot() {
-  wirePinForm();
-  wireLockButton();
-  if (pinAlreadyOk()) {
-    showApp(true);
-    await enterApp();
-  } else {
-    showApp(false);
-    qs('#pinInput').focus();
-  }
-}
-
-boot();
+// PIN gate removed for now — app starts directly, same as the live
+// thailand/index.html. See CLAUDE.md.
+enterApp();

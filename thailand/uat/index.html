@@ -11,21 +11,10 @@
 
 <div class="uat-banner">UAT rebuild — test area, not the live tracker</div>
 
-<!-- Shared-PIN gate. Shown until the right PIN's been entered this session. -->
-<div id="pinScreen" class="pin-screen">
-  <div class="pin-card">
-    <p class="eyebrow">Thailand · Nov 2026</p>
-    <p class="pin-title">&#9992; Enter the trip PIN</p>
-    <form id="pinForm">
-      <input type="text" id="pinInput" class="pin-input" inputmode="numeric" autocomplete="off" placeholder="PIN" maxlength="12">
-      <button type="submit" class="pin-btn" id="pinSubmit">Unlock</button>
-      <p class="pin-error" id="pinError" hidden></p>
-    </form>
-    <p class="pin-hint">Shared with the whole group — ask Chris if you don't have it.</p>
-  </div>
-</div>
+<!-- PIN gate removed for now — app starts directly. See js/main.js / CLAUDE.md;
+     the pin-screen CSS in style.css is left in place to bring it back easily. -->
 
-<div id="appShell" hidden>
+<div id="appShell">
   <header class="app-header">
     <div class="app-header-inner">
       <p class="eyebrow">Thailand · Nov 2026</p>
@@ -37,10 +26,6 @@
         <div class="tile"><div class="tile-num" id="cdSecs">–</div><div class="tile-label">Sec</div></div>
       </div>
       <div class="flight-card" id="flightCard"></div>
-      <div class="utility-row">
-        <span></span>
-        <button type="button" class="btn-quiet" id="lockBtn">Lock</button>
-      </div>
     </div>
   </header>
 

@@ -220,14 +220,17 @@ migrations, real RLS — while keeping the live app's own teal/gold visual ident
 `public`, `usa`, or `goals`, and the live `thailand/index.html` is untouched.
 
 **Auth model is deliberately not `usa`'s.** This is a multi-person group trip with no
-per-account ownership, not one-trip-per-account — so instead of magic-link auth there's
-a single shared PIN gate (`js/main.js`, PIN in `js/config.js`, default `2026`), same
-shape as the (currently-disabled) `tp-lock` screen already in the live app's CSS. The
-PIN is a light deterrent against a stray link click, **not access control** — RLS grants
-the `anon` key full CRUD on every `thailand_uat` table (`"anon full access"` policies,
-`using (true) with check (true)`), a deliberate and permanent choice given there's no
-`auth.uid()` to key ownership off, not a transitional step like `usa` had pre-tightening.
-Revisit only if this ever needs real per-person accounts.
+per-account ownership, not one-trip-per-account — so instead of magic-link auth it
+originally had a shared PIN gate. That's **removed for now (2026-09-11)**, same as the
+live app's own history ("Passcode lock removed for now — app starts directly") — the
+app now starts straight into the shell. The gate's markup/CSS (`.pin-*` in
+`css/style.css`) is left in place to bring it back cheaply; `js/main.js` just calls
+`enterApp()` directly instead of gating on it. Either way — gated or not — the PIN was
+always a light deterrent against a stray link click, **never access control**: RLS
+grants the `anon` key full CRUD on every `thailand_uat` table (`"anon full access"`
+policies, `using (true) with check (true)`), a deliberate and permanent choice given
+there's no `auth.uid()` to key ownership off, not a transitional step like `usa` had
+pre-tightening. Revisit only if this ever needs real per-person accounts.
 
 **Supabase:** same `dashboards-new` project or space as `usa`/`goals`, own schema
 **`thailand_uat`** — `trip` (single row), `legs`, `flight_legs`, `items` (the per-leg
