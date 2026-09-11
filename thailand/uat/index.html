@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thailand trip planner (UAT)</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="uat-banner">UAT rebuild — test area, not the live tracker</div>
+
+<!-- Shared-PIN gate. Shown until the right PIN's been entered this session. -->
+<div id="pinScreen" class="pin-screen">
+  <div class="pin-card">
+    <p class="eyebrow">Thailand · Nov 2026</p>
+    <p class="pin-title">&#9992; Enter the trip PIN</p>
+    <form id="pinForm">
+      <input type="text" id="pinInput" class="pin-input" inputmode="numeric" autocomplete="off" placeholder="PIN" maxlength="12">
+      <button type="submit" class="pin-btn" id="pinSubmit">Unlock</button>
+      <p class="pin-error" id="pinError" hidden></p>
+    </form>
+    <p class="pin-hint">Shared with the whole group — ask Chris if you don't have it.</p>
+  </div>
+</div>
+
+<div id="appShell" hidden>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <p class="eyebrow">Thailand · Nov 2026</p>
+      <p class="brand-title">&#9992; Wheels up in</p>
+      <div class="board">
+        <div class="tile"><div class="tile-num" id="cdDays">–</div><div class="tile-label">Days</div></div>
+        <div class="tile"><div class="tile-num" id="cdHours">–</div><div class="tile-label">Hrs</div></div>
+        <div class="tile"><div class="tile-num" id="cdMins">–</div><div class="tile-label">Min</div></div>
+        <div class="tile"><div class="tile-num" id="cdSecs">–</div><div class="tile-label">Sec</div></div>
+      </div>
+      <div class="flight-card" id="flightCard"></div>
+      <div class="utility-row">
+        <span></span>
+        <button type="button" class="btn-quiet" id="lockBtn">Lock</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <a href="#/overview" data-route="overview">Overview</a>
+      <a href="#/itinerary" data-route="itinerary">Itinerary</a>
+      <a href="#/bookings" data-route="bookings">Bookings</a>
+      <a href="#/accommodation" data-route="accommodation">Accommodation</a>
+      <a href="#/packing" data-route="packing">Packing</a>
+      <a href="#/costs" data-route="costs">Costs</a>
+    </div>
+  </nav>
+
+  <main class="app-main" id="app-main">
+    <p class="section-note">Loading&hellip;</p>
+  </main>
+</div>
+
+<div id="toast-host" aria-live="polite"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
