@@ -139,12 +139,22 @@ where block_id = (select id from fitness.blocks where name = 'Block 2 — Contin
 
 Lift days (`upper`/`lower`) show a single "Mark session done" tick — `item_id`
 `session:${session_type}`, the same shape run and rest days already used
-(`session:run`, `session:rest`). The individual exercises (`session_exercises`) are
-still shown on the session card, but as plain reference text (name + prescription +
-notes), not a tickbox each. This app tracks "did the session happen", not set-by-set
-completion — it isn't a workout tracker. (Earlier drafts of this build ticked each
-exercise individually with `item_id`s like `exercise:upper:1`; that scheme is gone —
-nothing in production ever wrote one of those rows, so there was nothing to migrate.)
+(`session:run`, `session:rest`). This app tracks "did the session happen", not
+set-by-set completion — it isn't a workout tracker. (Earlier drafts of this build
+ticked each exercise individually with `item_id`s like `exercise:upper:1`; that
+scheme is gone — nothing in production ever wrote one of those rows, so there was
+nothing to migrate.)
+
+**Today shows no exercise detail at all now** — just the session title, its summary,
+and the one tick. The individual `session_exercises` briefly appeared as a plain
+reference list under the tick (name + prescription, no checkbox) but were removed
+outright: Chris doesn't want to see them on the daily screen, high-level is enough.
+`session_exercises` is still seeded and still queried by `get_day_bundle()` (cheap,
+and Plan still reads it directly itself), it's just not rendered by `today.js`
+anymore. **Plan's "Training split" section still lists exercises** (name +
+prescription) as the one place meant to document the full written prescription —
+that wasn't touched, since the request was specifically about the daily view, not
+the block-level reference. Worth confirming with Chris if he'd rather that gone too.
 
 ## Progress: day-by-day history and streaks
 

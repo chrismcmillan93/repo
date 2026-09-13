@@ -354,25 +354,6 @@ a { color: inherit; }
   text-align: right;
 }
 
-/* Reference only -- what "Upper lift" means, not a per-exercise tracker.
-   No tick box, no checked state; just the prescription for the day. */
-.exercise-reference {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--line);
-}
-.exercise-reference li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  padding: 4px 0;
-  font-size: 0.88rem;
-}
-.exercise-ref-name { color: var(--paper); }
-.exercise-ref-prescription { color: var(--slate); }
-.exercise-ref-notes { flex-basis: 100%; color: var(--dawn); font-size: 0.8rem; opacity: 0.9; }
-
 /* ---------------- weight ---------------- */
 
 .weight-row { display: flex; align-items: center; gap: 12px; }

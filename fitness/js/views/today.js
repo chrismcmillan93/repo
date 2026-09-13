@@ -121,18 +121,6 @@ function mealRowHtml(meal, dayType, checked){
     </li>`;
 }
 
-// Reference only, not tickable -- this isn't a set-by-set workout tracker.
-// The exercises exist so the session card says what "Upper lift" actually
-// means without a trip to the Plan screen, nothing more.
-function exerciseListHtml(exercises){
-  return `<ul class="exercise-reference">${exercises.map((ex) => `
-    <li>
-      <span class="exercise-ref-name">${escapeHtml(ex.name)}</span>
-      <span class="exercise-ref-prescription">${escapeHtml(ex.prescription)}</span>
-      ${ex.notes ? `<span class="exercise-ref-notes">${escapeHtml(ex.notes)}</span>` : ''}
-    </li>`).join('')}</ul>`;
-}
-
 // One tick for the whole session, same shape as a run/rest day -- this app
 // tracks "did the session happen", not set-by-set completion.
 function liftRowHtml(sessionType, checked){
@@ -250,8 +238,7 @@ function renderMealsAndTraining(main, bundle){
   if (bundle.session) {
     const st = bundle.session.session_type;
     if (st === 'upper' || st === 'lower') {
-      trainingBody = `<ul class="tick-list">${liftRowHtml(st, !!checks[`session:${st}`])}</ul>` +
-        (bundle.session.exercises.length ? exerciseListHtml(bundle.session.exercises) : '');
+      trainingBody = `<ul class="tick-list">${liftRowHtml(st, !!checks[`session:${st}`])}</ul>`;
     } else if (st === 'run' && bundle.run) {
       trainingBody = `<ul class="tick-list">${runRowHtml(bundle.run, st, !!checks[`session:${st}`])}</ul>`;
     } else if (st === 'rest') {
