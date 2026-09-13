@@ -146,6 +146,35 @@ completion — it isn't a workout tracker. (Earlier drafts of this build ticked 
 exercise individually with `item_id`s like `exercise:upper:1`; that scheme is gone —
 nothing in production ever wrote one of those rows, so there was nothing to migrate.)
 
+## Progress: day-by-day history and streaks
+
+Progress has a calendar-style "Day by day" grid (Monday-start, one column per
+weekday, one row per week of the block) alongside the existing weight chart and
+weekly adherence bars. Each day is one chip split top/bottom — nutrition on top,
+training on the bottom — coloured sage/amber/rust/muted for yes/partial/no/not
+logged, so which specific days were and weren't stuck to is visible at a glance
+rather than only as a weekly proportion. Tapping a day jumps to Today for that
+date, same interaction as the Week screen's day tiles. Days outside the block, or
+after today, render as empty unclickable placeholders (padding to a full week at
+each end, not real data).
+
+**Streaks are per-category and mean "stuck to", not "logged something."** Two
+separate counters — nutrition and training — each count consecutive days ending
+today with that field exactly `'yes'`; a `'partial'`, a `'no'`, or a day with no log
+at all breaks it. This replaced an earlier single combined streak that counted a day
+if *either* field was set to anything, which conflated "I logged" with "I stuck to
+it" — not what a streak should mean here. The separate `days logged` count (any
+status set, either field) is kept alongside them for the "did I even engage today"
+signal, which is a different, still-useful question from either streak.
+
+**Edge case this surfaced and fixed:** the whole Progress screen computes an
+`endDate` capped at today so the grid/chart never pad into the future. That capping
+only handled *today past the block's end* — viewing Progress on or before the
+block's own first day (`todayStr() < block.start_date`, which is literally true
+during this build, one day before Block 2 starts) produced an *inverted* range
+(`endDate < startDate`), which silently made every date range in the screen empty.
+Fixed by also flooring `endDate` at `block.start_date`.
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no

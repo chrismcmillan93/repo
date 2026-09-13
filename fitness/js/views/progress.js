@@ -1,9 +1,14 @@
 // Weight over the block (raw points secondary, 7-day rolling average the
-// signal), adherence per week, and a days-logged streak. No chart library --
-// a small inline SVG line, dependency-free like everything else here.
-import { qs, escapeHtml, parseLocalDate, addDays, dateRange, todayStr, round1 } from '../utils.js';
+// signal), a day-by-day history of what was actually stuck to, current
+// streaks, and adherence per week. No chart library -- a small inline SVG
+// line, dependency-free like everything else here.
+import { qs, qsa, escapeHtml, addDays, dateRange, todayStr, round1,
+  startOfWeek, endOfWeek, formatDateFull } from '../utils.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
+import { renderRoute } from '../router.js';
+
+const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function rollingAverage(points, windowSize){
   // points: [{date, weight}] sorted ascending, weight may be null.
@@ -41,14 +46,46 @@ function weightChartSvg(points, avg){
     </svg>`;
 }
 
-function computeStreak(logByDate){
+// Current streak of days actually stuck to (status === 'yes'), ending today
+// and walking backwards. A 'partial' or 'no' day -- or a day never logged
+// at all -- breaks it, same as it would for real.
+function computeStreak(logByDate, key){
   let streak = 0;
   let d = todayStr();
-  while (logByDate[d] && (logByDate[d].nutrition_status || logByDate[d].training_status)) {
+  while (logByDate[d] && logByDate[d][key] === 'yes') {
     streak++;
     d = addDays(d, -1);
   }
   return streak;
+}
+
+function statusWord(status){
+  return status === 'yes' ? 'yes' : status === 'partial' ? 'partial' : status === 'no' ? 'no' : 'not logged';
+}
+
+function historyGridHtml(block, endDate, logByDate){
+  const gridStart = startOfWeek(block.start_date);
+  const gridEnd = endOfWeek(endDate);
+  const gridDates = dateRange(gridStart, gridEnd);
+
+  const header = WEEKDAY_LETTERS.map((l) => `<span class="history-weekday">${l}</span>`).join('');
+
+  const cells = gridDates.map((d) => {
+    if (d < block.start_date || d > endDate) {
+      return '<span class="history-cell history-cell-empty" aria-hidden="true"></span>';
+    }
+    const log = logByDate[d];
+    const nutrition = log ? log.nutrition_status : null;
+    const training = log ? log.training_status : null;
+    const label = `${formatDateFull(d)}: nutrition ${statusWord(nutrition)}, training ${statusWord(training)}`;
+    return `
+      <button type="button" class="history-cell" data-date="${d}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
+        <span class="history-cell-half history-status-${nutrition || 'none'}"></span>
+        <span class="history-cell-half history-status-${training || 'none'}"></span>
+      </button>`;
+  }).join('');
+
+  return `<div class="history-grid">${header}${cells}</div>`;
 }
 
 export async function render(main){
@@ -57,7 +94,12 @@ export async function render(main){
     main.innerHTML = '<div class="empty-state"><strong>No training block yet.</strong></div>';
     return;
   }
-  const endDate = todayStr() < block.end_date ? todayStr() : block.end_date;
+  // Cap at today so the grid never pads into the future, but never let that
+  // push endDate *before* start_date either -- viewing Progress on or
+  // before the block's own first day (todayStr() < block.start_date) would
+  // otherwise produce an inverted, empty range everywhere below.
+  const cappedToToday = todayStr() < block.end_date ? todayStr() : block.end_date;
+  const endDate = cappedToToday < block.start_date ? block.start_date : cappedToToday;
   const [weeks, logs] = await Promise.all([
     db.blockWeeks.list(block.id),
     db.dailyLogs.listRange(state.session.user.id, block.start_date, endDate)
@@ -68,7 +110,8 @@ export async function render(main){
   const avg = rollingAverage(points, 7);
 
   const daysLogged = allDates.filter((d) => logByDate[d] && (logByDate[d].nutrition_status || logByDate[d].training_status)).length;
-  const streak = computeStreak(logByDate);
+  const nutritionStreak = computeStreak(logByDate, 'nutrition_status');
+  const trainingStreak = computeStreak(logByDate, 'training_status');
 
   const weekRows = weeks.map((w) => {
     const weekDates = dateRange(w.start_date, w.end_date < endDate ? w.end_date : endDate);
@@ -94,17 +137,43 @@ export async function render(main){
       ${weightChartSvg(points, avg)}
       <p class="chart-legend"><span class="legend-swatch legend-avg"></span>7-day average <span class="legend-swatch legend-raw"></span>daily reading</p>
     </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Streaks</h2>
+      <div class="adherence-grid">
+        <div class="adherence-stat"><span class="adherence-num streak-num-nutrition">${nutritionStreak}</span><span class="adherence-label">day nutrition streak</span></div>
+        <div class="adherence-stat"><span class="adherence-num streak-num-training">${trainingStreak}</span><span class="adherence-label">day training streak</span></div>
+        <div class="adherence-stat"><span class="adherence-num">${daysLogged}/${allDates.length}</span><span class="adherence-label">days logged</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Day by day</h2>
+      <p class="panel-summary">Top half of each day is nutrition, bottom half is training. Tap a day to open it.</p>
+      ${historyGridHtml(block, endDate, logByDate)}
+      <p class="chart-legend">
+        <span class="legend-swatch legend-yes"></span>yes
+        <span class="legend-swatch legend-partial"></span>partial
+        <span class="legend-swatch legend-no"></span>no
+        <span class="legend-swatch legend-none"></span>not logged
+      </p>
+    </section>
+
     <section class="panel">
       <h2 class="panel-title">Adherence by week</h2>
       <div class="week-grid-head"><span></span><span>Nutrition</span><span>Training</span></div>
       ${weekRows}
     </section>
-    <section class="panel">
-      <h2 class="panel-title">Consistency</h2>
-      <div class="adherence-grid">
-        <div class="adherence-stat"><span class="adherence-num">${daysLogged}/${allDates.length}</span><span class="adherence-label">days logged</span></div>
-        <div class="adherence-stat"><span class="adherence-num">${streak}</span><span class="adherence-label">day streak</span></div>
-      </div>
-    </section>
   `;
+
+  qsa('.history-cell:not(.history-cell-empty)', main).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.currentDate = btn.dataset.date;
+      if (window.location.hash === '#/today') {
+        renderRoute();
+      } else {
+        window.location.hash = '#/today';
+      }
+    });
+  });
 }

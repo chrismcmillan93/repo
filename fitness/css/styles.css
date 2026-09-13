@@ -547,6 +547,55 @@ a { color: inherit; }
 .legend-swatch:first-child { margin-left: 0; }
 .legend-avg { background: var(--dawn); }
 .legend-raw { background: var(--slate); }
+.legend-yes { background: var(--sage); }
+.legend-partial { background: var(--amber); }
+.legend-no { background: var(--rust); }
+.legend-none { background: var(--line); }
+
+.streak-num-nutrition { color: var(--sage); }
+.streak-num-training { color: var(--dawn); }
+
+/* Day-by-day history: a calendar-style grid, Monday-start, one column per
+   weekday. Each day is a small chip split top/bottom -- nutrition on top,
+   training on the bottom -- so both show at a glance without needing two
+   separate grids. Days outside the block (padding to a full week) or in
+   the future are empty and unclickable; everything else jumps to Today. */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.history-weekday {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--slate);
+  padding-bottom: 2px;
+}
+
+.history-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.history-cell-empty {
+  border: none;
+  cursor: default;
+}
+
+.history-cell-half { flex: 1; }
+.history-status-yes { background: var(--sage); }
+.history-status-partial { background: var(--amber); }
+.history-status-no { background: var(--rust); }
+.history-status-none { background: var(--panel-2); }
 
 .week-grid-head { display: grid; grid-template-columns: 50px 1fr 1fr; font-size: 0.75rem; color: var(--slate); margin-bottom: 6px; gap: 10px; }
 .week-grid-row { display: grid; grid-template-columns: 50px 1fr 1fr; align-items: center; gap: 10px; padding: 4px 0; }
