@@ -135,6 +135,17 @@ where block_id = (select id from fitness.blocks where name = 'Block 2 — Contin
   and week_number >= 3;                             -- or a specific week_number = 3
 ```
 
+## Training is tracked per session, not per exercise
+
+Lift days (`upper`/`lower`) show a single "Mark session done" tick — `item_id`
+`session:${session_type}`, the same shape run and rest days already used
+(`session:run`, `session:rest`). The individual exercises (`session_exercises`) are
+still shown on the session card, but as plain reference text (name + prescription +
+notes), not a tickbox each. This app tracks "did the session happen", not set-by-set
+completion — it isn't a workout tracker. (Earlier drafts of this build ticked each
+exercise individually with `item_id`s like `exercise:upper:1`; that scheme is gone —
+nothing in production ever wrote one of those rows, so there was nothing to migrate.)
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no

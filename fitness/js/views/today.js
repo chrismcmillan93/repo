@@ -121,16 +121,26 @@ function mealRowHtml(meal, dayType, checked){
     </li>`;
 }
 
-function exerciseRowHtml(ex, sessionType, checked){
-  const itemId = `exercise:${sessionType}:${ex.order_num}`;
+// Reference only, not tickable -- this isn't a set-by-set workout tracker.
+// The exercises exist so the session card says what "Upper lift" actually
+// means without a trip to the Plan screen, nothing more.
+function exerciseListHtml(exercises){
+  return `<ul class="exercise-reference">${exercises.map((ex) => `
+    <li>
+      <span class="exercise-ref-name">${escapeHtml(ex.name)}</span>
+      <span class="exercise-ref-prescription">${escapeHtml(ex.prescription)}</span>
+      ${ex.notes ? `<span class="exercise-ref-notes">${escapeHtml(ex.notes)}</span>` : ''}
+    </li>`).join('')}</ul>`;
+}
+
+// One tick for the whole session, same shape as a run/rest day -- this app
+// tracks "did the session happen", not set-by-set completion.
+function liftRowHtml(sessionType, checked){
+  const itemId = `session:${sessionType}`;
   return `
     <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}">
-      <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark ${escapeHtml(ex.name)} as done"></button>
-      <div class="tick-body">
-        <div class="tick-name">${escapeHtml(ex.name)}</div>
-        <div class="tick-top-line"><span class="tick-macro">${escapeHtml(ex.prescription)}</span></div>
-        ${ex.notes ? `<div class="tick-notes">${escapeHtml(ex.notes)}</div>` : ''}
-      </div>
+      <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark today's session as done"></button>
+      <div class="tick-body"><div class="tick-name">Mark session done</div></div>
       <span class="tick-status" aria-live="polite"></span>
     </li>`;
 }
@@ -240,7 +250,8 @@ function renderMealsAndTraining(main, bundle){
   if (bundle.session) {
     const st = bundle.session.session_type;
     if (st === 'upper' || st === 'lower') {
-      trainingBody = `<ul class="tick-list">${bundle.session.exercises.map((ex) => exerciseRowHtml(ex, st, !!checks[`exercise:${st}:${ex.order_num}`])).join('')}</ul>`;
+      trainingBody = `<ul class="tick-list">${liftRowHtml(st, !!checks[`session:${st}`])}</ul>` +
+        (bundle.session.exercises.length ? exerciseListHtml(bundle.session.exercises) : '');
     } else if (st === 'run' && bundle.run) {
       trainingBody = `<ul class="tick-list">${runRowHtml(bundle.run, st, !!checks[`session:${st}`])}</ul>`;
     } else if (st === 'rest') {
