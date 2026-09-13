@@ -27,6 +27,26 @@ function trainingLine(session, run){
   return session.title;
 }
 
+// One row per slot_order for this day type. Same "a week-specific row wins
+// over the generic (week_number: null) one for the same slot" precedence
+// get_day_bundle() uses for Today -- meal_templates supports the override,
+// even though nothing in the seed data actually uses it yet.
+function mealsForDay(dayType, weekNumber, mealTemplates){
+  if (!dayType) return [];
+  const bySlot = {};
+  mealTemplates
+    .filter((m) => m.day_type === dayType && (m.week_number === weekNumber || m.week_number === null))
+    .sort((a, b) => (a.week_number === null ? 0 : 1) - (b.week_number === null ? 0 : 1)) // generic first, override applied over it below
+    .forEach((m) => { bySlot[m.slot_order] = m; });
+  return Object.values(bySlot).sort((a, b) => a.slot_order - b.slot_order);
+}
+
+function mealsListHtml(meals){
+  if (!meals.length) return '';
+  return `<ul class="week-day-meals">${meals.map((m) => `
+    <li><span class="week-meal-time">${escapeHtml(m.time_label)}</span><span class="week-meal-name">${escapeHtml(m.name)}</span></li>`).join('')}</ul>`;
+}
+
 export async function render(main){
   const weekStart = startOfWeek(state.currentDate);
   const weekEnd = endOfWeek(state.currentDate);
@@ -37,11 +57,12 @@ export async function render(main){
   // block regardless of which week is currently being paged to, including
   // weeks entirely before or after it (see the inBlock() guard below).
   const block = await db.blocks.getLatest().catch(() => null);
-  const [sessions, targets, runPlan, weeks, logs] = await Promise.all([
+  const [sessions, targets, runPlan, weeks, mealTemplates, logs] = await Promise.all([
     block ? db.sessionTemplates.list(block.id) : Promise.resolve([]),
     block ? db.weekTargets.list(block.id) : Promise.resolve([]),
     block ? db.runPlan.list(block.id) : Promise.resolve([]),
     block ? db.blockWeeks.list(block.id) : Promise.resolve([]),
+    block ? db.mealTemplates.list(block.id) : Promise.resolve([]),
     state.session ? db.dailyLogs.listRange(state.session.user.id, weekStart, weekEnd) : Promise.resolve([])
   ]);
   const logByDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
@@ -70,6 +91,7 @@ export async function render(main){
     const isToday = d === today;
     const training = session ? trainingLine(session, run) : (block ? '—' : 'Outside block');
     const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
+    const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `
       <li class="week-day-row ${isToday ? 'is-today' : ''}" data-date="${d}">
         <button type="button" class="week-day-btn">
@@ -82,6 +104,7 @@ export async function render(main){
             ${statusDotHtml(log ? log.training_status : null)}
           </span>
         </button>
+        ${mealsListHtml(meals)}
       </li>`;
   }).join('');
 

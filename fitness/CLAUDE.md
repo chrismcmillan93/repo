@@ -224,6 +224,17 @@ that straddles or sits outside the block no longer risks matching the wrong week
 override rows or a stray `week_number: null` fallback for a day that isn't really in
 the block at all.
 
+**Follow-up: the food line (just kcal/protein) wasn't enough — "I should be able to
+see my meals planned out too."** Each day now also lists the actual `meal_templates`
+rows for that day type underneath the tappable summary (time + name, e.g. "07:30 6
+eggs + 2 bananas") — read-only, no ticking, since Today already owns that. Kept the
+kcal/protein line too rather than replacing it; it's still the faster thing to scan.
+`mealsForDay()` applies the same "a week-specific row beats the generic
+`week_number: null` one for the same `slot_order`" precedence `get_day_bundle()`
+already uses for Today, even though nothing in the seed data actually exercises an
+override yet. This makes Week considerably longer (7 days × up to 5 meals each) —
+accepted tradeoff for a personal reference screen; scrolling is fine here.
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no
