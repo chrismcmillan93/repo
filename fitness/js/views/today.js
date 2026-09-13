@@ -7,8 +7,8 @@
 // whole view on every interaction. This is what keeps the notes textarea
 // safe -- it is never destroyed and recreated while someone might be
 // mid-sentence in it.
-import { qs, qsa, escapeHtml, formatDateFull, formatDayLabel, dayTypeLabel, statusLabel,
-  daysUntil, addDays, todayStr, startOfWeek, endOfWeek, toast, friendlyError, debounce, round1 } from '../utils.js';
+import { qs, qsa, escapeHtml, formatDateFull, dayTypeLabel, statusLabel,
+  daysUntil, addDays, toast, friendlyError, debounce, round1 } from '../utils.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import * as offlineQueue from '../offlineQueue.js';
@@ -190,10 +190,17 @@ async function loadWeightContext(bundle){
 }
 
 function renderHeader(main, bundle){
-  const maxDate = endOfWeek(todayStr());
+  // Scroll freely through the whole block, not just "this calendar week" --
+  // bounded by the block's own start/end so there's always somewhere real
+  // to land, but otherwise open in both directions. (An earlier version
+  // capped forward navigation at the end of the current real-world week,
+  // which meant that on the last day of a week -- like the day before this
+  // block started -- the "next day" button was disabled entirely, with no
+  // way to reach tomorrow's actual content.)
   const minDate = state.currentBlock ? state.currentBlock.start_date : null;
+  const maxDate = state.currentBlock ? state.currentBlock.end_date : null;
   const canBack = !minDate || state.currentDate > minDate;
-  const canForward = state.currentDate < maxDate;
+  const canForward = !maxDate || state.currentDate < maxDate;
   const daysToRace = daysUntil(RACE_DATE);
   const weekLabel = bundle.week ? `Week ${bundle.week.week_number} of 8` : 'Outside the current block';
   const raceLabel = daysToRace > 0 ? `10K in ${daysToRace} day${daysToRace === 1 ? '' : 's'}` : daysToRace === 0 ? 'Race day' : 'Race complete';
@@ -350,7 +357,14 @@ export async function render(main){
   state.dayBundle = bundle;
 
   if (!state.currentBlock) {
-    state.currentBlock = await db.blocks.getCurrent(state.currentDate).catch(() => null);
+    // getLatest(), not getCurrent(state.currentDate) -- this needs to find
+    // the block regardless of whether the *currently viewed* date happens
+    // to fall inside it, since it's only used for the date-nav's own
+    // bounds (see renderHeader). getCurrent() returning null for a date
+    // just outside the block (the day before it starts, the day after it
+    // ends) used to leave canBack/canForward permanently unbounded there
+    // instead of correctly bounded to the real block.
+    state.currentBlock = await db.blocks.getLatest().catch(() => null);
   }
 
   renderHeader(main, bundle);

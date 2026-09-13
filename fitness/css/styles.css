@@ -462,9 +462,9 @@ a { color: inherit; }
 .week-day-btn {
   width: 100%;
   display: grid;
-  grid-template-columns: 56px 1fr auto;
+  grid-template-columns: 90px 1fr auto;
   align-items: center;
-  gap: 4px 12px;
+  gap: 3px 12px;
   background: none;
   border: none;
   color: var(--paper);
@@ -472,10 +472,13 @@ a { color: inherit; }
   padding: 12px 4px;
   cursor: pointer;
 }
-.week-day-name { font-weight: 600; font-size: 0.9rem; }
+/* "Wednesday" is the longest weekday name in English -- give it room and
+   clip rather than let it run into the training column next to it. */
+.week-day-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .week-day-date { grid-row: 2; grid-column: 1; font-size: 0.75rem; color: var(--slate); }
-.week-day-session { font-size: 0.85rem; color: var(--slate); }
-.week-day-dots { display: flex; gap: 6px; }
+.week-day-training { font-size: 0.85rem; }
+.week-day-food { grid-row: 2; grid-column: 2; font-size: 0.78rem; color: var(--slate); }
+.week-day-dots { grid-row: 1 / span 2; display: flex; gap: 6px; align-self: center; }
 
 .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--line); }
 .status-dot-yes { background: var(--sage); }

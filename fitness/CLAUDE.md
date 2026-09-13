@@ -185,6 +185,45 @@ during this build, one day before Block 2 starts) produced an *inverted* range
 (`endDate < startDate`), which silently made every date range in the screen empty.
 Fixed by also flooring `endDate` at `block.start_date`.
 
+## A real bug: "can't see any of the plan"
+
+First live report from Chris. Root cause: he opened the app on Sunday 13 Sep, the day
+*before* Block 2 starts (Monday 14 Sep). Today's `▶` (next day) button was capped at
+`endOfWeek(todayStr())` — the end of the *current real-world calendar week* — so that
+Sunday, being the last day of its own week, meant `▶` was already disabled at the
+point of first load. There was no way to click forward into Monday, where the actual
+content lives — from his side this looked exactly like "the plan" not existing at
+all, not like a navigation limit.
+
+Fixed by dropping the "current week" ceiling entirely: Today's date nav is now
+bounded only by the block's own `start_date`/`end_date`, scrolling freely through the
+whole block in both directions. This also directly satisfies the follow-up request
+("scroll through the days, previous and upcoming") — the two were really the same
+ask. Along with this, `state.currentBlock` (used only for these nav bounds) is now
+populated via `db.blocks.getLatest()` instead of `db.blocks.getCurrent(state.currentDate)`
+— the latter returns `null` whenever the *viewed* date happens to fall outside the
+block, which is exactly the day this bug was reported on, so the bounds were silently
+unset (`!minDate` / `!maxDate` both true) rather than correctly tied to the real block.
+
+## Week: shows food and training, and pages through the block
+
+Originally Week only showed each day's session *title* and a same-day adherence dot
+— no calorie/protein target, no run distance, and no way to look at any week except
+whichever one `state.currentDate` happened to be in. Reworked per request ("see a
+week view of food and training plus scroll through the days") to show, per day: the
+training line (session title, with the actual distance appended for a run day rather
+than just "Run — easy" with no number) and the food line (that day type's
+`kcal_target`/`protein_floor_g` for the specific week being viewed, not a generic
+figure). Added its own prev/next week nav (same `.date-nav` markup/styling Today
+uses), bounded to the block's start/end the same way Today's day nav is. Tapping a
+day still opens it in Today, unchanged.
+
+Session/target/run lookups are only attempted for a date that's actually
+`>= block.start_date && <= block.end_date` (`inBlock()`) — paging Week to a week
+that straddles or sits outside the block no longer risks matching the wrong week's
+override rows or a stray `week_number: null` fallback for a day that isn't really in
+the block at all.
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no
