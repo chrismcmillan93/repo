@@ -162,7 +162,13 @@ function passFailLabel(g, p) {
 
 async function renderMomentumSection(goals) {
   if (!goals.length) return '';
-  const months = lastNMonths(6);
+  // Never show a month before any goal's own start_date — a fixed 6-month
+  // lookback would otherwise pad the grid with blank squares from before
+  // tracking began at all. Grows month-by-month as real history accumulates,
+  // capping at 6 once there's enough of it.
+  const earliestStart = goals.reduce((min, g) => (g.start_date && g.start_date < min ? g.start_date : min), todayISO());
+  const earliestMonthKey = earliestStart.slice(0, 7);
+  const months = lastNMonths(6).filter((m) => m.key >= earliestMonthKey);
   const sinceISO = months[0].key + '-01';
   const updates = await db.listUpdatesForGoalsSince(goals.map((g) => g.id), sinceISO);
   const counts = new Map();
@@ -171,9 +177,10 @@ async function renderMomentumSection(goals) {
     counts.set(key, (counts.get(key) || 0) + 1);
   });
   const gridGoals = goals.map((g) => ({ id: g.id, title: g.title, colour: g.areaColour }));
+  const monthWord = months.length === 1 ? 'month' : 'months';
   return `
     <section class="card momentum-section">
-      <p class="card-eyebrow">Momentum — last 6 months</p>
+      <p class="card-eyebrow">Momentum — last ${months.length} ${monthWord}</p>
       <div class="momentum-scroll">${renderMomentumGrid(gridGoals, months, counts)}</div>
     </section>
   `;
