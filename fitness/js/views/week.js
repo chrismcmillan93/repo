@@ -51,19 +51,28 @@ function mealsListHtml(meals){
 }
 
 // Groups tasks under every day they're valid to prep on -- prep_day_of_week
-// is an array (e.g. [3, 4], "Wednesday or Thursday"), so a task with more
-// than one valid day appears once under each of those day groups. It's the
-// same task_id everywhere it shows up, so ticking it from any one group
-// marks it done for the week full stop -- toggling it re-syncs every
-// occurrence (see wirePrepTasks()).
-function groupPrepTasksByDay(tasks){
-  const byDay = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+// is an array (e.g. [3, 4], "Wednesday or Thursday" -- either day works,
+// it's one prep session not two) so a task is grouped by its whole set of
+// valid days, not repeated once per day in that set: a [3, 4] task gets one
+// "Wednesday or Thursday" heading and one row, not a "Wednesday" heading
+// and a "Thursday" heading each showing the same task. Groups are ordered
+// by their earliest day.
+const WEEKDAY_NAMES = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' };
+
+function groupPrepTasksByDaySet(tasks){
+  const groups = new Map(); // "3,4" -> { days: [3, 4], tasks: [...] }
   tasks.forEach((t) => {
-    (t.prep_day_of_week || []).forEach((d) => {
-      if (byDay[d]) byDay[d].push(t);
-    });
+    const days = (t.prep_day_of_week || []).slice().sort((a, b) => a - b);
+    if (!days.length) return;
+    const key = days.join(',');
+    if (!groups.has(key)) groups.set(key, { days, tasks: [] });
+    groups.get(key).tasks.push(t);
   });
-  return byDay;
+  return Array.from(groups.values()).sort((a, b) => a.days[0] - b.days[0]);
+}
+
+function daySetLabel(days){
+  return days.map((d) => WEEKDAY_NAMES[d]).join(' or ');
 }
 
 // Category order follows the items' own sort_order (first item seen per
@@ -103,10 +112,8 @@ function shoppingItemRowHtml(item, checked){
     </li>`;
 }
 
-function prepTasksSectionHtml(tasksByDay, days, checkByTask){
-  const groups = [1, 2, 3, 4, 5, 6, 7]
-    .map((dow) => ({ dow, tasks: tasksByDay[dow] }))
-    .filter((g) => g.tasks.length);
+function prepTasksSectionHtml(tasks, checkByTask){
+  const groups = groupPrepTasksByDaySet(tasks);
   if (!groups.length) {
     return `<section class="panel"><h2 class="panel-title">Prep tasks</h2><p class="section-note">Nothing on the prep list for this block yet.</p></section>`;
   }
@@ -114,7 +121,7 @@ function prepTasksSectionHtml(tasksByDay, days, checkByTask){
     <section class="panel">
       <h2 class="panel-title">Prep tasks</h2>
       ${groups.map((g) => `
-        <h3 class="plan-subhead">${escapeHtml(formatDayLabel(days[g.dow - 1]))}</h3>
+        <h3 class="plan-subhead">${escapeHtml(daySetLabel(g.days))}</h3>
         <ul class="tick-list">${g.tasks.map((t) => prepTaskRowHtml(t, !!checkByTask[t.id])).join('')}</ul>
       `).join('')}
     </section>`;
@@ -163,16 +170,12 @@ async function saveShoppingCheck(weekStartDate, itemId, isChecked, statusEl){
 function wirePrepTasks(main, weekStartDate){
   qsa('#prepTasksSection .tick-row', main).forEach((row) => {
     const btn = qs('.tick-box', row);
+    const statusEl = qs('.tick-status', row);
     btn.addEventListener('click', async () => {
-      const taskId = row.dataset.taskId;
       const nowChecked = !row.classList.contains('is-checked');
-      // A task can appear under more than one day group -- keep every
-      // occurrence of it in sync, since it's one task either way.
-      qsa(`#prepTasksSection .tick-row[data-task-id="${taskId}"]`, main).forEach((r) => {
-        r.classList.toggle('is-checked', nowChecked);
-        qs('.tick-box', r).setAttribute('aria-pressed', String(nowChecked));
-      });
-      await savePrepCheck(weekStartDate, taskId, nowChecked, qs('.tick-status', row));
+      row.classList.toggle('is-checked', nowChecked);
+      btn.setAttribute('aria-pressed', String(nowChecked));
+      await savePrepCheck(weekStartDate, row.dataset.taskId, nowChecked, statusEl);
     });
   });
 }
@@ -290,7 +293,7 @@ export async function render(main){
       </div>
       <ul class="week-day-list">${rows}</ul>
     </section>
-    ${isThisWeek ? `<div id="prepTasksSection">${prepTasksSectionHtml(groupPrepTasksByDay(prepTasks), days, prepCheckByTask)}</div>` : ''}
+    ${isThisWeek ? `<div id="prepTasksSection">${prepTasksSectionHtml(prepTasks, prepCheckByTask)}</div>` : ''}
     ${isThisWeek ? `<div id="shoppingListSection">${shoppingListSectionHtml(groupShoppingByCategory(shoppingItems), shoppingCheckByItem)}</div>` : ''}
     <section class="panel">
       <h2 class="panel-title">Adherence</h2>
