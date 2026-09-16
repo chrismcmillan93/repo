@@ -235,6 +235,32 @@ already uses for Today, even though nothing in the seed data actually exercises 
 override yet. This makes Week considerably longer (7 days × up to 5 meals each) —
 accepted tradeoff for a personal reference screen; scrolling is fine here.
 
+## Plan's Training split now resolves sessions, not lists raw rows
+
+Original version rendered the 7 standing (`week_number: null`) `session_templates`
+rows once, then a separate "Week-specific changes" list underneath for any override
+rows (just the one, week 8's Sunday race). Reported as wrong: it needed to resolve,
+per week, the way `get_day_bundle()` and Week's `sessionFor()` already do — an
+override row for that exact `week_number` wins if one exists, otherwise the standing
+default — and render week-by-week, day-by-day, **one row per day**, not the raw
+table contents.
+
+`resolveSession(dow, weekNumber, sessions)` in `plan.js` now applies that precedence
+explicitly for every `(week, day_of_week)` pair across all 8 weeks (56 total), and
+`resolveRun(dow, weekNumber, runPlan)` joins `run_plan` on the *same* `week_number` +
+`day_of_week` so a run day's distance/effort/detail is that week's real prescription
+— important since the session template's own title ("Run — easy") never carried a
+number, and a naive join risked pulling any week's run_plan row rather than the one
+matching the week actually being rendered. `weekTrainingHtml()` groups the 7 resolved
+days under each week's own heading. Verified explicitly with a Playwright suite built
+around week 8's override (its Sunday must show only the race, never the race *and*
+"Rest or easy hike" side by side) and cross-week run figures (week 3's Thursday
+interval session must show 3×1km, never week 1's plain 8km long run) — 9 checks, plus
+all 45 earlier checks re-run clean.
+
+Same tradeoff as Week's meal list: this makes Training split considerably longer (56
+day-rows instead of 8) — accepted for a personal reference screen.
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no

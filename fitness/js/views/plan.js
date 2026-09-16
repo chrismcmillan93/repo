@@ -4,7 +4,6 @@ import { qs, qsa, escapeHtml, formatDateShort } from '../utils.js';
 import { db } from '../db.js';
 
 const DOW_LABEL = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
-const DAY_TYPE_FROM_SESSION = { upper: 'lift', lower: 'lift', run: 'run', rest: 'rest' };
 
 function mealTableHtml(dayType, label, meals){
   const rows = meals
@@ -24,17 +23,61 @@ function mealTableHtml(dayType, label, meals){
     </div>`;
 }
 
-function sessionHtml(session){
+// Resolution rule (matches fitness.get_day_bundle() and Week's sessionFor()):
+// the row for this exact week_number wins if one exists, otherwise fall
+// back to the standing week_number IS NULL row for that day_of_week. Never
+// render both -- a week with an override should show one session for that
+// day, not the override *and* the default underneath it.
+function resolveSession(dow, weekNumber, sessions){
+  return sessions.find((s) => s.day_of_week === dow && s.week_number === weekNumber)
+    || sessions.find((s) => s.day_of_week === dow && s.week_number === null)
+    || null;
+}
+
+function resolveRun(dow, weekNumber, runPlan){
+  return runPlan.find((r) => r.day_of_week === dow && r.week_number === weekNumber) || null;
+}
+
+function sessionDayRowHtml(dow, session, run){
+  if (!session) {
+    return `
+      <li class="plan-session-row">
+        <div class="plan-session-head">
+          <span class="plan-session-day">${DOW_LABEL[dow]}</span>
+          <span class="plan-session-title">—</span>
+        </div>
+      </li>`;
+  }
   const exercises = (session.session_exercises || []).slice().sort((a, b) => a.order_num - b.order_num);
+  // Run days: join run_plan for this exact week+day so the distance/effort/
+  // detail is the real prescription for that week, not the session
+  // template's generic title ("Run — easy" doesn't say how far).
+  const runDetail = session.session_type === 'run' && run
+    ? (run.detail ? `${run.distance_km}km — ${run.detail}` : `${run.distance_km}km, ${run.effort}`)
+    : null;
   return `
     <li class="plan-session-row">
       <div class="plan-session-head">
-        <span class="plan-session-day">${DOW_LABEL[session.day_of_week]}${session.week_number ? ` (wk ${session.week_number})` : ''}</span>
+        <span class="plan-session-day">${DOW_LABEL[dow]}</span>
         <span class="plan-session-title">${escapeHtml(session.title)}</span>
       </div>
-      ${session.summary ? `<p class="plan-session-summary">${escapeHtml(session.summary)}</p>` : ''}
+      ${runDetail ? `<p class="plan-session-summary">${escapeHtml(runDetail)}</p>` : (session.summary ? `<p class="plan-session-summary">${escapeHtml(session.summary)}</p>` : '')}
       ${exercises.length ? `<ul class="plan-exercise-list">${exercises.map((ex) => `<li>${escapeHtml(ex.name)} — ${escapeHtml(ex.prescription)}</li>`).join('')}</ul>` : ''}
     </li>`;
+}
+
+// One resolved session per day, grouped by week -- not a raw dump of every
+// session_templates row (which would show a week's override *and* the
+// standing default it replaces, side by side, for the same day).
+function weekTrainingHtml(week, sessions, runPlan){
+  const days = [1, 2, 3, 4, 5, 6, 7]
+    .map((dow) => sessionDayRowHtml(dow, resolveSession(dow, week.week_number, sessions), resolveRun(dow, week.week_number, runPlan)))
+    .join('');
+  return `
+    <div class="plan-week-block">
+      <h3 class="plan-subhead">Week ${week.week_number}${week.focus ? ` — ${escapeHtml(week.focus)}` : ''}</h3>
+      <ul class="plan-session-list">${days}</ul>
+    </div>`;
 }
 
 function runWeekRowHtml(weekNumber, entries){
@@ -76,9 +119,6 @@ export async function render(main){
     runByWeek[r.week_number].push(r);
   });
 
-  const defaultSessions = sessions.filter((s) => s.week_number === null).sort((a, b) => a.day_of_week - b.day_of_week);
-  const overrideSessions = sessions.filter((s) => s.week_number !== null);
-
   main.innerHTML = `
     <section class="panel">
       <h2 class="panel-title">${escapeHtml(block.name)}</h2>
@@ -102,8 +142,7 @@ export async function render(main){
 
     <section class="panel">
       <h2 class="panel-title">Training split</h2>
-      <ul class="plan-session-list">${defaultSessions.map(sessionHtml).join('')}</ul>
-      ${overrideSessions.length ? `<h3 class="plan-subhead">Week-specific changes</h3><ul class="plan-session-list">${overrideSessions.map(sessionHtml).join('')}</ul>` : ''}
+      ${weeks.map((w) => weekTrainingHtml(w, sessions, runPlan)).join('')}
     </section>
 
     <section class="panel">
