@@ -20,7 +20,9 @@ function showScreen(name){
 
 const REPLAYERS = {
   daily_log: (payload) => db.dailyLogs.upsert(payload.userId, payload.logDate, payload.fields),
-  daily_check: (payload) => db.dailyChecks.upsert(payload.userId, payload.logDate, payload.itemId, payload.isChecked)
+  daily_check: (payload) => db.dailyChecks.upsert(payload.userId, payload.logDate, payload.itemId, payload.isChecked),
+  prep_check: (payload) => db.prepChecks.upsert(payload.userId, payload.weekStartDate, payload.taskId, payload.isChecked),
+  shopping_check: (payload) => db.shoppingChecks.upsert(payload.userId, payload.weekStartDate, payload.itemId, payload.isChecked)
 };
 
 function wireAuthForms(){

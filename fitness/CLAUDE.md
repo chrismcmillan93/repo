@@ -261,6 +261,74 @@ all 45 earlier checks re-run clean.
 Same tradeoff as Week's meal list: this makes Training split considerably longer (56
 day-rows instead of 8) — accepted for a personal reference screen.
 
+## Schema drift: the DB has moved ahead of what this file describes
+
+As of 2026-09-16, the live schema has real content this file doesn't describe, added
+by another session directly against the database rather than through a session that
+updated this repo:
+- **The training plan itself has changed.** Monday now pairs Upper lift with an
+  evening interval run (`session_templates.title` "Upper lift + Intervals (PM)");
+  Thursday pairs Muay Thai with the long run; tempo moved to Saturday; `run_plan`'s
+  actual weekly distances/efforts no longer match the "Seed data" section above. This
+  isn't a problem for the app itself — `resolveSession()`/`resolveRun()` (Plan),
+  `sessionFor()`/`runFor()` (Week) and `get_day_bundle()` (Today) all resolve
+  generically by `(week_number, day_of_week)` with no hardcoded assumption about
+  which day is a lift/run/rest day, so they render whatever's actually in the tables
+  correctly. But **the "Seed data" section above is now stale as documentation** —
+  don't trust its specific numbers, query `fitness.run_plan`/`fitness.session_templates`
+  directly instead. Not re-synced here; out of scope for whatever prompted this note.
+- **Two more untracked migrations exist upstream**: `move_thursday_intervals_to_monday`
+  (fitness — presumably the change above) and `fix_pending_reviews_respect_goal_start`
+  (goals schema, unrelated app). Neither has a matching file in `supabase/migrations/`
+  — reconstructing exact DML from the live end-state alone was judged too much
+  guesswork to be worth it (unlike a CREATE TABLE, an UPDATE's exact predicate isn't
+  recoverable from inspecting the result). **The migrations folder is not a complete
+  history of this schema** — treat the live DB via `list_tables`/`execute_sql` as the
+  source of truth when they disagree, not just this file or the migration folder.
+
+## "This week": prep tasks and shopping list
+
+Two more tables — `prep_tasks`/`prep_checks`, `shopping_list_items`/`shopping_checks`
+— already existed in the live schema before this feature was built (added earlier the
+same day, outside this repo's migration history — see "Schema drift" above;
+`add_prep_and_shopping_tables` and `allow_flexible_prep_days_v2` are reconstructed
+from the live schema, not the original migration text). **The actual bug blocking the
+feature**: `authenticated` had no `GRANT` on any of the four tables — RLS policies
+existed and looked correct, but PostgREST needs both, and only `postgres` had table
+privileges. `fitness_prep_and_shopping_grants_and_indexes` fixes that (plus the usual
+`(select auth.uid())` RLS perf tweak and covering indexes for the four FKs the linter
+flagged), and is the one migration in this feature that's actually mine end to end.
+
+Rendered as two new sections on **Week**, visible only when viewing the real current
+week (`startOfWeek(todayStr())`) — paging to another week hides them; there's nothing
+"this week" about a shopping list for a week five weeks from now.
+
+- **Prep tasks**, grouped by day. `prep_tasks.prep_day_of_week` is an **array**, not a
+  single day — a task valid to prep on more than one day (e.g. `[3, 4]`, "Wednesday
+  or Thursday") appears once under *each* of those day headings. It's the same
+  `task_id` in both places, so ticking it from either occurrence checks both (see
+  `wirePrepTasks()`'s re-sync-every-occurrence loop) and writes one `prep_checks` row.
+  `covers_day_of_week` (which day's meals the task is actually *for*, independent of
+  which day(s) it's valid to prep on) isn't shown separately in the UI — it's already
+  legible from the task's own title ("Thu — lunch + dinner").
+- **Shopping list**, grouped by category. Category order follows first-appearance in
+  the `sort_order`-ordered item list (protein, carbs, veg, …, as actually written),
+  not alphabetical.
+- Both reuse Today's `.tick-row`/`.tick-box`/`.tick-status` markup and CSS as-is —
+  no new checkbox styling — and the same offline-queue-backed save path
+  (`renderStatusPill` was pulled out of `today.js` into `utils.js` so both views share
+  one implementation instead of two copies). `main.js`'s `REPLAYERS` map gained
+  `prep_check`/`shopping_check` entries so queued ticks still retry after a reload.
+- Checked state is keyed by `(user_id, week_start_date, task_id/item_id)` —
+  `week_start_date` is always the Monday of the *real* current week
+  (`startOfWeek(todayStr())`), computed fresh, not carried over from whatever date
+  Today was last viewing. A new week means a blank slate: no explicit "reset" logic
+  anywhere, a fresh `week_start_date` just has no rows yet.
+- The four new fetches are individually `.catch(() => [])`'d in Week's `Promise.all`,
+  not left to reject the whole batch — a prep/shopping load failure degrades to an
+  empty section rather than taking down the day list and adherence stats above it,
+  which don't depend on them at all.
+
 ## Design
 
 Ground rule: this is a private log opened half-asleep at 05:30, not a product — no

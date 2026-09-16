@@ -185,5 +185,77 @@ export const db = {
       checkError(error);
       return data || [];
     }
+  },
+
+  prepTasks: {
+    async list(blockId){
+      const { data, error } = await supabase
+        .from('prep_tasks')
+        .select('*')
+        .eq('block_id', blockId)
+        .order('sort_order');
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  prepChecks: {
+    async listForWeek(userId, weekStartDate){
+      const { data, error } = await supabase
+        .from('prep_checks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('week_start_date', weekStartDate);
+      checkError(error);
+      return data || [];
+    },
+    async upsert(userId, weekStartDate, taskId, isChecked){
+      const { data, error } = await supabase
+        .from('prep_checks')
+        .upsert(
+          { user_id: userId, week_start_date: weekStartDate, task_id: taskId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
+          { onConflict: 'user_id,week_start_date,task_id' }
+        )
+        .select()
+        .single();
+      checkError(error);
+      return data;
+    }
+  },
+
+  shoppingListItems: {
+    async list(blockId){
+      const { data, error } = await supabase
+        .from('shopping_list_items')
+        .select('*')
+        .eq('block_id', blockId)
+        .order('sort_order');
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  shoppingChecks: {
+    async listForWeek(userId, weekStartDate){
+      const { data, error } = await supabase
+        .from('shopping_checks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('week_start_date', weekStartDate);
+      checkError(error);
+      return data || [];
+    },
+    async upsert(userId, weekStartDate, itemId, isChecked){
+      const { data, error } = await supabase
+        .from('shopping_checks')
+        .upsert(
+          { user_id: userId, week_start_date: weekStartDate, item_id: itemId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
+          { onConflict: 'user_id,week_start_date,item_id' }
+        )
+        .select()
+        .single();
+      checkError(error);
+      return data;
+    }
   }
 };
