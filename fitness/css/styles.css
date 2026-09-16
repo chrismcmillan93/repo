@@ -344,6 +344,10 @@ a { color: inherit; }
   font-size: 0.82rem;
   color: var(--dawn);
   opacity: 0.9;
+  /* Some notes (prep task descriptions) carry a literal newline between
+     their "Lunch:"/"Tea:" halves -- preserve it instead of collapsing it
+     to a space, without turning off normal wrapping. */
+  white-space: pre-line;
 }
 
 .tick-status {

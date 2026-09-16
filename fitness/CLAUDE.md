@@ -314,10 +314,26 @@ week (`startOfWeek(todayStr())`) — paging to another week hides them; there's 
   slot; fixed to the current one-row-one-combined-heading shape. `covers_day_of_week`
   (which day's meals the task is actually *for*, independent of which day(s) it's
   valid to prep on) isn't shown separately in the UI — it's already legible from the
-  task's own title ("Thu — lunch + dinner").
+  task's own title ("Thu — lunch + tea").
 - **Shopping list**, grouped by category. Category order follows first-appearance in
   the `sort_order`-ordered item list (protein, carbs, veg, …, as actually written),
   not alphabetical.
+
+**Wording: "dinner" is "tea" here — North England.** Renamed everywhere it appeared
+in plan content: `prep_tasks.title` ("lunch + dinner" → "lunch + tea"),
+`shopping_list_items.item`/`notes`, and every `prep_tasks.description` (data edits via
+SQL — `fitness_prep_tasks_dinner_to_tea` — not app code, since this is plan content
+Chris edits directly, same as everything else in this section). "Lunch" is unchanged;
+only the evening meal got renamed.
+
+Each prep task's description also now has a real line break between its "Lunch:" and
+"Tea:" halves — they used to run together as one sentence ("...cooked peppers/tomato.
+Tea: 300g protein..."), reported as needing to read on its own line. The newline is a
+literal `\n` character in the stored `description` text (not markup), which needed
+`.tick-notes { white-space: pre-line }` in `styles.css` to actually render as a line
+break — HTML collapses a bare `\n` to a space otherwise. This is the first `.tick-notes`
+content with a newline in it; if a future one uses `<br>` or markdown instead, it won't
+render as such here on purpose — plain text with `pre-line` is the whole mechanism.
 - Both reuse Today's `.tick-row`/`.tick-box`/`.tick-status` markup and CSS as-is —
   no new checkbox styling — and the same offline-queue-backed save path
   (`renderStatusPill` was pulled out of `today.js` into `utils.js` so both views share
