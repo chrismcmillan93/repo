@@ -8,7 +8,7 @@
 // safe -- it is never destroyed and recreated while someone might be
 // mid-sentence in it.
 import { qs, qsa, escapeHtml, formatDateFull, dayTypeLabel, statusLabel,
-  daysUntil, addDays, toast, friendlyError, debounce, round1 } from '../utils.js';
+  daysUntil, addDays, toast, friendlyError, debounce, round1, renderStatusPill } from '../utils.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import * as offlineQueue from '../offlineQueue.js';
@@ -19,30 +19,6 @@ function userId(){ return state.session.user.id; }
 
 function saveKey(kind, extra){
   return `${kind}:${state.currentDate}${extra ? ':' + extra : ''}`;
-}
-
-// One shared inline status pill next to whatever was just edited. Never
-// blocks the field it sits next to, never a modal.
-function renderStatusPill(el, mode, retry){
-  if (!el) return;
-  el.classList.remove('is-saving', 'is-saved', 'is-error');
-  if (mode === 'saving') {
-    el.textContent = 'Saving…';
-    el.classList.add('is-saving');
-  } else if (mode === 'saved') {
-    el.textContent = 'Saved';
-    el.classList.add('is-saved');
-    setTimeout(() => { if (el.textContent === 'Saved') el.textContent = ''; }, 1800);
-  } else if (mode === 'queued') {
-    el.innerHTML = "Couldn't save — will retry automatically. ";
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'retry-btn';
-    btn.textContent = 'Retry now';
-    btn.addEventListener('click', retry);
-    el.appendChild(btn);
-    el.classList.add('is-error');
-  }
 }
 
 async function saveLogField(fields, statusEl){

@@ -130,3 +130,29 @@ export function debounce(fn, ms){
     t = setTimeout(() => fn(...args), ms);
   };
 }
+
+// One shared inline status pill next to whatever was just edited. Never
+// blocks the field it sits next to, never a modal. Shared between Today
+// (meals/exercises/weight/notes/review) and Week (prep/shopping checks) --
+// every save in this app reports through the same three states.
+export function renderStatusPill(el, mode, retry){
+  if (!el) return;
+  el.classList.remove('is-saving', 'is-saved', 'is-error');
+  if (mode === 'saving') {
+    el.textContent = 'Saving…';
+    el.classList.add('is-saving');
+  } else if (mode === 'saved') {
+    el.textContent = 'Saved';
+    el.classList.add('is-saved');
+    setTimeout(() => { if (el.textContent === 'Saved') el.textContent = ''; }, 1800);
+  } else if (mode === 'queued') {
+    el.innerHTML = "Couldn't save — will retry automatically. ";
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'retry-btn';
+    btn.textContent = 'Retry now';
+    btn.addEventListener('click', retry);
+    el.appendChild(btn);
+    el.classList.add('is-error');
+  }
+}
