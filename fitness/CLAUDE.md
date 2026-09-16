@@ -303,14 +303,18 @@ Rendered as two new sections on **Week**, visible only when viewing the real cur
 week (`startOfWeek(todayStr())`) — paging to another week hides them; there's nothing
 "this week" about a shopping list for a week five weeks from now.
 
-- **Prep tasks**, grouped by day. `prep_tasks.prep_day_of_week` is an **array**, not a
-  single day — a task valid to prep on more than one day (e.g. `[3, 4]`, "Wednesday
-  or Thursday") appears once under *each* of those day headings. It's the same
-  `task_id` in both places, so ticking it from either occurrence checks both (see
-  `wirePrepTasks()`'s re-sync-every-occurrence loop) and writes one `prep_checks` row.
-  `covers_day_of_week` (which day's meals the task is actually *for*, independent of
-  which day(s) it's valid to prep on) isn't shown separately in the UI — it's already
-  legible from the task's own title ("Thu — lunch + dinner").
+- **Prep tasks**, grouped by day-*set*, not by individual day. `prep_tasks.prep_day_of_week`
+  is an **array** — a task valid on more than one day (e.g. `[3, 4]`) is one prep
+  session that can happen on either day, not two separate ones, so `groupPrepTasksByDaySet()`
+  groups by the whole array and renders **one row under one combined heading**
+  ("Wednesday or Thursday"), ordered by the group's earliest day. First shipped
+  showing the task once per day in its array (so `[3, 4]` appeared under both a
+  "Wednesday" heading and a separate "Thursday" heading, each showing the same task)
+  — reported as wrong, since it read as two things to do instead of one flexible
+  slot; fixed to the current one-row-one-combined-heading shape. `covers_day_of_week`
+  (which day's meals the task is actually *for*, independent of which day(s) it's
+  valid to prep on) isn't shown separately in the UI — it's already legible from the
+  task's own title ("Thu — lunch + dinner").
 - **Shopping list**, grouped by category. Category order follows first-appearance in
   the `sort_order`-ordered item list (protein, carbs, veg, …, as actually written),
   not alphabetical.
