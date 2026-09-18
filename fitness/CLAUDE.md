@@ -435,6 +435,48 @@ profile — `id`-keyed bearer-link access rather than `auth.uid()`, since there'
 session), pick the actual plan-generation logic, and only then remove the "no
 policies" comment above and grant `anon` whatever it specifically needs.
 
+## Meal macros: kcal/protein/carbs/fat everywhere, and Plan's day-type tabs
+
+`meal_templates` gained `carbs_g`/`fat_g` columns (numeric, backfilled for all 15
+existing rows) — added directly against the DB, outside this repo's migration
+history (see "Schema drift" above; reconstructed as `add_macros_to_meal_templates`).
+The table already had `kcal`/`protein_g`. This wasn't itself a gap: `db.js`'s
+`mealTemplates.list()` uses `select('*')`, so the new columns flowed through to Plan
+automatically. **`get_day_bundle()` didn't**, and this was the actual bug: it builds
+its meal JSON with an explicit `jsonb_build_object(...)` naming each field, so
+`carbs_g`/`fat_g` were silently dropped from every Today response until
+`fitness_get_day_bundle_add_carbs_fat` added them to that object. Worth remembering
+for any future column added to a table this function reads from — `select('*')`
+call sites pick it up for free, `get_day_bundle()` needs the field added by hand.
+
+**Today's meal cards** now show all four macros with identical visual weight in one
+line ("100 kcal · 0g protein · 24g carbs · 0g fat") — no macro is emphasised over
+another, per the brief. **Fuel today** gained Carbs/Fat rows below the existing
+Calories/Protein bars, but as a plain running total (`fuelStatHtml()`), not a
+target-vs-consumed bar like kcal/protein: `week_targets` has no carbs/fat target
+columns, and the brief was explicit that no schema changes should go beyond what was
+already applied, so there's nothing to draw a bar against without inventing a fake
+target. Reuses the existing `.fuel-row`/`.fuel-row-head`/`.fuel-label`/`.fuel-figure`
+styling, just omitting the `.fuel-track` bar markup for these two rows.
+
+**Plan's "Meal templates" section** was a long scroll through three stacked tables
+(lift/run/rest, one after another). Replaced with a **Lift / Run / Rest segmented
+tab control** (`.segmented`/`.segmented-btn`) showing one table at a time. Deliberately
+a new, neutral component rather than reusing `.status-btn`'s yes/partial/no colouring
+— which day type is showing isn't a value judgement, so the active tab just gets the
+one `--dawn` accent, same as everywhere else dawn is spent. Selected tab is held in a
+module-level `let activeMealTab` in `plan.js`, not `state.js` or the DB — purely "which
+tab is open right now," explicitly not worth persisting across sessions per the brief;
+resets to `lift` on every reload. Each meal table also gained Carbs/Fat columns
+alongside the existing Kcal/Protein ones.
+
+Scope was deliberately narrow, per the brief: no changes to `daily_checks`/
+`daily_logs`/any other table, no changes to Today's core structure beyond this macro
+row, and no UI built for `social_nights` (an unrelated table found via the same
+schema-drift introspection while reconstructing migrations for this change — a
+`user_id`/`event_date`/`status`/`note` table nothing in this app's code reads or
+writes; left alone, not this brief's concern).
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,

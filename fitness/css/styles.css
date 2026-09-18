@@ -328,8 +328,9 @@ a { color: inherit; }
 
 .tick-top-line {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   font-size: 0.82rem;
   color: var(--slate);
 }
@@ -522,6 +523,28 @@ a { color: inherit; }
 .plan-table th { color: var(--slate); font-weight: 500; font-size: 0.78rem; }
 .plan-meal-note, .plan-week-focus { color: var(--dawn); font-size: 0.78rem; margin-top: 2px; }
 .plan-week-num { color: var(--slate); font-weight: 600; }
+/* The four macro columns never need to wrap -- keeps "45g" from breaking
+   mid-value on a narrow screen. The table already sits in .overflow-x, so
+   letting it run a little wide here is fine. */
+.plan-meal-table th:nth-child(n+3), .plan-meal-table td:nth-child(n+3) { white-space: nowrap; }
+
+/* A neutral tab/segmented control -- Plan's meal-templates day-type
+   switcher. Not .status-btn's yes/partial/no colouring, which would read
+   as a value judgement on a day type; just the one dawn accent for
+   whichever tab is open, same as everywhere else in this app. */
+.segmented { display: flex; gap: 6px; margin-bottom: 14px; }
+.segmented-btn {
+  flex: 1;
+  padding: 9px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--slate);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.segmented-btn.is-active { background: var(--dawn); border-color: var(--dawn); color: #241505; }
 
 .plan-subhead { font-size: 0.9rem; color: var(--slate); margin: 16px 0 8px; }
 .plan-meal-block + .plan-meal-block { margin-top: 4px; }
