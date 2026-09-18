@@ -82,13 +82,15 @@ function fuelBarHtml(kind, label, consumed, target, unit){
 
 function mealRowHtml(meal, dayType, checked){
   const itemId = `meal:${dayType}:${meal.slot_order}`;
+  const carbs = meal.carbs_g ?? 0;
+  const fat = meal.fat_g ?? 0;
   return `
-    <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}">
+    <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}" data-carbs="${carbs}" data-fat="${fat}">
       <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark ${escapeHtml(meal.name)} as eaten"></button>
       <div class="tick-body">
         <div class="tick-top-line">
           <span class="tick-time">${escapeHtml(meal.time_label)}</span>
-          <span class="tick-macro">${meal.kcal} kcal · ${meal.protein_g}g protein</span>
+          <span class="tick-macro">${meal.kcal} kcal · ${meal.protein_g}g protein · ${carbs}g carbs · ${fat}g fat</span>
         </div>
         <div class="tick-name">${escapeHtml(meal.name)}</div>
         ${meal.notes ? `<div class="tick-notes">${escapeHtml(meal.notes)}</div>` : ''}
@@ -138,18 +140,36 @@ function statusButtonsHtml(group, current){
   `).join('');
 }
 
+// No week_targets column exists for carbs/fat (kcal and protein are the
+// only macros this app sets a target for), so these can't be a
+// target-vs-consumed bar the way calories/protein are -- just the running
+// total, same fuel-label/fuel-figure treatment, no track underneath.
+function fuelStatHtml(label, consumed, unit){
+  return `
+    <div class="fuel-row fuel-row-simple">
+      <div class="fuel-row-head">
+        <span class="fuel-label">${label}</span>
+        <span class="fuel-figure"><span class="fuel-num">${round1(consumed)}</span><span class="fuel-of">${unit}</span></span>
+      </div>
+    </div>`;
+}
+
 function computeTotals(main, bundle){
-  let kcal = 0, protein = 0;
+  let kcal = 0, protein = 0, carbs = 0, fat = 0;
   qsa('.tick-row[data-kcal]', main).forEach((row) => {
     if (row.classList.contains('is-checked')) {
       kcal += Number(row.dataset.kcal);
       protein += Number(row.dataset.protein);
+      carbs += Number(row.dataset.carbs || 0);
+      fat += Number(row.dataset.fat || 0);
     }
   });
   const target = bundle.target || {};
   qs('#fuelPanel', main).innerHTML =
     fuelBarHtml('kcal', 'Calories', kcal, target.kcal_target, ' kcal') +
-    fuelBarHtml('protein', 'Protein', protein, target.protein_floor_g, 'g');
+    fuelBarHtml('protein', 'Protein', protein, target.protein_floor_g, 'g') +
+    fuelStatHtml('Carbs', carbs, 'g') +
+    fuelStatHtml('Fat', fat, 'g');
 }
 
 async function loadWeightContext(bundle){

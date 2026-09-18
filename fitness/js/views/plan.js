@@ -5,7 +5,22 @@ import { db } from '../db.js';
 
 const DOW_LABEL = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
 
-function mealTableHtml(dayType, label, meals){
+const MEAL_DAY_TABS = [
+  { key: 'lift', tabLabel: 'Lift', heading: 'Lift days (Mon / Wed / Fri)' },
+  { key: 'run', tabLabel: 'Run', heading: 'Run days (Tue / Thu / Sat)' },
+  { key: 'rest', tabLabel: 'Rest', heading: 'Rest day (Sun)' }
+];
+
+// Module-level, not state.js -- this is purely "which tab is open," not
+// data worth a DB round trip or persisting across sessions. Resets to
+// 'lift' on a hard reload; fine either way per the brief.
+let activeMealTab = 'lift';
+
+function macroCell(value, unit){
+  return value == null ? '—' : `${value}${unit}`;
+}
+
+function mealTableHtml(dayType, heading, meals){
   const rows = meals
     .filter((m) => m.day_type === dayType && m.week_number === null)
     .sort((a, b) => a.slot_order - b.slot_order)
@@ -13,13 +28,29 @@ function mealTableHtml(dayType, label, meals){
       <tr>
         <td>${escapeHtml(m.time_label)}</td>
         <td>${escapeHtml(m.name)}${m.notes ? `<div class="plan-meal-note">${escapeHtml(m.notes)}</div>` : ''}</td>
-        <td>${m.kcal} kcal</td>
-        <td>${m.protein_g}g</td>
+        <td>${macroCell(m.kcal, ' kcal')}</td>
+        <td>${macroCell(m.protein_g, 'g')}</td>
+        <td>${macroCell(m.carbs_g, 'g')}</td>
+        <td>${macroCell(m.fat_g, 'g')}</td>
       </tr>`).join('');
   return `
     <div class="plan-meal-block">
-      <h3 class="plan-subhead">${escapeHtml(label)}</h3>
-      <table class="plan-table"><tbody>${rows}</tbody></table>
+      <h3 class="plan-subhead">${escapeHtml(heading)}</h3>
+      <div class="overflow-x">
+        <table class="plan-table plan-meal-table">
+          <thead><tr><th>Time</th><th>Meal</th><th>Kcal</th><th>Protein</th><th>Carbs</th><th>Fat</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function mealTabsHtml(active){
+  return `
+    <div class="segmented" role="tablist" aria-label="Meal day type">
+      ${MEAL_DAY_TABS.map((t) => `
+        <button type="button" class="segmented-btn ${t.key === active ? 'is-active' : ''}" role="tab" aria-selected="${t.key === active}" data-tab="${t.key}">${t.tabLabel}</button>
+      `).join('')}
     </div>`;
 }
 
@@ -155,9 +186,8 @@ export async function render(main){
 
     <section class="panel">
       <h2 class="panel-title">Meal templates</h2>
-      ${mealTableHtml('lift', 'Lift days (Mon / Wed / Fri)', meals)}
-      ${mealTableHtml('run', 'Run days (Tue / Thu / Sat)', meals)}
-      ${mealTableHtml('rest', 'Rest day (Sun)', meals)}
+      ${mealTabsHtml(activeMealTab)}
+      <div id="mealTemplatesContent"></div>
     </section>
 
     <section class="panel">
@@ -167,4 +197,22 @@ export async function render(main){
       </ol>
     </section>
   `;
+
+  function renderMealTab(){
+    const tab = MEAL_DAY_TABS.find((t) => t.key === activeMealTab);
+    qs('#mealTemplatesContent', main).innerHTML = mealTableHtml(tab.key, tab.heading, meals);
+  }
+  renderMealTab();
+
+  qsa('.segmented-btn', main).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.tab === activeMealTab) return;
+      activeMealTab = btn.dataset.tab;
+      qsa('.segmented-btn', main).forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.tab === activeMealTab);
+        b.setAttribute('aria-selected', String(b.dataset.tab === activeMealTab));
+      });
+      renderMealTab();
+    });
+  });
 }
