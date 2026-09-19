@@ -1,6 +1,7 @@
 // The full block, read-only: goal, dates, week-by-week run progression,
 // lift prescriptions, meal templates per day type, and the standing rules.
-import { qs, qsa, escapeHtml, formatDateShort, todayStr } from '../utils.js';
+import { qs, qsa, escapeHtml, formatDateShort, todayStr, round1 } from '../utils.js';
+import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { db } from '../db.js';
 
 const DOW_LABEL = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
@@ -21,31 +22,30 @@ let activeMealTab = 'lift';
 // whichever week contains today (falling back to week 1) on first load.
 let activeTrainingWeek = null;
 
-function macroCell(value, unit){
-  return value == null ? '—' : `${value}${unit}`;
-}
-
-function mealTableHtml(dayType, heading, meals){
-  const rows = meals
+// Same Meal-N accordion Today uses (mealCard.js) -- read-only here (no
+// itemId/checked passed, so mealAccordionHtml omits the tick-box), each
+// meal's own foods and swap options shown the same way. Replaces the old
+// flat Time/Meal/Kcal/Protein/Carbs/Fat table.
+function mealDayHtml(dayType, heading, meals){
+  const dayMeals = meals
     .filter((m) => m.day_type === dayType && m.week_number === null)
-    .sort((a, b) => a.slot_order - b.slot_order)
-    .map((m) => `
-      <tr>
-        <td>${escapeHtml(m.time_label)}</td>
-        <td>${escapeHtml(m.name)}${m.notes ? `<div class="plan-meal-note">${escapeHtml(m.notes)}</div>` : ''}</td>
-        <td>${macroCell(m.kcal, ' kcal')}</td>
-        <td>${macroCell(m.protein_g, 'g')}</td>
-        <td>${macroCell(m.carbs_g, 'g')}</td>
-        <td>${macroCell(m.fat_g, 'g')}</td>
-      </tr>`).join('');
+    .sort((a, b) => a.slot_order - b.slot_order);
+  // The day type's full total if every meal on it is eaten -- sums each
+  // meal's own kcal/protein_g/carbs_g/fat_g (already the "real foods only"
+  // total; swap options never count toward it), not a per-food re-sum.
+  const totals = dayMeals.reduce((acc, m) => ({
+    kcal: acc.kcal + Number(m.kcal),
+    protein: acc.protein + Number(m.protein_g),
+    carbs: acc.carbs + Number(m.carbs_g ?? 0),
+    fat: acc.fat + Number(m.fat_g ?? 0)
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
   return `
     <div class="plan-meal-block">
       <h3 class="plan-subhead">${escapeHtml(heading)}</h3>
-      <div class="overflow-x">
-        <table class="plan-table plan-meal-table">
-          <thead><tr><th>Time</th><th>Meal</th><th>Kcal</th><th>Protein</th><th>Carbs</th><th>Fat</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
+      <ul class="tick-list">${dayMeals.map((m, i) => mealAccordionHtml(m, i + 1)).join('')}</ul>
+      <div class="plan-day-totals">
+        <span class="plan-day-totals-label">Day total</span>
+        <span class="plan-day-totals-figures">${round1(totals.kcal)} kcal · ${round1(totals.protein)}g protein · ${round1(totals.carbs)}g carbs · ${round1(totals.fat)}g fat</span>
       </div>
     </div>`;
 }
@@ -215,7 +215,8 @@ export async function render(main){
 
   function renderMealTab(){
     const tab = MEAL_DAY_TABS.find((t) => t.key === activeMealTab);
-    qs('#mealTemplatesContent', main).innerHTML = mealTableHtml(tab.key, tab.heading, meals);
+    qs('#mealTemplatesContent', main).innerHTML = mealDayHtml(tab.key, tab.heading, meals);
+    wireMealAccordionToggles(qs('#mealTemplatesContent', main));
   }
   renderMealTab();
 
