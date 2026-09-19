@@ -6,12 +6,12 @@
 // Unlike usa's flights/accommodations/transport (trip-wide, date-matched
 // against a real `date` column), this schema's days are free-text labels
 // ("13 Nov") and accommodations/items are leg-scoped, not date-scoped — so
-// this reuses the exact same day-by-day grouping the on-screen Itinerary
-// view uses (groupDayEntries in utils.js) rather than re-deriving it, and
-// places flights in one list up top and each leg's accommodation once per
-// leg rather than trying to match free-text dates.
+// this reuses the exact same day-by-day, time-ordered timeline the on-screen
+// Itinerary view uses (dayTimeline in utils.js) rather than re-deriving it,
+// and places flights in one list up top and each leg's accommodation once
+// per leg rather than trying to match free-text dates.
 import { state } from './state.js';
-import { esc, groupDayEntries, STATUS_COLOR, toast } from './utils.js';
+import { esc, dayTimeline, STATUS_COLOR, toast } from './utils.js';
 
 function dayEntries(legId, day) {
   return state.itineraryEntries
@@ -23,30 +23,34 @@ function statusBadge(status) {
   return status ? `<span class="pd-tag" style="border-color:${STATUS_COLOR[status] || STATUS_COLOR.PROPOSED};color:${STATUS_COLOR[status] || STATUS_COLOR.PROPOSED};">${esc(status)}</span>` : '';
 }
 
+function descHtml(e) {
+  return e.description ? `<div class="pd-desc">${esc(e.description)}</div>` : '';
+}
+
 function entryLineHtml(e, cls) {
   return `<div class="pd-line ${cls}"><span class="pd-time">${esc(e.time_label || '—')}</span>
-    <div class="pd-body">${esc(e.text)}${statusBadge(e.status)}</div></div>`;
+    <div class="pd-body">${esc(e.text)}${statusBadge(e.status)}${descHtml(e)}</div></div>`;
+}
+
+function rowHtml(row) {
+  if (row.type === 'choice') {
+    const chosen = row.group.options.find((e) => e.is_selected) || row.group.options[0];
+    const other = row.group.options.find((e) => e !== chosen);
+    return entryLineHtml(chosen, 'pd-main') +
+      (other ? `<div class="pd-alt">Not chosen: ${esc(other.text)}</div>` : '');
+  }
+  if (row.type === 'main') return entryLineHtml(row.entry, 'pd-main');
+  if (row.type === 'transit') return `<div class="pd-line pd-transit"><span class="pd-time">🚗</span><div class="pd-body">${esc(row.entry.text)}${descHtml(row.entry)}</div></div>`;
+  return entryLineHtml(row.entry, '');
 }
 
 function daySectionHtml(leg, day) {
   const entries = dayEntries(leg.id, day);
-  const { mains, optionals, transits, choiceGroups, dayStatus } = groupDayEntries(entries);
-
-  const choiceHtml = choiceGroups.map(({ options }) => {
-    const chosen = options.find((e) => e.is_selected) || options[0];
-    const other = options.find((e) => e !== chosen);
-    return entryLineHtml(chosen, 'pd-main') +
-      (other ? `<div class="pd-alt">Not chosen: ${esc(other.text)}</div>` : '');
-  }).join('');
-
-  const rows = choiceHtml +
-    mains.map((e) => entryLineHtml(e, 'pd-main')).join('') +
-    transits.map((e) => `<div class="pd-line pd-transit"><span class="pd-time">🚗</span><div class="pd-body">${esc(e.text)}</div></div>`).join('') +
-    optionals.map((e) => entryLineHtml(e, '')).join('');
+  const { rows, dayStatus } = dayTimeline(entries);
 
   return `<div class="pd-day">
     <div class="pd-day-head">${esc(day)}${dayStatus ? statusBadge(dayStatus) : ''}</div>
-    ${rows || '<p class="pd-empty">Nothing scheduled.</p>'}
+    ${rows.length ? rows.map(rowHtml).join('') : '<p class="pd-empty">Nothing scheduled.</p>'}
   </div>`;
 }
 
@@ -93,6 +97,7 @@ const DOC_STYLE = `
   .pd-line.pd-main .pd-time{ color:var(--gold); }
   .pd-body{ flex:1; line-height:1.4; }
   .pd-body small{ color:#666; font-weight:normal; }
+  .pd-desc{ font-weight:normal; font-style:italic; color:#666; font-size:11px; margin-top:2px; }
   .pd-transit .pd-body{ font-style:italic; color:#555; }
   .pd-alt{ font-size:11px; color:#999; font-style:italic; padding:2px 0 2px 68px; }
   .pd-tag{ font-size:9px; text-transform:uppercase; letter-spacing:.03em; border:1px solid #ccc; border-radius:3px; padding:1px 5px; margin-left:6px; }

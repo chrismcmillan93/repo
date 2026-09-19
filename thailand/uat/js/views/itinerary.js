@@ -2,7 +2,7 @@
 // one collapsible panel per leg — same combined shape as the live app's
 // "locations" panel (renderLocations() in thailand/index.html), not split into
 // separate Itinerary/Places screens the way usa/ does it.
-import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS, STATUS_COLOR, groupDayEntries } from '../utils.js';
+import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS, STATUS_COLOR, dayTimeline } from '../utils.js';
 import { state } from '../state.js';
 import { db } from '../db.js';
 import { exportItineraryPdf } from '../print.js';
@@ -50,47 +50,46 @@ function itinSectionHtml(leg) {
   if (open) {
     body = (leg.days || []).map((day) => {
       const entries = legEntries(leg.id, day);
-      const { mains, optionals, transits, choiceGroups, dayStatus } = groupDayEntries(entries);
+      const { rows: timeline, dayStatus } = dayTimeline(entries);
       const statusTag = dayStatus
         ? '<span class="badge" style="background:' + (STATUS_COLOR[dayStatus] || STATUS_COLOR.PROPOSED) + ';margin-left:0.4rem;">' + esc(dayStatus) + '</span>'
         : '';
 
-      const entryRow = (e) => (
-        '<div class="itin-row"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
-        '<span style="flex:1;">' + esc(e.text) + '</span>' +
-        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
-      );
+      const descHtml = (e) => e.description ? '<div class="itin-desc">' + esc(e.description) + '</div>' : '';
+      const delBtn = (e) => '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button>';
 
-      const choiceGroupHtml = choiceGroups.map(({ id: gid, options }) => {
-        const cards = options.map((e, idx) => {
-          const selected = !!e.is_selected;
-          const optionStatus = e.status
-            ? '<span class="badge" style="background:' + (STATUS_COLOR[e.status] || STATUS_COLOR.PROPOSED) + ';">' + esc(e.status) + '</span>'
-            : '';
-          return '<div class="itin-choice-option ' + (selected ? 'selected' : '') + '">' +
-            '<div class="itin-choice-label">Option ' + (idx + 1) + (selected ? ' · Selected' : '') + '</div>' +
-            '<div class="itin-choice-body"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
-            '<span class="itin-main-text">' + esc(e.text) + '</span>' + optionStatus + '</div>' +
-            '<div class="itin-choice-actions">' +
-            (selected ? '' : '<button class="btn-add" data-action="select-choice" data-id="' + e.id + '" data-group="' + esc(gid) + '">Choose this</button>') +
-            '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button>' +
-            '</div></div>';
-        }).join('');
-        return '<div class="itin-choice-group">' + cards + '</div>';
-      }).join('');
+      const rowHtml = (row) => {
+        const e = row.entry;
+        if (row.type === 'choice') {
+          const cards = row.group.options.map((opt, idx) => {
+            const selected = !!opt.is_selected;
+            const optionStatus = opt.status
+              ? '<span class="badge" style="background:' + (STATUS_COLOR[opt.status] || STATUS_COLOR.PROPOSED) + ';">' + esc(opt.status) + '</span>'
+              : '';
+            return '<div class="itin-choice-option ' + (selected ? 'selected' : '') + '">' +
+              '<div class="itin-choice-label">Option ' + (idx + 1) + (selected ? ' · Selected' : '') + '</div>' +
+              '<div class="itin-choice-body"><span class="itin-time">' + esc(opt.time_label || '—') + '</span>' +
+              '<span class="itin-main-text">' + esc(opt.text) + '</span>' + optionStatus + '</div>' +
+              descHtml(opt) +
+              '<div class="itin-choice-actions">' +
+              (selected ? '' : '<button class="btn-add" data-action="select-choice" data-id="' + opt.id + '" data-group="' + esc(row.group.id) + '">Choose this</button>') +
+              delBtn(opt) +
+              '</div></div>';
+          }).join('');
+          return '<div class="itin-choice-group">' + cards + '</div>';
+        }
+        if (row.type === 'main') {
+          return '<div class="itin-main-card-wrap"><div class="itin-main-card"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
+            '<span class="itin-main-text">' + esc(e.text) + '</span>' + delBtn(e) + '</div>' + descHtml(e) + '</div>';
+        }
+        if (row.type === 'transit') {
+          return '<div class="itin-transit-note-wrap"><div class="itin-transit-note">🚗 ' + esc(e.text) + delBtn(e) + '</div>' + descHtml(e) + '</div>';
+        }
+        return '<div class="itin-row-wrap"><div class="itin-row"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
+          '<span style="flex:1;">' + esc(e.text) + '</span>' + delBtn(e) + '</div>' + descHtml(e) + '</div>';
+      };
 
-      const mainHtml = mains.map((e) => (
-        '<div class="itin-main-card"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
-        '<span class="itin-main-text">' + esc(e.text) + '</span>' +
-        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
-      )).join('');
-      const transitHtml = transits.map((e) => (
-        '<div class="itin-transit-note">🚗 ' + esc(e.text) +
-        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
-      )).join('');
-      const optionalHtml = optionals.length ? optionals.map(entryRow).join('') : '';
-
-      const rows = entries.length === 0 ? '<div class="itin-empty">Nothing scheduled yet</div>' : choiceGroupHtml + mainHtml + transitHtml + optionalHtml;
+      const rows = entries.length === 0 ? '<div class="itin-empty">Nothing scheduled yet</div>' : timeline.map(rowHtml).join('');
       const key = leg.id + ':' + day;
       const draft = ui.itinDrafts[key] || { time: '', text: '' };
       return '<div class="itin-day"><div class="itin-daylabel">' + esc(day) + statusTag + '</div>' + rows +

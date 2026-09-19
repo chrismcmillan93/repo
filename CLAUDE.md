@@ -299,14 +299,30 @@ PDF" do the conversion. Unlike `usa`, this only covers the Itinerary screen (not
 bookings/accommodation/packing/costs) and there's no per-leg export, just the one
 whole-trip button — narrower scope than `usa`'s two-button (per-stop + whole-trip)
 setup, add a per-leg version the same way if that's wanted later. Reuses
-`groupDayEntries` (see `kind`/`.status` and `choice_group_id` above) so the exported
-PDF can never disagree with the on-screen view about what a day contains — same
-kind grouping, same "Not chosen: …" line for the non-selected half of a choice group,
-same day-status rule. Flights are listed once up top (not date-matched per day, since
-`flight_legs.when_label` is free text, not a real date column); each leg's
-accommodation is shown once under that leg's heading (accommodations are already
-`leg_id`-scoped here, unlike `usa`'s trip-wide accommodations table, so no date
-matching is needed there either).
+`utils.js`'s `dayTimeline()` (see `kind`/`.status`, `choice_group_id`, and time
+ordering below) so the exported PDF can never disagree with the on-screen view about
+what a day contains or what order it's in. Flights are listed once up top (not
+date-matched per day, since `flight_legs.when_label` is free text, not a real date
+column); each leg's accommodation is shown once under that leg's heading
+(accommodations are already `leg_id`-scoped here, unlike `usa`'s trip-wide
+accommodations table, so no date matching is needed there either).
+
+**`itinerary_entries.description` + chronological ordering (2026-09-19).** Every one
+of the 39 `itinerary_entries` rows now has a `description` (new `text not null default
+''` column, additive — every row got one via migration
+`thailand_uat_itinerary_entries_descriptions`, no other field touched). Shown under
+the entry's `text` wherever it renders (on-screen `.itin-desc`, PDF export `.pd-desc`),
+same shape as `items.description` already had. Also: what was `groupDayEntries()` in
+`utils.js` is now `dayTimeline()` — same choice-group resolution and day-status rule,
+but instead of returning separate `mains`/`optionals`/`transits` buckets (which
+`views/itinerary.js` rendered kind-first — every MAIN before every optional,
+regardless of actual time) it returns one `rows` array already in **chronological
+order**: timed entries sorted by `time_label`, then untimed entries grouped main-first
+(so the day's headline plan still reads before its untimed extras) — `kind` now only
+controls a row's *styling* (highlighted card / italic note / plain row), never its
+position. Both `views/itinerary.js` and `print.js` consume `rows` directly; don't
+reintroduce separate kind-grouped arrays without moving the sort logic with them, or
+the two will drift back out of time order independently.
 
 ## Trip decisions
 

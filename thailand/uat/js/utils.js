@@ -79,12 +79,19 @@ export const STATUS_COLOR = { FIXED: '#6FBF8C', PROPOSED: '#E8A33D', 'NEEDS BOOK
 
 // Shared by views/itinerary.js (on-screen) and print.js (PDF export) so the
 // two can never disagree about what a day "actually" contains — same choice-
-// group resolution, same kind grouping, same day-status rule, one place.
+// group resolution, same day-status rule, same chronological order, one place.
+//
 // Entries sharing a choice_group_id are alternatives for one slot (same
-// pattern as usa.itinerary_items.choice_group_id/is_selected); everything
-// else (kind grouping, day status) only looks at the "active" set: plain
-// standalone entries plus whichever option in each group is selected.
-export function groupDayEntries(entries) {
+// pattern as usa.itinerary_items.choice_group_id/is_selected) and collapse to
+// one row at the selected option's time. `kind` (main/optional/transit) still
+// controls how a row is *styled* — a main gets the highlighted treatment, a
+// transit reads as an italic note — but it no longer controls *order*: every
+// row in the returned `rows` array is in clock order, timed entries first
+// (sorted by time_label), then untimed entries grouped main-first so the
+// most important untimed plan for the day still reads before the rest.
+const KIND_RANK = { main: 0, choice: 0, transit: 1, optional: 2 };
+
+export function dayTimeline(entries) {
   const standalone = entries.filter((e) => !e.choice_group_id);
   const groupIds = [];
   const groups = {};
@@ -94,13 +101,27 @@ export function groupDayEntries(entries) {
     groups[e.choice_group_id].push(e);
   });
   const choiceGroups = groupIds.map((gid) => ({ id: gid, options: groups[gid] }));
+
+  const rows = [];
+  standalone.forEach((e) => rows.push({ type: e.kind, entry: e }));
+  choiceGroups.forEach((g) => {
+    const chosen = g.options.find((e) => e.is_selected) || g.options[0];
+    rows.push({ type: 'choice', entry: chosen, group: g });
+  });
+
+  rows.forEach((r, idx) => { r._sortOrder = r.entry.sort_order; r._idx = idx; });
+  rows.sort((a, b) => {
+    const aTime = a.entry.time_label || '', bTime = b.entry.time_label || '';
+    if (!!aTime !== !!bTime) return aTime ? -1 : 1; // timed entries before untimed
+    if (aTime && bTime && aTime !== bTime) return aTime.localeCompare(bTime);
+    if (KIND_RANK[a.type] !== KIND_RANK[b.type]) return KIND_RANK[a.type] - KIND_RANK[b.type];
+    return a._sortOrder - b._sortOrder;
+  });
+
   const activeEntries = standalone.concat(choiceGroups.map((g) => g.options.find((e) => e.is_selected) || g.options[0]));
-  const mains = standalone.filter((e) => e.kind === 'main');
-  const optionals = standalone.filter((e) => e.kind === 'optional');
-  const transits = standalone.filter((e) => e.kind === 'transit');
   const statusSource = activeEntries.find((e) => e.status);
   const dayStatus = statusSource ? statusSource.status : null;
-  return { mains, optionals, transits, choiceGroups, activeEntries, dayStatus };
+  return { rows, dayStatus };
 }
 
 let toastTimer = null;
