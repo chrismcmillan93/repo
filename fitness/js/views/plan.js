@@ -1,6 +1,6 @@
 // The full block, read-only: goal, dates, week-by-week run progression,
 // lift prescriptions, meal templates per day type, and the standing rules.
-import { qs, qsa, escapeHtml, formatDateShort } from '../utils.js';
+import { qs, qsa, escapeHtml, formatDateShort, todayStr } from '../utils.js';
 import { db } from '../db.js';
 
 const DOW_LABEL = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
@@ -15,6 +15,11 @@ const MEAL_DAY_TABS = [
 // data worth a DB round trip or persisting across sessions. Resets to
 // 'lift' on a hard reload; fine either way per the brief.
 let activeMealTab = 'lift';
+
+// Same idea for Training split's week pager -- which week is showing is UI
+// state, not worth persisting. Starts null so render() can default it to
+// whichever week contains today (falling back to week 1) on first load.
+let activeTrainingWeek = null;
 
 function macroCell(value, unit){
   return value == null ? '—' : `${value}${unit}`;
@@ -79,7 +84,6 @@ function sessionDayRowHtml(dow, session, run){
         </div>
       </li>`;
   }
-  const exercises = (session.session_exercises || []).slice().sort((a, b) => a.order_num - b.order_num);
   // Run days: join run_plan for this exact week+day so the distance/effort/
   // detail is the real prescription for that week, not the session
   // template's generic title ("Run — easy" doesn't say how far).
@@ -93,21 +97,31 @@ function sessionDayRowHtml(dow, session, run){
         <span class="plan-session-title">${escapeHtml(session.title)}</span>
       </div>
       ${runDetail ? `<p class="plan-session-summary">${escapeHtml(runDetail)}</p>` : (session.summary ? `<p class="plan-session-summary">${escapeHtml(session.summary)}</p>` : '')}
-      ${exercises.length ? `<ul class="plan-exercise-list">${exercises.map((ex) => `<li>${escapeHtml(ex.name)} — ${escapeHtml(ex.prescription)}</li>`).join('')}</ul>` : ''}
     </li>`;
 }
 
-// One resolved session per day, grouped by week -- not a raw dump of every
-// session_templates row (which would show a week's override *and* the
-// standing default it replaces, side by side, for the same day).
+// One resolved session per day -- not a raw dump of every session_templates
+// row (which would show a week's override *and* the standing default it
+// replaces, side by side, for the same day). The week heading/focus is
+// shown by the pager nav around this, not repeated here.
 function weekTrainingHtml(week, sessions, runPlan){
   const days = [1, 2, 3, 4, 5, 6, 7]
     .map((dow) => sessionDayRowHtml(dow, resolveSession(dow, week.week_number, sessions), resolveRun(dow, week.week_number, runPlan)))
     .join('');
+  return `<ul class="plan-session-list">${days}</ul>`;
+}
+
+// Same .date-nav markup Today/Week already use for their own prev/next --
+// consistent look, no new nav component needed.
+function trainingNavHtml(week, totalWeeks, canBack, canForward){
   return `
-    <div class="plan-week-block">
-      <h3 class="plan-subhead">Week ${week.week_number}${week.focus ? ` — ${escapeHtml(week.focus)}` : ''}</h3>
-      <ul class="plan-session-list">${days}</ul>
+    <div class="date-nav">
+      <button type="button" class="date-nav-btn" id="prevTrainingWeek" ${canBack ? '' : 'disabled'} aria-label="Previous week">‹</button>
+      <div class="date-nav-label">
+        <div class="date-nav-day">Week ${week.week_number} of ${totalWeeks}</div>
+        <div class="date-nav-sub">${escapeHtml(formatDateShort(week.start_date))} – ${escapeHtml(formatDateShort(week.end_date))}${week.focus ? ` · ${escapeHtml(week.focus)}` : ''}</div>
+      </div>
+      <button type="button" class="date-nav-btn" id="nextTrainingWeek" ${canForward ? '' : 'disabled'} aria-label="Next week">›</button>
     </div>`;
 }
 
@@ -173,7 +187,8 @@ export async function render(main){
 
     <section class="panel">
       <h2 class="panel-title">Training split</h2>
-      ${weeks.map((w) => weekTrainingHtml(w, sessions, runPlan)).join('')}
+      <div id="trainingSplitNav"></div>
+      <div id="trainingSplitContent"></div>
     </section>
 
     <section class="panel">
@@ -215,4 +230,40 @@ export async function render(main){
       renderMealTab();
     });
   });
+
+  // Training split: one week's 7 days at a time instead of all 8 stacked in
+  // one scroll. Defaults to whichever week contains today (falling back to
+  // the block's first week), same "land somewhere real" idea as Today's own
+  // date nav defaulting to today rather than the block start.
+  if (weeks.length && (activeTrainingWeek === null || !weeks.some((w) => w.week_number === activeTrainingWeek))) {
+    const today = todayStr();
+    const currentWeek = weeks.find((w) => today >= w.start_date && today <= w.end_date);
+    activeTrainingWeek = (currentWeek || weeks[0]).week_number;
+  }
+
+  function renderTrainingWeek(){
+    if (!weeks.length) {
+      qs('#trainingSplitContent', main).innerHTML = '<p class="section-note">No weeks defined for this block yet.</p>';
+      return;
+    }
+    const week = weeks.find((w) => w.week_number === activeTrainingWeek);
+    const canBack = weeks.some((w) => w.week_number < activeTrainingWeek);
+    const canForward = weeks.some((w) => w.week_number > activeTrainingWeek);
+    qs('#trainingSplitNav', main).innerHTML = trainingNavHtml(week, weeks.length, canBack, canForward);
+    qs('#trainingSplitContent', main).innerHTML = weekTrainingHtml(week, sessions, runPlan);
+
+    qs('#prevTrainingWeek', main).addEventListener('click', () => {
+      const prevWeek = weeks.filter((w) => w.week_number < activeTrainingWeek).sort((a, b) => b.week_number - a.week_number)[0];
+      if (!prevWeek) return;
+      activeTrainingWeek = prevWeek.week_number;
+      renderTrainingWeek();
+    });
+    qs('#nextTrainingWeek', main).addEventListener('click', () => {
+      const nextWeek = weeks.filter((w) => w.week_number > activeTrainingWeek).sort((a, b) => a.week_number - b.week_number)[0];
+      if (!nextWeek) return;
+      activeTrainingWeek = nextWeek.week_number;
+      renderTrainingWeek();
+    });
+  }
+  renderTrainingWeek();
 }

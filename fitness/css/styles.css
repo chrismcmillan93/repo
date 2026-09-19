@@ -359,6 +359,55 @@ a { color: inherit; }
   text-align: right;
 }
 
+/* ---------------- Today: meal accordions (per-food detail) ---------------- */
+
+/* .meal-acc keeps the .tick-row class too (checkbox styling, is-checked
+   dimming, the generic tick-box click wiring) but needs its own children
+   stacked vertically -- header on top, the collapsible food list below --
+   instead of .tick-row's flex-row layout, which was built for a single
+   tick-box + body + status line. */
+.meal-acc { display: block; }
+
+.meal-acc-header { display: flex; align-items: flex-start; gap: 12px; }
+
+.meal-acc-summary {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.meal-acc-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.meal-acc-title { font-size: 0.98rem; }
+.meal-acc.is-checked .meal-acc-title { color: var(--slate); }
+.meal-acc-time { font-size: 0.8rem; color: var(--slate); font-weight: 400; margin-left: 4px; }
+.meal-acc-macro { display: block; font-size: 0.82rem; color: var(--slate); margin-top: 2px; }
+
+.meal-acc-chevron {
+  display: inline-block;
+  color: var(--slate);
+  transition: transform 0.15s;
+}
+.meal-acc-summary[aria-expanded="true"] .meal-acc-chevron { transform: rotate(180deg); }
+
+.meal-acc-body {
+  margin: 10px 0 0 38px; /* aligns with the summary text, past the tick-box */
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.meal-food-list { list-style: none; margin: 0; padding: 0; }
+.meal-food-row { padding: 6px 0; }
+.meal-food-row + .meal-food-row { border-top: 1px solid var(--line); }
+.meal-food-top { display: flex; justify-content: space-between; gap: 8px; }
+.meal-food-name { font-size: 0.9rem; }
+.meal-food-weight { font-size: 0.82rem; color: var(--slate); white-space: nowrap; }
+.meal-food-macro { font-size: 0.78rem; color: var(--slate); margin-top: 1px; }
+
 /* ---------------- weight ---------------- */
 
 .weight-row { display: flex; align-items: center; gap: 12px; }
@@ -556,7 +605,6 @@ a { color: inherit; }
 .plan-session-day { color: var(--slate); font-size: 0.8rem; min-width: 56px; }
 .plan-session-title { font-weight: 600; }
 .plan-session-summary { color: var(--slate); font-size: 0.85rem; margin: 4px 0; }
-.plan-exercise-list { margin: 6px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--paper); }
 
 .plan-rules-list { margin: 0; padding-left: 20px; }
 .plan-rules-list li { margin-bottom: 8px; font-size: 0.92rem; }

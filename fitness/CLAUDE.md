@@ -477,6 +477,64 @@ schema-drift introspection while reconstructing migrations for this change — a
 `user_id`/`event_date`/`status`/`note` table nothing in this app's code reads or
 writes; left alone, not this brief's concern).
 
+## Training split pager, exercises dropped from Plan, and Today's meal accordions
+
+Three follow-up requests after the macro-row/meal-tabs change above.
+
+**Training split** had the same "long scroll" problem the old meal-templates
+tables did, just worse (8 weeks × 7 days = 56 rows stacked at once). Rather than
+a segmented control (8 tabs doesn't fit a 420px phone screen the way 3
+Lift/Run/Rest tabs did), it's now a **prev/next week pager** — the same
+`.date-nav` markup/styling Today and Week already use for their own paging,
+just embedded inside the Training split panel (`#trainingSplitNav` +
+`#trainingSplitContent`). Defaults to whichever week contains today (falling
+back to the block's first week) via a module-level `activeTrainingWeek` in
+`plan.js`, same "ephemeral UI state, not worth persisting" treatment as
+`activeMealTab`. `weekTrainingHtml()` no longer renders its own "Week N — focus"
+heading, since the pager nav shows that now — would've been a duplicate.
+
+**Exercises are gone from Plan's Training split** (the one place they were
+still shown, per the "Today shows no exercise detail" note above) —
+`sessionDayRowHtml()` no longer renders the `<ul class="plan-exercise-list">`
+block. Deliberately UI-only: `db.sessionTemplates.list()` still joins
+`session_exercises(*)`, `get_day_bundle()` still returns them for Today's
+`session.exercises` (unused there too), and the table/data are untouched —
+cheap to resurface later if wanted. `.plan-exercise-list` CSS removed as
+dead weight since nothing renders that class anymore.
+
+**Today's meal cards are now "Meal 1"/"Meal 2" accordions**, collapsed by
+default, instead of a flat row showing the meal's own name and one combined
+macro line. Collapsed, a card shows just "Meal N", its time, and the same
+4-macro summary line as before (so the at-a-glance total is still there
+without opening anything). Expanding it (a separate `.meal-acc-summary`
+button, independent of the `.tick-box` — opening a meal to look at it
+shouldn't mark it eaten, and ticking it shouldn't force it open or closed)
+reveals a list of the meal's individual **foods**, each its own row with
+name, weight in grams, and its own kcal/protein/carbs/fat — replacing the
+old single free-text name like "6 eggs + 2 bananas" that used to read as one
+messy blob.
+
+That per-food breakdown lives in a new table, **`fitness.meal_foods`**
+(`meal_template_id` FK, `order_num`, `name`, `weight_g`, `kcal`, `protein_g`,
+`carbs_g`, `fat_g`) — same shape as every other read-mostly Plan table
+(`authenticated read` SELECT-only policy, no write policy, edited via SQL
+directly). `meal_templates`'s own `kcal`/`protein_g`/`carbs_g`/`fat_g` stay
+exactly as they are — the meal's *combined* total, still what Plan's meal
+tables and Today's fuel-panel running totals sum from — `meal_foods` is
+additive per-food detail layered on top, not a replacement. `get_day_bundle()`
+nests each meal's foods into its jsonb as `foods` (empty array until real
+data is entered). **The table starts empty** — Chris is providing the actual
+name/weight/macro breakdown for each of the 15 existing meals himself, to be
+entered via a follow-up migration once received, same as any other plan-data
+edit in this app. Until then (and for any future meal added without its own
+breakdown), `today.js`'s `mealFoods()` falls back to a single food row built
+from the meal's own name and totals, so an unpopulated meal's accordion
+opens onto something real (its own line) rather than empty.
+
+Scope check, per the request: Plan's own meal-templates table (the one
+showing Lift/Run/Rest tabs) was explicitly left as one-row-per-meal with
+combined totals — only Today's card got the per-food accordion treatment.
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
