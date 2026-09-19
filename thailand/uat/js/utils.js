@@ -77,6 +77,32 @@ export const URGENCY_RANK = { high: 0, medium: 1, low: 2 };
 // semantics (green/gold/red) since they mean roughly the same thing.
 export const STATUS_COLOR = { FIXED: '#6FBF8C', PROPOSED: '#E8A33D', 'NEEDS BOOKING': '#F0654A' };
 
+// Shared by views/itinerary.js (on-screen) and print.js (PDF export) so the
+// two can never disagree about what a day "actually" contains — same choice-
+// group resolution, same kind grouping, same day-status rule, one place.
+// Entries sharing a choice_group_id are alternatives for one slot (same
+// pattern as usa.itinerary_items.choice_group_id/is_selected); everything
+// else (kind grouping, day status) only looks at the "active" set: plain
+// standalone entries plus whichever option in each group is selected.
+export function groupDayEntries(entries) {
+  const standalone = entries.filter((e) => !e.choice_group_id);
+  const groupIds = [];
+  const groups = {};
+  entries.forEach((e) => {
+    if (!e.choice_group_id) return;
+    if (!groups[e.choice_group_id]) { groups[e.choice_group_id] = []; groupIds.push(e.choice_group_id); }
+    groups[e.choice_group_id].push(e);
+  });
+  const choiceGroups = groupIds.map((gid) => ({ id: gid, options: groups[gid] }));
+  const activeEntries = standalone.concat(choiceGroups.map((g) => g.options.find((e) => e.is_selected) || g.options[0]));
+  const mains = standalone.filter((e) => e.kind === 'main');
+  const optionals = standalone.filter((e) => e.kind === 'optional');
+  const transits = standalone.filter((e) => e.kind === 'transit');
+  const statusSource = activeEntries.find((e) => e.status);
+  const dayStatus = statusSource ? statusSource.status : null;
+  return { mains, optionals, transits, choiceGroups, activeEntries, dayStatus };
+}
+
 let toastTimer = null;
 export function toast(message) {
   const host = qs('#toast-host');

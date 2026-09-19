@@ -2,9 +2,10 @@
 // one collapsible panel per leg — same combined shape as the live app's
 // "locations" panel (renderLocations() in thailand/index.html), not split into
 // separate Itinerary/Places screens the way usa/ does it.
-import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS, STATUS_COLOR } from '../utils.js';
+import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS, STATUS_COLOR, groupDayEntries } from '../utils.js';
 import { state } from '../state.js';
 import { db } from '../db.js';
+import { exportItineraryPdf } from '../print.js';
 
 const ui = {
   expandedLegs: {},
@@ -49,28 +50,7 @@ function itinSectionHtml(leg) {
   if (open) {
     body = (leg.days || []).map((day) => {
       const entries = legEntries(leg.id, day);
-
-      // Entries sharing a choice_group_id are alternatives for one slot (same
-      // pattern as usa.itinerary_items.choice_group_id/is_selected) — rendered
-      // as an Option 1/Option 2 picker instead of two separate cards. Everything
-      // else (kind grouping, day status) only looks at the "active" set: plain
-      // standalone entries plus whichever option in each group is selected.
-      const standalone = entries.filter((e) => !e.choice_group_id);
-      const groupIds = [];
-      const groups = {};
-      entries.forEach((e) => {
-        if (!e.choice_group_id) return;
-        if (!groups[e.choice_group_id]) { groups[e.choice_group_id] = []; groupIds.push(e.choice_group_id); }
-        groups[e.choice_group_id].push(e);
-      });
-      const activeEntries = standalone.concat(groupIds.map((gid) => groups[gid].find((e) => e.is_selected) || groups[gid][0]));
-
-      const mains = standalone.filter((e) => e.kind === 'main');
-      const optionals = standalone.filter((e) => e.kind === 'optional');
-      const transits = standalone.filter((e) => e.kind === 'transit');
-      // Day-level status tag: whichever active entry (in display order) carries one first.
-      const statusSource = activeEntries.find((e) => e.status);
-      const dayStatus = statusSource ? statusSource.status : null;
+      const { mains, optionals, transits, choiceGroups, dayStatus } = groupDayEntries(entries);
       const statusTag = dayStatus
         ? '<span class="badge" style="background:' + (STATUS_COLOR[dayStatus] || STATUS_COLOR.PROPOSED) + ';margin-left:0.4rem;">' + esc(dayStatus) + '</span>'
         : '';
@@ -81,8 +61,7 @@ function itinSectionHtml(leg) {
         '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
       );
 
-      const choiceGroupHtml = groupIds.map((gid) => {
-        const options = groups[gid];
+      const choiceGroupHtml = choiceGroups.map(({ id: gid, options }) => {
         const cards = options.map((e, idx) => {
           const selected = !!e.is_selected;
           const optionStatus = e.status
@@ -181,7 +160,8 @@ function wire(main) {
     if (!btn || !main.contains(btn)) return;
     const action = btn.dataset.action;
 
-    if (action === 'toggle-leg') { ui.expandedLegs[btn.dataset.id] = !ui.expandedLegs[btn.dataset.id]; rerender(); }
+    if (action === 'export-pdf') { exportItineraryPdf(); }
+    else if (action === 'toggle-leg') { ui.expandedLegs[btn.dataset.id] = !ui.expandedLegs[btn.dataset.id]; rerender(); }
     else if (action === 'toggle-itin') { ui.itinOpen[btn.dataset.id] = !ui.itinOpen[btn.dataset.id]; rerender(); }
     else if (action === 'filter-cat') { ui.categoryFilter[btn.dataset.id] = btn.dataset.category; rerender(); }
     else if (action === 'toggle-item') {
@@ -272,6 +252,9 @@ export async function render(main) {
   if (!Object.keys(ui.expandedLegs).length && state.legs.length) ui.expandedLegs[state.legs[0].id] = true;
   const legsHtml = state.legs.map(legPanelHtml).join('');
   main.innerHTML =
-    '<div class="page-head"><p class="page-title">Itinerary</p><p class="page-lede">Shortlist things to do, tick off what you\'re adding to the trip, and schedule the day.</p></div>' +
+    '<div class="page-head"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;">' +
+    '<div><p class="page-title">Itinerary</p><p class="page-lede">Shortlist things to do, tick off what you\'re adding to the trip, and schedule the day.</p></div>' +
+    '<button type="button" class="btn-quiet" data-action="export-pdf">📄 Export PDF</button>' +
+    '</div></div>' +
     legsHtml;
 }

@@ -291,6 +291,23 @@ option in each group is currently selected), so an unselected alternative never
 contributes a stray status tag. No UI exists yet to create a new choice group from
 scratch — only via migration, same as `kind`/`status` above.
 
+**PDF export (2026-09-19), itinerary only.** "📄 Export PDF" on the Itinerary screen's
+page-head calls `js/print.js`'s `exportItineraryPdf()` — same approach as
+`usa/js/print.js`: no PDF library, build a standalone HTML document with its own print
+stylesheet, open it in a new tab, `window.print()` and let the browser's own "Save as
+PDF" do the conversion. Unlike `usa`, this only covers the Itinerary screen (not
+bookings/accommodation/packing/costs) and there's no per-leg export, just the one
+whole-trip button — narrower scope than `usa`'s two-button (per-stop + whole-trip)
+setup, add a per-leg version the same way if that's wanted later. Reuses
+`groupDayEntries` (see `kind`/`.status` and `choice_group_id` above) so the exported
+PDF can never disagree with the on-screen view about what a day contains — same
+kind grouping, same "Not chosen: …" line for the non-selected half of a choice group,
+same day-status rule. Flights are listed once up top (not date-matched per day, since
+`flight_legs.when_label` is free text, not a real date column); each leg's
+accommodation is shown once under that leg's heading (accommodations are already
+`leg_id`-scoped here, unlike `usa`'s trip-wide accommodations table, so no date
+matching is needed there either).
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.

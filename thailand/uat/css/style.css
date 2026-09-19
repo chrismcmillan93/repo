@@ -52,8 +52,8 @@ a{ color:var(--gold); }
 .flight-divider{ height:1px; background:rgba(232,163,61,0.14); margin:0.65rem 0; }
 
 .utility-row{ display:flex; align-items:center; justify-content:space-between; gap:0.6rem; margin-top:1rem; flex-wrap:wrap; }
-.utility-row .btn-quiet{ background:transparent; border:1px solid rgba(232,163,61,0.35); color:var(--gold); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.74rem; font-family:var(--font-head); font-weight:700; cursor:pointer; }
-.utility-row .btn-quiet:hover{ background:rgba(232,163,61,0.12); }
+.btn-quiet{ background:transparent; border:1px solid rgba(232,163,61,0.35); color:var(--gold); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.74rem; font-family:var(--font-head); font-weight:700; cursor:pointer; flex-shrink:0; }
+.btn-quiet:hover{ background:rgba(232,163,61,0.12); }
 
 /* ---------------- nav ---------------- */
 .app-nav{ position:sticky; top:0; z-index:20; background:rgba(14,42,46,0.94); backdrop-filter:blur(6px); border-bottom:1px solid rgba(232,163,61,0.16); }
