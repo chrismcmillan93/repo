@@ -260,6 +260,22 @@ sub-checkboxes yet (`bookings.booked_people` jsonb column exists, unused); accom
 supports per-person paid toggling but not adding a new stay from the UI. Extend `db.js` +
 the relevant `views/*.js` the same way the existing CRUD helpers are written.
 
+**`itinerary_entries.kind`/`.status` (2026-09-19).** Added to support a richer
+day-by-day pass through the itinerary (one MAIN item highlighted per day, optional
+items and transit notes below, a FIXED/PROPOSED/NEEDS BOOKING status tag) without
+touching the original 7 seeded rows — both columns are nullable/defaulted
+(`kind` defaults `'main'`, `status` defaults `null`), so every pre-existing row kept
+its exact prior meaning. `views/itinerary.js` groups a day's entries by `kind`
+(`main` → highlighted `.itin-main-card`, `transit` → italic note, `optional` → the
+plain list) and shows a day's status as whichever entry (in `sort_order`) carries a
+non-null `status` first — there's no separate day/status table, the tag rides on
+whichever row set it. Quick-added entries from the UI always default to
+`kind: 'optional'` (no kind/status picker exists yet — extend the add-row form the
+same way if that's needed later). Where a new pass duplicated an existing row's
+activity (17 Nov Railay climbing; 19 Nov Muay Thai — the seed says Sinbi, a later
+pass said Maximum Fitness) both rows were kept rather than silently overwriting one —
+delete the stale one via the UI once you've confirmed which is right.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.

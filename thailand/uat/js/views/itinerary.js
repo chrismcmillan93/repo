@@ -2,7 +2,7 @@
 // one collapsible panel per leg — same combined shape as the live app's
 // "locations" panel (renderLocations() in thailand/index.html), not split into
 // separate Itinerary/Places screens the way usa/ does it.
-import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS } from '../utils.js';
+import { esc, toast, friendlyError, costLine, tagsRowHtml, ratingAndLinkHtml, reservationBadgeHtml, CATEGORY_COLORS, STATUS_COLOR } from '../utils.js';
 import { state } from '../state.js';
 import { db } from '../db.js';
 
@@ -49,16 +49,36 @@ function itinSectionHtml(leg) {
   if (open) {
     body = (leg.days || []).map((day) => {
       const entries = legEntries(leg.id, day);
-      const rows = entries.length === 0
-        ? '<div class="itin-empty">Nothing scheduled yet</div>'
-        : entries.map((e, idx) => (
-          '<div class="itin-row"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
-          '<span style="flex:1;">' + esc(e.text) + '</span>' +
-          '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
-        )).join('');
+      const mains = entries.filter((e) => e.kind === 'main');
+      const optionals = entries.filter((e) => e.kind === 'optional');
+      const transits = entries.filter((e) => e.kind === 'transit');
+      // Day-level status tag: whichever entry (in display order) carries one first.
+      const dayStatus = entries.find((e) => e.status) ? entries.find((e) => e.status).status : null;
+      const statusTag = dayStatus
+        ? '<span class="badge" style="background:' + (STATUS_COLOR[dayStatus] || STATUS_COLOR.PROPOSED) + ';margin-left:0.4rem;">' + esc(dayStatus) + '</span>'
+        : '';
+
+      const entryRow = (e) => (
+        '<div class="itin-row"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
+        '<span style="flex:1;">' + esc(e.text) + '</span>' +
+        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
+      );
+
+      const mainHtml = mains.map((e) => (
+        '<div class="itin-main-card"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
+        '<span class="itin-main-text">' + esc(e.text) + '</span>' +
+        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
+      )).join('');
+      const transitHtml = transits.map((e) => (
+        '<div class="itin-transit-note">🚗 ' + esc(e.text) +
+        '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
+      )).join('');
+      const optionalHtml = optionals.length ? optionals.map(entryRow).join('') : '';
+
+      const rows = entries.length === 0 ? '<div class="itin-empty">Nothing scheduled yet</div>' : mainHtml + transitHtml + optionalHtml;
       const key = leg.id + ':' + day;
       const draft = ui.itinDrafts[key] || { time: '', text: '' };
-      return '<div class="itin-day"><div class="itin-daylabel">' + esc(day) + '</div>' + rows +
+      return '<div class="itin-day"><div class="itin-daylabel">' + esc(day) + statusTag + '</div>' + rows +
         '<div class="add-row" style="margin-top:0.3rem;">' +
         '<input class="input" style="width:4.4rem;" placeholder="Time" data-role="itin-draft-time" data-key="' + esc(key) + '" value="' + esc(draft.time) + '">' +
         '<input class="input" style="flex:1;" placeholder="Add to ' + esc(day) + '…" data-role="itin-draft-text" data-key="' + esc(key) + '" value="' + esc(draft.text) + '">' +
@@ -176,7 +196,9 @@ function wire(main) {
       if (!draft.text || !draft.text.trim()) return;
       const siblings = legEntries(legId, day);
       const maxOrder = siblings.length ? Math.max(...siblings.map((e) => e.sort_order)) : -1;
-      const values = { leg_id: legId, day_label: day, time_label: draft.time.trim(), text: draft.text.trim(), sort_order: maxOrder + 1 };
+      // Quick-added entries default to 'optional' — promoting one to 'main' or
+      // adding a status tag isn't exposed in this UI yet, only via migration.
+      const values = { leg_id: legId, day_label: day, time_label: draft.time.trim(), text: draft.text.trim(), kind: 'optional', sort_order: maxOrder + 1 };
       ui.itinDrafts[key] = { time: '', text: '' };
       await withErrorToast(async () => {
         const created = await db.itineraryEntries.create(values);

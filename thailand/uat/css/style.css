@@ -126,6 +126,10 @@ a{ color:var(--gold); }
 .itin-row{ display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem; font-size:0.8rem; }
 .itin-time{ font-family:var(--font-mono); color:var(--gold); width:3.4rem; flex-shrink:0; }
 .itin-empty{ color:#5f7f7c; font-size:0.74rem; font-style:italic; margin-bottom:0.4rem; }
+.itin-main-card{ display:flex; align-items:center; gap:0.5rem; background:rgba(232,163,61,0.08); border:1px solid rgba(232,163,61,0.3); border-radius:8px; padding:0.5rem 0.6rem; margin-bottom:0.4rem; }
+.itin-main-text{ flex:1; font-weight:700; font-size:0.84rem; line-height:1.35; }
+.itin-transit-note{ display:flex; align-items:center; gap:0.4rem; font-size:0.74rem; color:var(--blue); font-style:italic; margin-bottom:0.4rem; }
+.itin-transit-note .icon-btn{ margin-left:auto; }
 
 /* ---------------- packing ---------------- */
 .pack-cat{ font-family:var(--font-head); font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin:1rem 0 0.4rem; }
