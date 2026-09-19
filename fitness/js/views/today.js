@@ -86,16 +86,24 @@ function fuelBarHtml(kind, label, consumed, target, unit){
 // never opens onto a blank list before that data exists.
 function mealFoods(meal){
   if (meal.foods && meal.foods.length) return meal.foods;
-  return [{ name: meal.name, weight_g: null, kcal: meal.kcal, protein_g: meal.protein_g, carbs_g: meal.carbs_g ?? 0, fat_g: meal.fat_g ?? 0 }];
+  return [{ name: meal.name, quantity: null, unit: null, kcal: meal.kcal, protein_g: meal.protein_g, carbs_g: meal.carbs_g ?? 0, fat_g: meal.fat_g ?? 0, is_swap_option: false }];
+}
+
+// Most quantities are grams ("250g", no space, matching the app's existing
+// "45g carbs" convention) but real data turned out to be mostly counts --
+// "6 whole" eggs, "2 medium" bananas, "1 scoop" -- shown as given rather
+// than converted into an invented gram figure.
+function foodQtyLabel(food){
+  if (food.quantity == null) return '—';
+  return food.unit === 'g' ? `${food.quantity}g` : `${food.quantity} ${food.unit}`;
 }
 
 function foodRowHtml(food){
-  const weight = food.weight_g != null ? `${food.weight_g}g` : '—';
   return `
-    <li class="meal-food-row">
+    <li class="meal-food-row ${food.is_swap_option ? 'is-swap' : ''}">
       <div class="meal-food-top">
         <span class="meal-food-name">${escapeHtml(food.name)}</span>
-        <span class="meal-food-weight">${escapeHtml(weight)}</span>
+        <span class="meal-food-qty">${escapeHtml(foodQtyLabel(food))}</span>
       </div>
       <div class="meal-food-macro">${food.kcal ?? 0} kcal · ${food.protein_g ?? 0}g protein · ${food.carbs_g ?? 0}g carbs · ${food.fat_g ?? 0}g fat</div>
     </li>`;
@@ -111,7 +119,13 @@ function mealRowHtml(meal, dayType, checked, idx){
   const itemId = `meal:${dayType}:${meal.slot_order}`;
   const carbs = meal.carbs_g ?? 0;
   const fat = meal.fat_g ?? 0;
-  const foods = mealFoods(meal);
+  const allFoods = mealFoods(meal);
+  // Swap options (e.g. dinner's salmon/chicken vs. its default mince) are an
+  // alternative to a real food, not eaten alongside it -- kept out of the
+  // main list and never counted toward the meal's own totals above, which
+  // already only sum the real foods.
+  const foods = allFoods.filter((f) => !f.is_swap_option);
+  const swaps = allFoods.filter((f) => f.is_swap_option);
   return `
     <li class="tick-row meal-acc ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}" data-carbs="${carbs}" data-fat="${fat}">
       <div class="meal-acc-header">
@@ -127,6 +141,11 @@ function mealRowHtml(meal, dayType, checked, idx){
       </div>
       <div class="meal-acc-body" hidden>
         <ul class="meal-food-list">${foods.map(foodRowHtml).join('')}</ul>
+        ${swaps.length ? `
+          <div class="meal-food-swaps">
+            <div class="meal-food-swaps-label">Or swap the protein for</div>
+            <ul class="meal-food-list">${swaps.map(foodRowHtml).join('')}</ul>
+          </div>` : ''}
         ${meal.notes ? `<div class="tick-notes">${escapeHtml(meal.notes)}</div>` : ''}
       </div>
     </li>`;

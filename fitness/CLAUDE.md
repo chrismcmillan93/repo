@@ -535,6 +535,54 @@ Scope check, per the request: Plan's own meal-templates table (the one
 showing Lift/Run/Rest tabs) was explicitly left as one-row-per-meal with
 combined totals — only Today's card got the per-food accordion treatment.
 
+## Real per-food data loaded for LIFT and RUN meals
+
+Chris sent the actual name/quantity/kcal/protein/carbs/fat breakdown for every
+LIFT and RUN meal (a CSV, 5 meals × ~2-5 foods each). Two things changed
+`meal_foods`'s shape before this could load in, both confirmed with him first
+rather than guessed:
+
+- **`weight_g` became `quantity` + `unit`.** The real data turned out to be
+  mostly *not* grams — "6 whole" eggs, "2 medium" bananas, "1 scoop" whey,
+  "1 serving" electrolytes — only the mince/rice/veg/skyr/creatine lines were
+  actually in grams. Forcing everything into a gram figure would have meant
+  inventing conversions (how many grams is "1 scoop"?) nobody supplied.
+  `quantity`/`unit` store exactly what was given; `today.js`'s `foodQtyLabel()`
+  renders grams tight ("250g", matching the app's existing "45g carbs"
+  convention) and anything else as "qty unit" ("6 whole", "1 scoop").
+- **`is_swap_option` boolean added.** Dinner's "alt protein" rows (salmon,
+  chicken breast, chicken thigh, an egg add-on) are alternatives to the
+  default beef mince, not extra food eaten alongside it — swapping the
+  protein, not adding to it. Marked `is_swap_option = true`, excluded from
+  `meal_templates`' own combined totals (which only ever sum the meal's real
+  default foods), and rendered by `today.js` in a separate "Or swap the
+  protein for" group at the bottom of the accordion, visually dimmed
+  (`.meal-food-swaps`/`.is-swap` in `styles.css`) so the actually-planned
+  foods above it read as the real plan at a glance.
+
+**The CSV also revealed the seeded meal_templates totals were stale** — 3 of
+5 meals per day type didn't match once broken into foods (bigger portions:
+300g/300g mince+rice at lunch vs. the CSV's 250g/200g; a "pepper & tomato
+side" at lunch and a "rotate carrots/asparagus/spring greens" note at dinner
+that aren't in the CSV at all; whey + 4 eggs at post-workout vs. the CSV's 6
+eggs, no whey; 3 bananas post-run vs. the CSV's 2). Confirmed with Chris that
+the CSV is the update, not a partial breakdown of the bigger existing
+portions — so `meal_templates.name`/`kcal`/`protein_g`/`carbs_g`/`fat_g` were
+corrected to match the CSV's sums exactly for every LIFT/RUN meal touched,
+not just layered underneath as a mismatching food list. **REST day meals
+weren't covered by this data at all and are untouched** — still the older,
+bigger portions, still no `meal_foods` rows, so Today's accordion for a rest
+day still falls back to a single food row built from the meal's own name.
+
+Migrations: `fitness_meal_foods_quantity_unit_and_swap` (the column change,
+on the still-empty table so a clean alter, not a data migration),
+`fitness_get_day_bundle_meal_foods_quantity_unit` (nests
+`quantity`/`unit`/`is_swap_option` into `get_day_bundle()`'s per-meal `foods`
+instead of `weight_g`), `fitness_load_real_meal_foods_lift_run` (the actual
+data — 10 meals' worth of `meal_foods` inserts plus the 8 `meal_templates`
+corrections, LIFT pre-workout and RUN pre-run left untouched since their
+totals already matched the CSV exactly).
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
