@@ -131,6 +131,15 @@ a{ color:var(--gold); }
 .itin-transit-note{ display:flex; align-items:center; gap:0.4rem; font-size:0.74rem; color:var(--blue); font-style:italic; margin-bottom:0.4rem; }
 .itin-transit-note .icon-btn{ margin-left:auto; }
 
+.itin-choice-group{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.4rem; }
+.itin-choice-option{ flex:1 1 220px; min-width:0; border:1px solid rgba(232,163,61,0.2); border-radius:8px; padding:0.5rem 0.6rem; background:var(--teal-deep); opacity:0.75; }
+.itin-choice-option.selected{ border-color:var(--gold); background:rgba(232,163,61,0.08); opacity:1; }
+.itin-choice-label{ font-family:var(--font-head); font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:0.3rem; }
+.itin-choice-option.selected .itin-choice-label{ color:var(--gold); font-weight:700; }
+.itin-choice-body{ display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; }
+.itin-choice-actions{ display:flex; align-items:center; gap:0.4rem; margin-top:0.45rem; }
+.itin-choice-actions .btn-add{ padding:0.3rem 0.6rem; font-size:0.7rem; }
+
 /* ---------------- packing ---------------- */
 .pack-cat{ font-family:var(--font-head); font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin:1rem 0 0.4rem; }
 .pack-cat:first-child{ margin-top:0; }

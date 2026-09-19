@@ -49,11 +49,28 @@ function itinSectionHtml(leg) {
   if (open) {
     body = (leg.days || []).map((day) => {
       const entries = legEntries(leg.id, day);
-      const mains = entries.filter((e) => e.kind === 'main');
-      const optionals = entries.filter((e) => e.kind === 'optional');
-      const transits = entries.filter((e) => e.kind === 'transit');
-      // Day-level status tag: whichever entry (in display order) carries one first.
-      const dayStatus = entries.find((e) => e.status) ? entries.find((e) => e.status).status : null;
+
+      // Entries sharing a choice_group_id are alternatives for one slot (same
+      // pattern as usa.itinerary_items.choice_group_id/is_selected) — rendered
+      // as an Option 1/Option 2 picker instead of two separate cards. Everything
+      // else (kind grouping, day status) only looks at the "active" set: plain
+      // standalone entries plus whichever option in each group is selected.
+      const standalone = entries.filter((e) => !e.choice_group_id);
+      const groupIds = [];
+      const groups = {};
+      entries.forEach((e) => {
+        if (!e.choice_group_id) return;
+        if (!groups[e.choice_group_id]) { groups[e.choice_group_id] = []; groupIds.push(e.choice_group_id); }
+        groups[e.choice_group_id].push(e);
+      });
+      const activeEntries = standalone.concat(groupIds.map((gid) => groups[gid].find((e) => e.is_selected) || groups[gid][0]));
+
+      const mains = standalone.filter((e) => e.kind === 'main');
+      const optionals = standalone.filter((e) => e.kind === 'optional');
+      const transits = standalone.filter((e) => e.kind === 'transit');
+      // Day-level status tag: whichever active entry (in display order) carries one first.
+      const statusSource = activeEntries.find((e) => e.status);
+      const dayStatus = statusSource ? statusSource.status : null;
       const statusTag = dayStatus
         ? '<span class="badge" style="background:' + (STATUS_COLOR[dayStatus] || STATUS_COLOR.PROPOSED) + ';margin-left:0.4rem;">' + esc(dayStatus) + '</span>'
         : '';
@@ -63,6 +80,25 @@ function itinSectionHtml(leg) {
         '<span style="flex:1;">' + esc(e.text) + '</span>' +
         '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button></div>'
       );
+
+      const choiceGroupHtml = groupIds.map((gid) => {
+        const options = groups[gid];
+        const cards = options.map((e, idx) => {
+          const selected = !!e.is_selected;
+          const optionStatus = e.status
+            ? '<span class="badge" style="background:' + (STATUS_COLOR[e.status] || STATUS_COLOR.PROPOSED) + ';">' + esc(e.status) + '</span>'
+            : '';
+          return '<div class="itin-choice-option ' + (selected ? 'selected' : '') + '">' +
+            '<div class="itin-choice-label">Option ' + (idx + 1) + (selected ? ' · Selected' : '') + '</div>' +
+            '<div class="itin-choice-body"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
+            '<span class="itin-main-text">' + esc(e.text) + '</span>' + optionStatus + '</div>' +
+            '<div class="itin-choice-actions">' +
+            (selected ? '' : '<button class="btn-add" data-action="select-choice" data-id="' + e.id + '" data-group="' + esc(gid) + '">Choose this</button>') +
+            '<button class="icon-btn" data-action="itin-delete" data-id="' + e.id + '" aria-label="Delete">🗑</button>' +
+            '</div></div>';
+        }).join('');
+        return '<div class="itin-choice-group">' + cards + '</div>';
+      }).join('');
 
       const mainHtml = mains.map((e) => (
         '<div class="itin-main-card"><span class="itin-time">' + esc(e.time_label || '—') + '</span>' +
@@ -75,7 +111,7 @@ function itinSectionHtml(leg) {
       )).join('');
       const optionalHtml = optionals.length ? optionals.map(entryRow).join('') : '';
 
-      const rows = entries.length === 0 ? '<div class="itin-empty">Nothing scheduled yet</div>' : mainHtml + transitHtml + optionalHtml;
+      const rows = entries.length === 0 ? '<div class="itin-empty">Nothing scheduled yet</div>' : choiceGroupHtml + mainHtml + transitHtml + optionalHtml;
       const key = leg.id + ':' + day;
       const draft = ui.itinDrafts[key] || { time: '', text: '' };
       return '<div class="itin-day"><div class="itin-daylabel">' + esc(day) + statusTag + '</div>' + rows +
@@ -210,6 +246,14 @@ function wire(main) {
       state.itineraryEntries = state.itineraryEntries.filter((e) => e.id !== id);
       rerender();
       await withErrorToast(() => db.itineraryEntries.remove(id));
+    } else if (action === 'select-choice') {
+      const gid = btn.dataset.group;
+      const siblings = state.itineraryEntries.filter((e) => e.choice_group_id === gid);
+      siblings.forEach((e) => { e.is_selected = e.id === btn.dataset.id; });
+      rerender();
+      await withErrorToast(() => Promise.all(
+        siblings.map((e) => db.itineraryEntries.update(e.id, { is_selected: e.is_selected }))
+      ));
     }
   });
 

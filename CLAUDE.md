@@ -276,6 +276,21 @@ activity (17 Nov Railay climbing; 19 Nov Muay Thai — the seed says Sinbi, a la
 pass said Maximum Fitness) both rows were kept rather than silently overwriting one —
 delete the stale one via the UI once you've confirmed which is right.
 
+**`itinerary_entries.choice_group_id`/`.is_selected` (2026-09-19).** Same pattern as
+`usa.itinerary_items.choice_group_id`/`.is_selected` (see the USA section above) —
+rows sharing a `choice_group_id` are alternatives for one slot, exactly one
+`is_selected = true`. Used to turn the two overlaps flagged just above into an
+"Option 1 / Option 2" picker instead of two silent near-duplicate cards: both
+columns are nullable/defaulted (`is_selected` defaults `true`), so every ungrouped
+row is unaffected. `views/itinerary.js` renders each group as `.itin-choice-group`
+→ `.itin-choice-option` cards (the selected one gets `.selected` + a "· Selected"
+label; the other gets a "Choose this" button, `data-action="select-choice"`) —
+clicking flips `is_selected` on both rows in the group in one write. Day-level
+`kind`/`status` grouping only looks at the *active* set (ungrouped rows + whichever
+option in each group is currently selected), so an unselected alternative never
+contributes a stray status tag. No UI exists yet to create a new choice group from
+scratch — only via migration, same as `kind`/`status` above.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.
