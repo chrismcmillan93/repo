@@ -405,8 +405,16 @@ a { color: inherit; }
 .meal-food-row + .meal-food-row { border-top: 1px solid var(--line); }
 .meal-food-top { display: flex; justify-content: space-between; gap: 8px; }
 .meal-food-name { font-size: 0.9rem; }
-.meal-food-weight { font-size: 0.82rem; color: var(--slate); white-space: nowrap; }
+.meal-food-qty { font-size: 0.82rem; color: var(--slate); white-space: nowrap; }
 .meal-food-macro { font-size: 0.78rem; color: var(--slate); margin-top: 1px; }
+
+/* Swap options (an alternative to a real food, never eaten alongside it --
+   e.g. dinner's salmon/chicken vs. its default mince) sit in their own
+   dashed-off group, dimmed slightly so the real, counted foods above read
+   as the actual plan at a glance. */
+.meal-food-swaps { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.meal-food-swaps-label { font-size: 0.78rem; color: var(--dawn); margin-bottom: 4px; }
+.meal-food-row.is-swap { opacity: 0.8; }
 
 /* ---------------- weight ---------------- */
 
