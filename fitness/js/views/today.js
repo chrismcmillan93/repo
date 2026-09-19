@@ -80,22 +80,55 @@ function fuelBarHtml(kind, label, consumed, target, unit){
     </div>`;
 }
 
-function mealRowHtml(meal, dayType, checked){
+// A meal's own foods breakdown (fitness.meal_foods, via get_day_bundle's
+// nested `foods`) is empty until that data is entered by hand -- fall back
+// to a single "food" built from the meal's own name/totals so the accordion
+// never opens onto a blank list before that data exists.
+function mealFoods(meal){
+  if (meal.foods && meal.foods.length) return meal.foods;
+  return [{ name: meal.name, weight_g: null, kcal: meal.kcal, protein_g: meal.protein_g, carbs_g: meal.carbs_g ?? 0, fat_g: meal.fat_g ?? 0 }];
+}
+
+function foodRowHtml(food){
+  const weight = food.weight_g != null ? `${food.weight_g}g` : '—';
+  return `
+    <li class="meal-food-row">
+      <div class="meal-food-top">
+        <span class="meal-food-name">${escapeHtml(food.name)}</span>
+        <span class="meal-food-weight">${escapeHtml(weight)}</span>
+      </div>
+      <div class="meal-food-macro">${food.kcal ?? 0} kcal · ${food.protein_g ?? 0}g protein · ${food.carbs_g ?? 0}g carbs · ${food.fat_g ?? 0}g fat</div>
+    </li>`;
+}
+
+// A collapsed-by-default accordion, not the old flat "05:30 · macros ·
+// name" row -- "Meal 1"/"Meal 2" plus a glanceable macro summary up top,
+// the actual foods (one row each, with weight in grams) only on expand.
+// Still a .tick-row underneath (kept alongside the new .meal-acc class) so
+// the existing generic tick-box wiring and computeTotals() selector need no
+// changes -- only the internal layout changed.
+function mealRowHtml(meal, dayType, checked, idx){
   const itemId = `meal:${dayType}:${meal.slot_order}`;
   const carbs = meal.carbs_g ?? 0;
   const fat = meal.fat_g ?? 0;
+  const foods = mealFoods(meal);
   return `
-    <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}" data-carbs="${carbs}" data-fat="${fat}">
-      <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark ${escapeHtml(meal.name)} as eaten"></button>
-      <div class="tick-body">
-        <div class="tick-top-line">
-          <span class="tick-time">${escapeHtml(meal.time_label)}</span>
-          <span class="tick-macro">${meal.kcal} kcal · ${meal.protein_g}g protein · ${carbs}g carbs · ${fat}g fat</span>
-        </div>
-        <div class="tick-name">${escapeHtml(meal.name)}</div>
+    <li class="tick-row meal-acc ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}" data-carbs="${carbs}" data-fat="${fat}">
+      <div class="meal-acc-header">
+        <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark Meal ${idx} as eaten"></button>
+        <button type="button" class="meal-acc-summary" aria-expanded="false">
+          <span class="meal-acc-title-row">
+            <span class="meal-acc-title">Meal ${idx} <span class="meal-acc-time">${escapeHtml(meal.time_label)}</span></span>
+            <span class="meal-acc-chevron" aria-hidden="true">⌄</span>
+          </span>
+          <span class="meal-acc-macro">${meal.kcal} kcal · ${meal.protein_g}g protein · ${carbs}g carbs · ${fat}g fat</span>
+        </button>
+        <span class="tick-status" aria-live="polite"></span>
+      </div>
+      <div class="meal-acc-body" hidden>
+        <ul class="meal-food-list">${foods.map(foodRowHtml).join('')}</ul>
         ${meal.notes ? `<div class="tick-notes">${escapeHtml(meal.notes)}</div>` : ''}
       </div>
-      <span class="tick-status" aria-live="polite"></span>
     </li>`;
 }
 
@@ -233,7 +266,7 @@ function renderMealsAndTraining(main, bundle){
   const mealsHtml = bundle.day_type
     ? `<section class="panel">
         <h2 class="panel-title">Meals</h2>
-        <ul class="tick-list">${(bundle.meals || []).map((m) => mealRowHtml(m, bundle.day_type, !!checks[`meal:${bundle.day_type}:${m.slot_order}`])).join('')}</ul>
+        <ul class="tick-list">${(bundle.meals || []).map((m, i) => mealRowHtml(m, bundle.day_type, !!checks[`meal:${bundle.day_type}:${m.slot_order}`], i + 1)).join('')}</ul>
       </section>`
     : '';
 
@@ -267,6 +300,17 @@ function renderMealsAndTraining(main, bundle){
       btn.setAttribute('aria-pressed', String(nowChecked));
       computeTotals(main, bundle);
       await saveCheck(row.dataset.itemId, nowChecked, statusEl);
+    });
+  });
+
+  // Expand/collapse a meal's foods list -- separate from the tick-box above,
+  // and independent of the checked state (opening a meal to look at it
+  // shouldn't mark it eaten, and ticking it shouldn't force it open).
+  qsa('.meal-acc-summary', main).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      qs('.meal-acc-body', btn.closest('.meal-acc')).hidden = expanded;
     });
   });
 }
