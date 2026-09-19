@@ -583,6 +583,48 @@ data — 10 meals' worth of `meal_foods` inserts plus the 8 `meal_templates`
 corrections, LIFT pre-workout and RUN pre-run left untouched since their
 totals already matched the CSV exactly).
 
+## Plan's meal templates now share Today's accordion, plus a day-total footer
+
+Follow-up: "do the same separation of food items on the plan page" (foods vs.
+swap options, matching Today) "and show totals at the bottom."
+
+**Extracted the accordion into `fitness/js/mealCard.js`**, shared by both
+views rather than duplicated — `mealFoods()`/`foodQtyLabel()`/`foodRowHtml()`
+(unchanged logic, just moved) plus `mealAccordionHtml(meal, idx, { itemId,
+checked })` and `wireMealAccordionToggles(root)`. `itemId` is how the two
+callers differ: Today passes one and gets the tick-box, checked state, and
+`data-*` attributes `computeTotals()` reads; Plan passes neither, so the
+card renders as a plain read-only reference — same "Meal N" title, time,
+macro summary, expand-to-see-foods-and-swaps, just nothing to tick.
+`today.js`'s `mealRowHtml()` is now a two-line wrapper over the shared
+function; its own copies of the food-rendering functions are gone.
+
+**Plan's meal-templates table is gone.** Each day type's meal list (under
+the existing Lift/Run/Rest tabs) is now the same accordion cards as Today,
+via `mealDayHtml()` in `plan.js`. This meant `db.mealTemplates.list()` had
+to start embedding `meal_foods` — it didn't before, since the old table
+only ever read the meal's own combined columns. Aliased to `foods` in the
+query (`select('*, foods:meal_foods(*)')`) rather than left as the table's
+own name, so both this direct query (Plan, and Week's meal list, which
+ignores the extra field) and `get_day_bundle()`'s RPC (Today) hand
+`mealCard.js` the exact same shape — one function, one expectation, not two
+call sites that happen to agree today and could silently drift apart later.
+
+**Day totals**: a footer line under each day type's meal list — "if you eat
+everything planned today, this is the total" — summing every meal's own
+`kcal`/`protein_g`/`carbs_g`/`fat_g` (already the real-foods-only figure;
+`meal_templates`' totals never included swap options to begin with, so
+summing them needs no extra filtering). Deliberately re-sums from each
+meal's own combined columns, not by flattening every meal's `foods` array
+and re-adding — the combined columns are the one place a meal's true total
+already lives; recomputing it a second way from the food list would risk
+disagreeing with itself if the two ever drifted.
+
+Old `.plan-meal-table`/`macroCell()`/`mealTableHtml()` removed outright (no
+call sites left); `.plan-meal-note` CSS removed too (its only user was the
+old table's meal-name cell, gone with it) — `.plan-week-focus`, which shared
+that rule, kept its own.
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,

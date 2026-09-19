@@ -9,6 +9,7 @@
 // mid-sentence in it.
 import { qs, qsa, escapeHtml, formatDateFull, dayTypeLabel, statusLabel,
   daysUntil, addDays, toast, friendlyError, debounce, round1, renderStatusPill } from '../utils.js';
+import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import * as offlineQueue from '../offlineQueue.js';
@@ -80,75 +81,11 @@ function fuelBarHtml(kind, label, consumed, target, unit){
     </div>`;
 }
 
-// A meal's own foods breakdown (fitness.meal_foods, via get_day_bundle's
-// nested `foods`) is empty until that data is entered by hand -- fall back
-// to a single "food" built from the meal's own name/totals so the accordion
-// never opens onto a blank list before that data exists.
-function mealFoods(meal){
-  if (meal.foods && meal.foods.length) return meal.foods;
-  return [{ name: meal.name, quantity: null, unit: null, kcal: meal.kcal, protein_g: meal.protein_g, carbs_g: meal.carbs_g ?? 0, fat_g: meal.fat_g ?? 0, is_swap_option: false }];
-}
-
-// Most quantities are grams ("250g", no space, matching the app's existing
-// "45g carbs" convention) but real data turned out to be mostly counts --
-// "6 whole" eggs, "2 medium" bananas, "1 scoop" -- shown as given rather
-// than converted into an invented gram figure.
-function foodQtyLabel(food){
-  if (food.quantity == null) return '—';
-  return food.unit === 'g' ? `${food.quantity}g` : `${food.quantity} ${food.unit}`;
-}
-
-function foodRowHtml(food){
-  return `
-    <li class="meal-food-row ${food.is_swap_option ? 'is-swap' : ''}">
-      <div class="meal-food-top">
-        <span class="meal-food-name">${escapeHtml(food.name)}</span>
-        <span class="meal-food-qty">${escapeHtml(foodQtyLabel(food))}</span>
-      </div>
-      <div class="meal-food-macro">${food.kcal ?? 0} kcal · ${food.protein_g ?? 0}g protein · ${food.carbs_g ?? 0}g carbs · ${food.fat_g ?? 0}g fat</div>
-    </li>`;
-}
-
-// A collapsed-by-default accordion, not the old flat "05:30 · macros ·
-// name" row -- "Meal 1"/"Meal 2" plus a glanceable macro summary up top,
-// the actual foods (one row each, with weight in grams) only on expand.
-// Still a .tick-row underneath (kept alongside the new .meal-acc class) so
-// the existing generic tick-box wiring and computeTotals() selector need no
-// changes -- only the internal layout changed.
+// Today's meal row is the shared Meal-N accordion (mealCard.js), just with
+// the tickable itemId/checked options Plan's read-only version omits.
 function mealRowHtml(meal, dayType, checked, idx){
   const itemId = `meal:${dayType}:${meal.slot_order}`;
-  const carbs = meal.carbs_g ?? 0;
-  const fat = meal.fat_g ?? 0;
-  const allFoods = mealFoods(meal);
-  // Swap options (e.g. dinner's salmon/chicken vs. its default mince) are an
-  // alternative to a real food, not eaten alongside it -- kept out of the
-  // main list and never counted toward the meal's own totals above, which
-  // already only sum the real foods.
-  const foods = allFoods.filter((f) => !f.is_swap_option);
-  const swaps = allFoods.filter((f) => f.is_swap_option);
-  return `
-    <li class="tick-row meal-acc ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}" data-kcal="${meal.kcal}" data-protein="${meal.protein_g}" data-carbs="${carbs}" data-fat="${fat}">
-      <div class="meal-acc-header">
-        <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark Meal ${idx} as eaten"></button>
-        <button type="button" class="meal-acc-summary" aria-expanded="false">
-          <span class="meal-acc-title-row">
-            <span class="meal-acc-title">Meal ${idx} <span class="meal-acc-time">${escapeHtml(meal.time_label)}</span></span>
-            <span class="meal-acc-chevron" aria-hidden="true">⌄</span>
-          </span>
-          <span class="meal-acc-macro">${meal.kcal} kcal · ${meal.protein_g}g protein · ${carbs}g carbs · ${fat}g fat</span>
-        </button>
-        <span class="tick-status" aria-live="polite"></span>
-      </div>
-      <div class="meal-acc-body" hidden>
-        <ul class="meal-food-list">${foods.map(foodRowHtml).join('')}</ul>
-        ${swaps.length ? `
-          <div class="meal-food-swaps">
-            <div class="meal-food-swaps-label">Or swap the protein for</div>
-            <ul class="meal-food-list">${swaps.map(foodRowHtml).join('')}</ul>
-          </div>` : ''}
-        ${meal.notes ? `<div class="tick-notes">${escapeHtml(meal.notes)}</div>` : ''}
-      </div>
-    </li>`;
+  return mealAccordionHtml(meal, idx, { itemId, checked });
 }
 
 // One tick for the whole session, same shape as a run/rest day -- this app
@@ -325,13 +262,7 @@ function renderMealsAndTraining(main, bundle){
   // Expand/collapse a meal's foods list -- separate from the tick-box above,
   // and independent of the checked state (opening a meal to look at it
   // shouldn't mark it eaten, and ticking it shouldn't force it open).
-  qsa('.meal-acc-summary', main).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      qs('.meal-acc-body', btn.closest('.meal-acc')).hidden = expanded;
-    });
-  });
+  wireMealAccordionToggles(main);
 }
 
 function renderWeight(main, bundle, weightCtx){

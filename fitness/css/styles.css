@@ -578,12 +578,25 @@ a { color: inherit; }
 .plan-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .plan-table th, .plan-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .plan-table th { color: var(--slate); font-weight: 500; font-size: 0.78rem; }
-.plan-meal-note, .plan-week-focus { color: var(--dawn); font-size: 0.78rem; margin-top: 2px; }
+.plan-week-focus { color: var(--dawn); font-size: 0.78rem; margin-top: 2px; }
 .plan-week-num { color: var(--slate); font-weight: 600; }
-/* The four macro columns never need to wrap -- keeps "45g" from breaking
-   mid-value on a narrow screen. The table already sits in .overflow-x, so
-   letting it run a little wide here is fine. */
-.plan-meal-table th:nth-child(n+3), .plan-meal-table td:nth-child(n+3) { white-space: nowrap; }
+
+/* Sits under a day type's meal list (Plan) -- what every meal on this day
+   type adds up to if all of it's eaten, same figure shape as everywhere
+   else macros are shown in this app. */
+.plan-day-totals {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+.plan-day-totals-label { color: var(--slate); font-weight: 600; }
+.plan-day-totals-figures { color: var(--paper); }
 
 /* A neutral tab/segmented control -- Plan's meal-templates day-type
    switcher. Not .status-btn's yes/partial/no colouring, which would read

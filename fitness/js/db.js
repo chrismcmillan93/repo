@@ -140,12 +140,16 @@ export const db = {
   },
 
   mealTemplates: {
+    // Aliased to `foods` (not the table's own name, `meal_foods`) so both
+    // this direct query (Plan, Week) and get_day_bundle()'s RPC (Today)
+    // hand mealCard.js's shared accordion the exact same shape.
     async list(blockId){
       const { data, error } = await supabase
         .from('meal_templates')
-        .select('*')
+        .select('*, foods:meal_foods(*)')
         .eq('block_id', blockId)
-        .order('slot_order');
+        .order('slot_order')
+        .order('order_num', { foreignTable: 'meal_foods' });
       checkError(error);
       return data || [];
     }
