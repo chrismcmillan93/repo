@@ -4,14 +4,22 @@
 // prep tasks and the shopping list, both checkable and both weekly-cadence
 // rather than daily.
 import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, formatDayLabel,
-  formatDateShort, statusLabel, todayStr, toast, friendlyError, renderStatusPill } from '../utils.js';
+  formatDateShort, statusLabel, todayStr, toast, friendlyError, renderStatusPill,
+  formatDistance, resolveSessionsForDay } from '../utils.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import { renderRoute } from '../router.js';
 import * as offlineQueue from '../offlineQueue.js';
 
-function dayTypeFromSession(sessionType){
-  return sessionType === 'upper' || sessionType === 'lower' ? 'lift' : sessionType === 'run' ? 'run' : sessionType === 'rest' ? 'rest' : null;
+// A day can have more than one resolved session now (Monday's AM lift + PM
+// intervals, Tuesday/Thursday's AM Muay Thai + PM run) -- lift beats run
+// beats rest for which meal set/target applies, matching get_day_bundle()'s
+// same priority. Muay Thai never sets day_type on its own.
+function dayTypeFromSessions(sessionsForDay){
+  if (sessionsForDay.some((s) => s.session_type === 'upper' || s.session_type === 'lower')) return 'lift';
+  if (sessionsForDay.some((s) => s.session_type === 'run')) return 'run';
+  if (sessionsForDay.some((s) => s.session_type === 'rest')) return 'rest';
+  return null;
 }
 
 function statusDotHtml(status){
@@ -19,15 +27,20 @@ function statusDotHtml(status){
   return `<span class="status-dot status-dot-${status}" title="${escapeHtml(statusLabel(status))}"></span>`;
 }
 
-// The training line: the session title, plus today's actual distance for a
-// run day (the session title alone -- "Run -- easy" -- doesn't say how far).
-function trainingLine(session, run){
-  if (!session) return null;
-  if (session.session_type === 'run' && run) {
-    const detail = run.detail ? `${run.distance_km}km, ${run.detail}` : `${run.distance_km}km ${run.effort}`;
-    return `${session.title} — ${detail}`;
-  }
-  return session.title;
+// The training line: every session's title for the day, joined -- plus the
+// run session's actual distance (the title alone, "Run -- easy", doesn't
+// say how far). Week is a compact glance-only reference (no ticks here),
+// so a two-session day still reads as one line rather than getting its own
+// full separation the way Today's tickable rows do.
+function trainingLine(sessionsForDay, run){
+  if (!sessionsForDay.length) return null;
+  return sessionsForDay.map((session) => {
+    if (session.session_type === 'run' && run) {
+      const detail = run.detail ? `${formatDistance(run.distance_km)}, ${run.detail}` : `${formatDistance(run.distance_km)} ${run.effort}`;
+      return `${session.title} — ${detail}`;
+    }
+    return session.title;
+  }).join(' + ');
 }
 
 // One row per slot_order for this day type. Same "a week-specific row wins
@@ -229,10 +242,6 @@ export async function render(main){
   const weekNumber = weekRow ? weekRow.week_number : null;
   const inBlock = (d) => block && d >= block.start_date && d <= block.end_date;
 
-  function sessionFor(dow){
-    const override = sessions.find((s) => s.day_of_week === dow && s.week_number === weekNumber);
-    return override || sessions.find((s) => s.day_of_week === dow && s.week_number === null);
-  }
   function targetFor(dayType){
     return weekNumber ? targets.find((t) => t.week_number === weekNumber && t.day_type === dayType) : null;
   }
@@ -242,13 +251,13 @@ export async function render(main){
 
   const rows = days.map((d, i) => {
     const dow = i + 1;
-    const session = inBlock(d) ? sessionFor(dow) : null;
-    const dayType = session ? dayTypeFromSession(session.session_type) : null;
+    const sessionsForDay = inBlock(d) ? resolveSessionsForDay(dow, weekNumber, sessions) : [];
+    const dayType = dayTypeFromSessions(sessionsForDay);
     const target = dayType ? targetFor(dayType) : null;
-    const run = dayType === 'run' ? runFor(dow) : null;
+    const run = sessionsForDay.some((s) => s.session_type === 'run') ? runFor(dow) : null;
     const log = logByDate[d];
     const isToday = d === today;
-    const training = session ? trainingLine(session, run) : (block ? '—' : 'Outside block');
+    const training = sessionsForDay.length ? trainingLine(sessionsForDay, run) : (block ? '—' : 'Outside block');
     const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
     const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `

@@ -1,6 +1,6 @@
 // The full block, read-only: goal, dates, week-by-week run progression,
 // lift prescriptions, meal templates per day type, and the standing rules.
-import { qs, qsa, escapeHtml, formatDateShort, todayStr, round1 } from '../utils.js';
+import { qs, qsa, escapeHtml, formatDateShort, todayStr, round1, formatDistance, resolveSessionsForDay } from '../utils.js';
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { db } from '../db.js';
 
@@ -59,23 +59,16 @@ function mealTabsHtml(active){
     </div>`;
 }
 
-// Resolution rule (matches fitness.get_day_bundle() and Week's sessionFor()):
-// the row for this exact week_number wins if one exists, otherwise fall
-// back to the standing week_number IS NULL row for that day_of_week. Never
-// render both -- a week with an override should show one session for that
-// day, not the override *and* the default underneath it.
-function resolveSession(dow, weekNumber, sessions){
-  return sessions.find((s) => s.day_of_week === dow && s.week_number === weekNumber)
-    || sessions.find((s) => s.day_of_week === dow && s.week_number === null)
-    || null;
-}
-
 function resolveRun(dow, weekNumber, runPlan){
   return runPlan.find((r) => r.day_of_week === dow && r.week_number === weekNumber) || null;
 }
 
-function sessionDayRowHtml(dow, session, run){
-  if (!session) {
+// A day can resolve to more than one session now (Monday's AM lift + PM
+// intervals, Tuesday/Thursday's AM Muay Thai + PM run) -- one .plan-
+// session-row per day still, but with one title/detail block per session
+// stacked inside it (the day label only shown once, next to the first).
+function sessionDayRowHtml(dow, sessionsForDay, run){
+  if (!sessionsForDay.length) {
     return `
       <li class="plan-session-row">
         <div class="plan-session-head">
@@ -84,29 +77,30 @@ function sessionDayRowHtml(dow, session, run){
         </div>
       </li>`;
   }
-  // Run days: join run_plan for this exact week+day so the distance/effort/
-  // detail is the real prescription for that week, not the session
-  // template's generic title ("Run — easy" doesn't say how far).
-  const runDetail = session.session_type === 'run' && run
-    ? (run.detail ? `${run.distance_km}km — ${run.detail}` : `${run.distance_km}km, ${run.effort}`)
-    : null;
-  return `
-    <li class="plan-session-row">
+  const blocks = sessionsForDay.map((session, i) => {
+    // Run days: join run_plan for this exact week+day so the distance/
+    // effort/detail is the real prescription for that week, not the
+    // session template's generic title ("Run — easy" doesn't say how far).
+    const runDetail = session.session_type === 'run' && run
+      ? (run.detail ? `${formatDistance(run.distance_km)} — ${run.detail}` : `${formatDistance(run.distance_km)}, ${run.effort}`)
+      : null;
+    return `
       <div class="plan-session-head">
-        <span class="plan-session-day">${DOW_LABEL[dow]}</span>
+        <span class="plan-session-day">${i === 0 ? DOW_LABEL[dow] : ''}</span>
         <span class="plan-session-title">${escapeHtml(session.title)}</span>
       </div>
-      ${runDetail ? `<p class="plan-session-summary">${escapeHtml(runDetail)}</p>` : (session.summary ? `<p class="plan-session-summary">${escapeHtml(session.summary)}</p>` : '')}
-    </li>`;
+      ${runDetail ? `<p class="plan-session-summary">${escapeHtml(runDetail)}</p>` : (session.summary ? `<p class="plan-session-summary">${escapeHtml(session.summary)}</p>` : '')}`;
+  }).join('');
+  return `<li class="plan-session-row">${blocks}</li>`;
 }
 
-// One resolved session per day -- not a raw dump of every session_templates
-// row (which would show a week's override *and* the standing default it
-// replaces, side by side, for the same day). The week heading/focus is
-// shown by the pager nav around this, not repeated here.
+// One resolved set of sessions per day -- not a raw dump of every
+// session_templates row (which would show a week's override *and* the
+// standing default it replaces, side by side, for the same day). The week
+// heading/focus is shown by the pager nav around this, not repeated here.
 function weekTrainingHtml(week, sessions, runPlan){
   const days = [1, 2, 3, 4, 5, 6, 7]
-    .map((dow) => sessionDayRowHtml(dow, resolveSession(dow, week.week_number, sessions), resolveRun(dow, week.week_number, runPlan)))
+    .map((dow) => sessionDayRowHtml(dow, resolveSessionsForDay(dow, week.week_number, sessions), resolveRun(dow, week.week_number, runPlan)))
     .join('');
   return `<ul class="plan-session-list">${days}</ul>`;
 }
@@ -130,7 +124,7 @@ function runWeekRowHtml(weekNumber, entries){
   const cell = (dow) => {
     const e = byDow[dow];
     if (!e) return '<td>—</td>';
-    const label = e.detail ? `${e.distance_km}km — ${e.detail}` : `${e.distance_km}km ${e.effort}`;
+    const label = e.detail ? `${formatDistance(e.distance_km)} — ${e.detail}` : `${formatDistance(e.distance_km)} ${e.effort}`;
     return `<td>${escapeHtml(label)}</td>`;
   };
   return `<tr><td class="plan-week-num">Wk ${weekNumber}</td>${cell(2)}${cell(4)}${cell(6)}${byDow[7] ? cell(7) : '<td>—</td>'}</tr>`;
