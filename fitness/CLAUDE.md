@@ -699,6 +699,38 @@ unit mentions inside arbitrary text risked losing precision or reading
 oddly ("3 × 0.6mi" is worse than "3 × 1km" for track intervals, which stay
 metric by convention regardless of a runner's overall unit preference).
 
+## REST day's per-food breakdown
+
+Chris sent REST day's real per-food breakdown (name/quantity/macros for all
+5 meals, targets 2,125 kcal / 190g protein floor, meals reconciling to
+~2,156 kcal) the same way as the original LIFT/RUN CSV. **By the time this
+was checked, it was already fully live** — `meal_templates` totals and
+`meal_foods` rows for every REST meal matched what an independent
+hand-calculation from his message produced, almost to the decimal. It has
+no corresponding entry in `list_migrations`, though — applied directly
+(SQL editor or similar), not through `apply_migration`, so the migrations
+folder had no record of it. Reconstructed as
+`fitness_load_rest_day_meal_foods` (RECONSTRUCTED, not the original
+migration text) from the live end-state, same convention as this file's
+other schema-drift notes. Verified end-to-end against a Playwright fixture
+built from the real live data: all 5 meals render, lunch's 4 foods and
+dinner's 3 real foods + 4 scaled swap options split correctly, and ticking
+every meal reconciles the Fuel panel to exactly 2,156 kcal.
+
+Same rates as LIFT/RUN for every matching food (eggs, banana, mince, rice,
+skyr, sweet potato) — only REST's own quantities differ (5 eggs not 6,
+250g mince at lunch not 300g, no CarbX/ABE pre-day). Dinner's swap
+proteins (salmon, chicken breast, chicken thigh) are scaled to REST's own
+300g default portion, not LIFT/RUN's 250g — matching the food they stand
+in for; the 2-egg add-on stays fixed regardless of portion size.
+
+**One estimate, not sourced data**: "cooked pepper & tomato" is part of
+REST's staple lunch but was never itemized in the original CSV (no matching
+row for any day type) — valued at ~40 kcal (150g) so the day's total lands
+on the ~2,156 kcal figure given as the reconciliation check, not from a
+real per-gram rate the way every other food here is. Worth confirming with
+Chris if he has the actual figure.
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
