@@ -626,6 +626,10 @@ a { color: inherit; }
 .plan-session-day { color: var(--slate); font-size: 0.8rem; min-width: 56px; }
 .plan-session-title { font-weight: 600; }
 .plan-session-summary { color: var(--slate); font-size: 0.85rem; margin: 4px 0; }
+/* A day with two sessions (Monday's lift + intervals, Tuesday/Thursday's
+   Muay Thai + run) stacks a second title/summary block under the first,
+   inside the same day row -- the day name only shows once. */
+.plan-session-head ~ .plan-session-head { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
 
 .plan-rules-list { margin: 0; padding-left: 20px; }
 .plan-rules-list li { margin-bottom: 8px; font-size: 0.92rem; }
