@@ -101,6 +101,37 @@ export function round1(n){
   return Math.round(n * 10) / 10;
 }
 
+// Training log is authored in km (run_plan.distance_km, plus the race
+// itself is a "10K") but shown in miles first -- both units shown together
+// rather than picking one, since converting on the fly loses the plan's
+// own authored figures. detail/effort free text (interval reps in metres,
+// "10K pace" as a race-pace reference) is left alone -- only the
+// structured distance column gets converted.
+export function formatDistance(km){
+  const miles = round1(km * 0.621371);
+  return `${miles}mi (${round1(km)}km)`;
+}
+
+// A day can have more than one session_templates row now (e.g. Monday's AM
+// upper lift + PM intervals, Tuesday/Thursday's AM Muay Thai + PM run).
+// Resolution is all-or-nothing per day, not per session_type: if any
+// week-specific row exists for this (day_of_week, week_number), every
+// week-specific row for that day applies and every week_number-IS-NULL
+// default for that day is discarded outright -- not just the one sharing a
+// session_type. That's what lets week 8 Sunday's race (session_type 'run')
+// fully replace the standing 'rest' default rather than sit alongside it,
+// while still letting a day with two *different* week-specific rows (the
+// actual "two sessions" case) show both. Mirrors the same rule in
+// get_day_bundle(). Muay Thai always sorts after the day's other session.
+const SESSION_TYPE_ORDER = { upper: 0, lower: 0, run: 1, rest: 2, muay_thai: 3 };
+export function resolveSessionsForDay(dow, weekNumber, sessions){
+  const forDay = sessions.filter((s) => s.day_of_week === dow);
+  const hasOverride = forDay.some((s) => s.week_number === weekNumber);
+  return forDay
+    .filter((s) => hasOverride ? s.week_number === weekNumber : s.week_number === null)
+    .sort((a, b) => (SESSION_TYPE_ORDER[a.session_type] ?? 9) - (SESSION_TYPE_ORDER[b.session_type] ?? 9));
+}
+
 let toastTimer = null;
 export function toast(message){
   const host = qs('#toast-host');

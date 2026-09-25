@@ -8,7 +8,7 @@
 // safe -- it is never destroyed and recreated while someone might be
 // mid-sentence in it.
 import { qs, qsa, escapeHtml, formatDateFull, dayTypeLabel, statusLabel,
-  daysUntil, addDays, toast, friendlyError, debounce, round1, renderStatusPill } from '../utils.js';
+  daysUntil, addDays, toast, friendlyError, debounce, round1, renderStatusPill, formatDistance } from '../utils.js';
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
@@ -88,9 +88,10 @@ function mealRowHtml(meal, dayType, checked, idx){
   return mealAccordionHtml(meal, idx, { itemId, checked });
 }
 
-// One tick for the whole session, same shape as a run/rest day -- this app
-// tracks "did the session happen", not set-by-set completion.
-function liftRowHtml(sessionType, checked){
+// One tick for the whole session, same shape for lift, Muay Thai and rest
+// days -- this app tracks "did the session happen", not set-by-set
+// completion, so a single generic row covers all three.
+function sessionTickRowHtml(sessionType, checked){
   const itemId = `session:${sessionType}`;
   return `
     <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}">
@@ -102,7 +103,7 @@ function liftRowHtml(sessionType, checked){
 
 function runRowHtml(run, sessionType, checked){
   const itemId = `session:${sessionType}`;
-  const detail = run.detail ? `${run.distance_km}km — ${run.detail}` : `${run.distance_km}km, ${run.effort}`;
+  const detail = run.detail ? `${formatDistance(run.distance_km)} — ${run.detail}` : `${formatDistance(run.distance_km)}, ${run.effort}`;
   return `
     <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${escapeHtml(itemId)}">
       <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark today's run as done"></button>
@@ -226,24 +227,27 @@ function renderMealsAndTraining(main, bundle){
       </section>`
     : '';
 
-  let trainingBody = '';
-  if (bundle.session) {
-    const st = bundle.session.session_type;
-    if (st === 'upper' || st === 'lower') {
-      trainingBody = `<ul class="tick-list">${liftRowHtml(st, !!checks[`session:${st}`])}</ul>`;
-    } else if (st === 'run' && bundle.run) {
-      trainingBody = `<ul class="tick-list">${runRowHtml(bundle.run, st, !!checks[`session:${st}`])}</ul>`;
+  // A day can now have more than one session (Monday's AM lift + PM
+  // intervals, Tuesday/Thursday's AM Muay Thai + PM run) -- each gets its
+  // own panel and its own tick, not folded into one shared row.
+  const trainingHtml = (bundle.sessions || []).map((session) => {
+    const st = session.session_type;
+    const checked = !!checks[`session:${st}`];
+    let body = '';
+    if (st === 'upper' || st === 'lower' || st === 'muay_thai') {
+      body = `<ul class="tick-list">${sessionTickRowHtml(st, checked)}</ul>`;
+    } else if (st === 'run' && session.run) {
+      body = `<ul class="tick-list">${runRowHtml(session.run, st, checked)}</ul>`;
     } else if (st === 'rest') {
-      trainingBody = `<ul class="tick-list">${restRowHtml(st, !!checks[`session:${st}`])}</ul>`;
+      body = `<ul class="tick-list">${restRowHtml(st, checked)}</ul>`;
     }
-  }
-  const trainingHtml = bundle.session
-    ? `<section class="panel">
-        <h2 class="panel-title">${escapeHtml(bundle.session.title)}</h2>
-        ${bundle.session.summary ? `<p class="panel-summary">${escapeHtml(bundle.session.summary)}</p>` : ''}
-        ${trainingBody}
-      </section>`
-    : '';
+    if (!body) return '';
+    return `<section class="panel">
+      <h2 class="panel-title">${escapeHtml(session.title)}</h2>
+      ${session.summary ? `<p class="panel-summary">${escapeHtml(session.summary)}</p>` : ''}
+      ${body}
+    </section>`;
+  }).join('');
 
   qs('#mealsAndTraining', main).innerHTML = mealsHtml + trainingHtml;
 

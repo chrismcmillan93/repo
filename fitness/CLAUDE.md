@@ -625,6 +625,112 @@ call sites left); `.plan-meal-note` CSS removed too (its only user was the
 old table's meal-name cell, gone with it) — `.plan-week-focus`, which shared
 that rule, kept its own.
 
+## Each training session gets its own tick; distances now show miles + km
+
+Two requests: "each training session should have its own tickbox, where
+there are two on a day you should separate them" and "update running
+distances to miles, not km (or show both)".
+
+**The real gap this surfaced**: Monday (weeks 2-8), Tuesday (weeks 3-8) and
+Thursday (weeks 2-8) each already had two real activities, but crammed into
+one `session_templates` row — "Upper lift + Intervals (PM)" (`session_type
+'upper'`), "Muay Thai + Easy run" / "Muay Thai + Long run" (`session_type
+'run'`). One row means one tick: Muay Thai was just text in a title/summary
+with no way to check it off separately from the run, and Monday's row being
+`session_type = 'upper'` meant `get_day_bundle()` derived `day_type =
+'lift'` and never joined `run_plan` at all for that day — **Monday's
+interval prescription was sitting in `run_plan` the whole time but was
+never reachable anywhere in the app.**
+
+**Schema**: added `'muay_thai'` to `session_templates.session_type`'s check
+constraint. The two partial unique indexes enforcing "exactly one row per
+`(day_of_week, week_number)`" — `session_templates_default` (null week) and
+`session_templates_override` (specific week) — were the actual blocker for
+having two rows on one day at all; both widened to include `session_type`,
+so a day can now hold one row per type (never two of the *same* type).
+`fitness_split_combined_sessions` then splits each combined row: the
+existing row keeps its `id`/`week_number` and is retitled to just its own
+activity ("Upper lift", "Easy run", "Long run"), a new row is inserted
+alongside it for the second activity ("Intervals (PM)", "Muay Thai").
+`run_plan` itself needed no changes — Monday's intervals data was already
+there, just unreachable.
+
+**`get_day_bundle()`: `session` (singular) → `sessions` (array).** Each
+session gets its own `exercises` and, for a `session_type = 'run'` row, its
+own nested `run` (previously a bundle-level key). Resolution is **all-or-
+nothing per day, not per session_type**: if any week-specific row exists
+for a `(day_of_week, week_number)`, every week-specific row for that day
+is the complete truth and every null-`week_number` default for that day is
+discarded outright — not just the one sharing a `session_type`. This has
+to work that way, not per-type: week 8 Sunday's race (`session_type
+'run'`) must still fully replace the standing `'rest'` default, a
+*different* type, not sit alongside it — a per-type precedence would have
+shown both. Within whichever set applies, different-type rows are
+independent and both kept; that's the actual "two sessions" case.
+`day_type` (which meal set/target applies) still needs exactly one answer
+even on a two-session day, via a fixed priority — **lift beats run beats
+rest** — computed off the same resolved set. Monday's AM lift + PM
+intervals is still a lift day for eating purposes; the run is a bonus,
+not what the day's food is planned around. Muay Thai never sets `day_type`
+on its own; every day it appears on already has a lift or run row that
+does. The client-side mirror of this same resolution lives in
+`resolveSessionsForDay()` (`utils.js`), shared by `plan.js` and `week.js`.
+
+**Rendering**: Today's `renderMealsAndTraining()` now maps over
+`bundle.sessions`, one `<section class="panel">` per session with its own
+tick — `liftRowHtml` renamed `sessionTickRowHtml` since it's now reused for
+`'upper'`/`'lower'`/`'muay_thai'` alike (it was already fully generic, just
+misleadingly named). Plan's `sessionDayRowHtml()` keeps one
+`.plan-session-row` (one `<li>`) per day but stacks a title/summary block
+per session inside it when there are two, day name shown once, a dashed
+divider between them. Week's `trainingLine()` joins every session's title
+with `" + "` into one compact line (Week has no ticks and is a glance-only
+reference, so full separation wasn't needed there — just not losing either
+session's info the way showing only one resolved session would).
+
+**Distances now show miles alongside km** (`formatDistance()` in
+`utils.js`, `"Xmi (Ykm)"`) everywhere a `run_plan.distance_km` figure is
+displayed — Today's run tick, Plan's Training split and 10K progression
+table, Week's training line. Deliberately **only the structured
+`distance_km` column** — `run_plan.detail`/`effort` free text (interval
+reps in metres — "8 x 400m", "10K pace" as a race-pace reference, not a
+distance to convert) is left exactly as authored; converting embedded
+unit mentions inside arbitrary text risked losing precision or reading
+oddly ("3 × 0.6mi" is worse than "3 × 1km" for track intervals, which stay
+metric by convention regardless of a runner's overall unit preference).
+
+## REST day's per-food breakdown
+
+Chris sent REST day's real per-food breakdown (name/quantity/macros for all
+5 meals, targets 2,125 kcal / 190g protein floor, meals reconciling to
+~2,156 kcal) the same way as the original LIFT/RUN CSV. **By the time this
+was checked, it was already fully live** — `meal_templates` totals and
+`meal_foods` rows for every REST meal matched what an independent
+hand-calculation from his message produced, almost to the decimal. It has
+no corresponding entry in `list_migrations`, though — applied directly
+(SQL editor or similar), not through `apply_migration`, so the migrations
+folder had no record of it. Reconstructed as
+`fitness_load_rest_day_meal_foods` (RECONSTRUCTED, not the original
+migration text) from the live end-state, same convention as this file's
+other schema-drift notes. Verified end-to-end against a Playwright fixture
+built from the real live data: all 5 meals render, lunch's 4 foods and
+dinner's 3 real foods + 4 scaled swap options split correctly, and ticking
+every meal reconciles the Fuel panel to exactly 2,156 kcal.
+
+Same rates as LIFT/RUN for every matching food (eggs, banana, mince, rice,
+skyr, sweet potato) — only REST's own quantities differ (5 eggs not 6,
+250g mince at lunch not 300g, no CarbX/ABE pre-day). Dinner's swap
+proteins (salmon, chicken breast, chicken thigh) are scaled to REST's own
+300g default portion, not LIFT/RUN's 250g — matching the food they stand
+in for; the 2-egg add-on stays fixed regardless of portion size.
+
+**One estimate, not sourced data**: "cooked pepper & tomato" is part of
+REST's staple lunch but was never itemized in the original CSV (no matching
+row for any day type) — valued at ~40 kcal (150g) so the day's total lands
+on the ~2,156 kcal figure given as the reconciliation check, not from a
+real per-gram rate the way every other food here is. Worth confirming with
+Chris if he has the actual figure.
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
