@@ -204,61 +204,84 @@ column at all), so both scopes use the same date-matching logic — the trip-wid
 export just passes a wider date range than the per-leg one, which avoids a booking
 on a leg-boundary date (e.g. a flight day) being duplicated across two leg sections.
 
-## Thailand tracker (`/thailand`, UAT rebuild at `/thailand/uat`)
+## Thailand tracker (`/thailand`)
 
-`thailand/index.html` is the **live** tracker for a group trip (Chris, Andrew, Craig,
-Dalz — Nov 2026): a single 1,490-line hand-written file that reads/writes the legacy
-`public.item_data`/`public.checkbox_states` tables (shared with `goals`), no dedicated
-schema, no RLS to speak of, no migrations. **Never edit it as part of UAT work** — it's
-production for that group and out of scope here.
+Group trip tracker for Chris, Andrew, Craig and Dalz — Nov 2026. Current architecture
+(2026-09-25): the `usa/`-style rebuild — modular ES modules, a dedicated Supabase
+schema applied only through migrations, real RLS — while keeping the original app's
+own teal/gold visual identity (the `usa/` American theme is that app's own look, not
+a shared skin).
 
-`thailand/uat/` (2026-09-11) is a from-scratch rebuild in the `usa/`-style
-architecture — modular ES modules, a dedicated Supabase schema applied only through
-migrations, real RLS — while keeping the live app's own teal/gold visual identity
-(the `usa/` American theme is that app's own look, not a shared skin). Served at
-`app.chris-mcmillan.co.uk/thailand/uat`, entirely additive: it never reads or writes
-`public`, `usa`, or `goals`, and the live `thailand/index.html` is untouched.
+**History, for context on anything that still references the old shape:**
+`thailand/index.html` used to be a single 1,490-line hand-written file reading/writing
+the legacy `public.item_data`/`public.checkbox_states` tables (shared with `goals`),
+no dedicated schema, no RLS, no migrations. A from-scratch rebuild landed alongside it
+at `thailand/uat/` (2026-09-11) as an isolated UAT area — entirely additive, never
+touching `public`/`usa`/`goals`, the original untouched. On 2026-09-25, once UAT had
+been checked against the live tracker for anything real it was missing (see "Promotion"
+below), it was **promoted to production**: the `thailand/uat/{index.html,css,js}` files
+moved up to replace `thailand/index.html`, and the old production file was archived at
+**`thailand/legacy/index.html`** (kept for reference, not served, not deleted) — its
+`public.item_data`/`checkbox_states` rows are also left alone in the database, just no
+longer read by anything. `thailand/uat/index.html` is now a one-line redirect stub to
+`/thailand/` so an old bookmarked UAT link doesn't 404. **Don't resurrect the old
+architecture or point anything back at `public.item_data`/`checkbox_states`** — that
+door is closed; extend the current schema instead.
 
 **Auth model is deliberately not `usa`'s.** This is a multi-person group trip with no
-per-account ownership, not one-trip-per-account — so instead of magic-link auth it
-originally had a shared PIN gate. That's **removed for now (2026-09-11)**, same as the
-live app's own history ("Passcode lock removed for now — app starts directly") — the
-app now starts straight into the shell. The gate's markup/CSS (`.pin-*` in
-`css/style.css`) is left in place to bring it back cheaply; `js/main.js` just calls
-`enterApp()` directly instead of gating on it. Either way — gated or not — the PIN was
-always a light deterrent against a stray link click, **never access control**: RLS
-grants the `anon` key full CRUD on every `thailand_uat` table (`"anon full access"`
-policies, `using (true) with check (true)`), a deliberate and permanent choice given
-there's no `auth.uid()` to key ownership off, not a transitional step like `usa` had
-pre-tightening. Revisit only if this ever needs real per-person accounts.
+per-account ownership, not one-trip-per-account — so instead of magic-link auth there's
+no auth at all: no PIN gate either (removed 2026-09-11, matching the old app's own
+history — "Passcode lock removed for now — app starts directly"). The gate's markup/CSS
+(`.pin-*` in `css/style.css`) is left in place to bring back cheaply if ever wanted;
+`js/main.js` just calls `enterApp()` directly. RLS grants the `anon` key full CRUD on
+every `thailand` table (`"anon full access"` policies, `using (true) with check (true)`),
+a deliberate and permanent choice given there's no `auth.uid()` to key ownership off,
+not a transitional step like `usa` had pre-tightening. Revisit only if this ever needs
+real per-person accounts.
 
 **Supabase:** same `dashboards-new` project or space as `usa`/`goals`, own schema
-**`thailand_uat`** — `trip` (single row), `legs`, `flight_legs`, `items` (the per-leg
-shortlist — cost in GBP + optional THB, rating, tags, address, category), `itinerary_entries`
-(day-by-day timeline per leg), `bookings` (pre-trip to-do checklist), `accommodations`
-(per-stay cost + a `paid` jsonb map per person), `packing_items`. `items` and
-`itinerary_entries` hang off `leg_id` rather than a direct `trip_id` column, so
-`db.js`'s `list()` for those two joins through `legs!inner(trip_id)` to stay scoped by
-trip the same "belt and suspenders" way every other list() is. Same one-time manual
-step as `usa`: `thailand_uat` must be added to Project Settings → Data API → "Exposed
-schemas" before the app can reach it (PostgREST 404s otherwise) — not doable via any
-MCP tool available to Claude.
+**`thailand`** (renamed from `thailand_uat` on promotion, 2026-09-25 — migration
+`thailand_promote_uat_to_production`) — `trip` (single row), `legs`, `flight_legs`,
+`items` (the per-leg shortlist — cost in GBP + optional THB, rating, tags, address,
+category), `itinerary_entries` (day-by-day timeline per leg), `bookings` (pre-trip
+to-do checklist), `accommodations` (per-stay cost + a `paid` jsonb map per person),
+`packing_items`. `items` and `itinerary_entries` hang off `leg_id` rather than a direct
+`trip_id` column, so `db.js`'s `list()` for those two joins through `legs!inner(trip_id)`
+to stay scoped by trip the same "belt and suspenders" way every other list() is. Same
+one-time manual step as `usa`: `thailand` must be in Project Settings → Data API →
+"Exposed schemas" (if the promotion migration hasn't been followed by updating that
+dashboard field from `thailand_uat` to `thailand`, every PostgREST call here 404s) —
+not doable via any MCP tool available to Claude.
 
-**Seed data is real, not placeholder.** Migration `thailand_uat_seed_trip_data` was
-generated by extracting the `FLIGHT`/`LOCATIONS`/`PARTY`/`seedItems()`/`seedBookings()`/
-`seedAirbnbs()`/`seedItinerary()`/`seedPacking()` constants straight out of the live
-`thailand/index.html` (78 shortlist items, 13 bookings, 5 stays, 7 itinerary entries, 23
-packing items, 5 legs, 5 flights) — so the UAT rebuild starts from the actual Nov 2026
-trip, not fixtures. If the live tracker's hardcoded data changes, this seed will drift;
-there's no sync between them.
+**Promotion data check (2026-09-25).** Before cutover, the live `public.item_data`
+overlay for `dashboard_id = 'thailand'` was checked for anything real that the
+2026-09-11 seed (pulled from the old app's *hardcoded JS constants*, not its database
+overlay) would have missed. Found: 2 test accommodation entries ("test", "TEST
+PROPERTY"), both already soft-deleted there, not ported; and **6 real packing items**
+the group had added (`eSIM`, `DJI Action 4 & accessories`, `Small power bank`, `Day
+bag / sling bag`, `Chalk`, `2x Electrolytes tubes`) — ported into `thailand.packing_items`
+in the same migration. The `checkbox_states` table's few non-default rows all turned
+out to reference booking IDs (`bk1`, `bk2a`, `kp1`) no longer present in the old app's
+*current* seed either — already-orphaned data the old app itself wasn't displaying by
+the time of promotion, left alone. If anything is ever found later that this check
+missed, it's still sitting in `public.item_data`/`checkbox_states` (untouched, not
+cleaned up) — `dashboard_id = 'thailand'` there.
 
-**Known gaps vs. the live app (accepted for this rebuild, not oversights):** item rows
-support toggle/add/delete/reorder but not the live app's full inline multi-field editor
-(rating, tags, description, address, day, reservation flag are all seeded and displayed,
-just not editable from the UI yet); bookings have no per-person "who's booked their own"
-sub-checkboxes yet (`bookings.booked_people` jsonb column exists, unused); accommodation
-supports per-person paid toggling but not adding a new stay from the UI. Extend `db.js` +
-the relevant `views/*.js` the same way the existing CRUD helpers are written.
+**Seed data is real, not placeholder.** Migration `thailand_uat_seed_trip_data`
+(predating the schema rename — name kept as originally applied, migrations aren't
+rewritten after the fact) was generated by extracting the `FLIGHT`/`LOCATIONS`/`PARTY`/
+`seedItems()`/`seedBookings()`/`seedAirbnbs()`/`seedItinerary()`/`seedPacking()`
+constants straight out of the old `thailand/index.html` (78 shortlist items, 13
+bookings, 5 stays, 7 itinerary entries, 23 packing items, 5 legs, 5 flights) — so this
+starts from the actual Nov 2026 trip, not fixtures.
+
+**Known gaps (accepted, not oversights):** item rows support toggle/add/delete/reorder
+but not a full inline multi-field editor (rating, tags, description, address, day,
+reservation flag are all seeded and displayed, just not editable from the UI yet);
+bookings have no per-person "who's booked their own" sub-checkboxes yet
+(`bookings.booked_people` jsonb column exists, unused); accommodation supports
+per-person paid toggling but not adding a new stay from the UI. Extend `db.js` + the
+relevant `views/*.js` the same way the existing CRUD helpers are written.
 
 **`itinerary_entries.kind`/`.status` (2026-09-19).** Added to support a richer
 day-by-day pass through the itinerary (one MAIN item highlighted per day, optional

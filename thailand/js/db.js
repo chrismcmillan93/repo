@@ -1,12 +1,13 @@
-// Thin data-access layer over the `thailand_uat` schema. Every function throws
+// Thin data-access layer over the `thailand` schema. Every function throws
 // on error (with the Supabase error message attached) so callers can toast it.
 //
 // Same house rule as usa/js/db.js: every list() is scoped to a trip id passed
 // explicitly by the caller (always state.trip.id), not just left to RLS — belt
-// and suspenders, even though this schema's RLS is currently wide open to the
-// anon key (see the thailand_uat_rls_and_grants migration for why). items and
-// itinerary_entries hang off legs rather than trip_id directly, so those two
-// join through legs!inner(trip_id) to stay scoped the same way.
+// and suspenders, even though this schema's RLS is wide open to the anon key
+// (see the thailand_uat_rls_and_grants migration, predating the schema rename,
+// for why). items and itinerary_entries hang off legs rather than trip_id
+// directly, so those two join through legs!inner(trip_id) to stay scoped the
+// same way.
 import { supabase } from './supabaseClient.js';
 
 function checkError(error) {

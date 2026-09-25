@@ -1,6 +1,7 @@
-/* Thailand trip tracker — UAT rebuild.
-   Keeps the live app's own teal/gold visual identity (see thailand/index.html's
-   tp- classes) rather than borrowing USA's American theme — each app in this repo
+/* Thailand trip tracker.
+   Keeps the original app's own teal/gold visual identity (see
+   thailand/legacy/index.html's tp- classes, the retired predecessor of this
+   rebuild) rather than borrowing USA's American theme — each app in this repo
    keeps its own look; what's shared with usa/ is the code architecture (modular
    JS, a real schema, a header/nav shell like this one) not the color palette. */
 
@@ -183,7 +184,6 @@ a{ color:var(--gold); }
 .toast{ position:fixed; left:50%; bottom:1.2rem; transform:translateX(-50%) translateY(20px); background:var(--red); color:var(--teal-deep); font-weight:700; font-size:0.78rem; padding:0.55rem 1rem; border-radius:999px; z-index:200; opacity:0; pointer-events:none; transition:opacity 0.2s ease, transform 0.2s ease; }
 .toast.is-visible{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-.uat-banner{ background:rgba(232,163,61,0.1); border-bottom:1px solid rgba(232,163,61,0.35); color:var(--gold); font-size:0.72rem; font-family:var(--font-head); font-weight:700; letter-spacing:0.04em; text-transform:uppercase; text-align:center; padding:0.4rem; }
 
 @media (max-width: 480px){
   .stub-dates{ gap:0.9rem; }

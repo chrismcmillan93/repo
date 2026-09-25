@@ -72,7 +72,7 @@ export const URGENCY_COLOR = { high: '#F0654A', medium: '#E8A33D', low: '#6FBF8C
 export const URGENCY_RANK = { high: 0, medium: 1, low: 2 };
 
 // Day-level status tag shown on the itinerary's main/optional/transit entries
-// (thailand_uat.itinerary_entries.status) — FIXED = confirmed/booked, PROPOSED =
+// (thailand.itinerary_entries.status) — FIXED = confirmed/booked, PROPOSED =
 // tentative plan, NEEDS BOOKING = still to sort. Colors echo URGENCY_COLOR's
 // semantics (green/gold/red) since they mean roughly the same thing.
 export const STATUS_COLOR = { FIXED: '#6FBF8C', PROPOSED: '#E8A33D', 'NEEDS BOOKING': '#F0654A' };
