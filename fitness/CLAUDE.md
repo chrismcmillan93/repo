@@ -731,6 +731,34 @@ on the ~2,156 kcal figure given as the reconciliation check, not from a
 real per-gram rate the way every other food here is. Worth confirming with
 Chris if he has the actual figure.
 
+## One-off single-day schedule adjustments
+
+A real-world pattern worth keeping in mind: because this block runs once
+(8 weeks, 2026-09-14 to 2026-11-08, no repeating cycle), a `(day_of_week,
+week_number)` pair with a specific `week_number` always identifies exactly
+one calendar date. That makes it the right tool for a genuine one-off
+change to a single day, not just for the "standing override that repeats
+every time this week comes around" case it was originally built for.
+
+Example (29 Sept, week 3 Tuesday): Chris missed Monday's upper lift and its
+evening intervals entirely, and moved the upper lift to Tuesday instead,
+with Tuesday's own evening run undecided between the normal easy run and
+Monday's missed intervals. Handled as:
+- A new `session_templates` row for `(day_of_week=2, week_number=3)`,
+  `session_type='upper'`, titled "Upper lift (make-up from Monday)" --
+  additive alongside Tuesday's existing sessions, touches no other Tuesday.
+- The Tuesday easy run's own `run_plan.detail` updated to note the
+  Monday-intervals alternative, rather than inventing a real choice-group
+  mechanism (which this schema doesn't have, unlike `usa`/`thailand_uat`'s
+  itinerary choice groups) for a single ambiguous day.
+- Nothing written to `daily_checks` -- that's Chris's own tap once he's
+  actually done it, not something to fill in on his behalf.
+
+Also pushed Tuesday's Muay Thai back one week (deleted the week-3 row,
+week 4's already-seeded row becomes the real start) and cleaned up every
+week's easy-run `detail` text that referenced the old "from Tue 29 Sept"
+start date, now wrong.
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
