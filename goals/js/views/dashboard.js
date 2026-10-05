@@ -143,7 +143,7 @@ function quickUpdateFormHtml(g) {
     <button type="button" class="quick-update-toggle" data-action="toggle-quick-update">+ Add update</button>
     <form class="quick-update-form" hidden data-quick-update-for="${g.id}">
       <textarea name="note" placeholder="What happened?" rows="2"></textarea>
-      ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="Value${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
+      ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="${g.cumulative ? 'Amount added' : 'Value'}${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
       <label class="picker-label">Confidence</label>
       ${pickerHtml(`qu-${g.id}`, '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
       <button type="submit" class="btn btn-primary btn-sm">Save update</button>
