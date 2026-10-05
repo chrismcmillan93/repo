@@ -41,6 +41,11 @@ export function renderRadar(areas, size = 280) {
   });
   const path = smoothClosedPath(pts);
 
+  // Labels can't be measured from a string renderer, so their extents are
+  // estimated and the viewBox grows to contain them — otherwise long area
+  // names anchored at a side spoke run off the SVG edge and get clipped.
+  let minX = 0, maxX = size, minY = 0, maxY = size;
+
   const dotsAndLabels = areas.map((a, i) => {
     const angle = angleFor(i);
     const v = a.value === null || a.value === undefined ? 0 : Math.max(0.04, Math.min(1, a.value));
@@ -48,15 +53,39 @@ export function renderRadar(areas, size = 280) {
     const lx = cx + labelR * Math.cos(angle), ly = cy + labelR * Math.sin(angle);
     const anchor = Math.cos(angle) > 0.25 ? 'start' : (Math.cos(angle) < -0.25 ? 'end' : 'middle');
     const valueLabel = a.value === null ? '—' : formatPercent(a.value);
+
+    const lines = wrapLabel(a.name);
+    const extra = (lines.length - 1) * LINE_H;
+    const sin = Math.sin(angle);
+    const firstY = ly - (sin < -0.3 ? extra : sin > 0.3 ? 0 : extra / 2);
+    const valueY = firstY + extra + 13;
+
+    const w = Math.max(...lines.map((l) => l.length)) * CHAR_W;
+    const left = anchor === 'start' ? lx : anchor === 'end' ? lx - w : lx - w / 2;
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, left + w);
+    minY = Math.min(minY, firstY - 10);
+    maxY = Math.max(maxY, valueY + 3);
+
+    const tspans = lines.map((l, j) => (
+      `<tspan x="${lx.toFixed(1)}" ${j ? `dy="${LINE_H}"` : ''}>${escapeHtml(l)}</tspan>`
+    )).join('');
     return `
       <circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="4.5" fill="${escapeHtml(a.colour)}" class="radar-dot"/>
-      <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-label">${escapeHtml(a.name)}</text>
-      <text x="${lx.toFixed(1)}" y="${(ly + 13).toFixed(1)}" text-anchor="${anchor}" class="radar-label-value" fill="${escapeHtml(a.colour)}">${valueLabel}</text>
+      <text x="${lx.toFixed(1)}" y="${firstY.toFixed(1)}" text-anchor="${anchor}" class="radar-label">${tspans}</text>
+      <text x="${lx.toFixed(1)}" y="${valueY.toFixed(1)}" text-anchor="${anchor}" class="radar-label-value" fill="${escapeHtml(a.colour)}">${valueLabel}</text>
     `;
   }).join('');
 
+  const pad = 4;
+  const vbX = Math.floor(minX - pad), vbY = Math.floor(minY - pad);
+  const vbW = Math.ceil(maxX + pad) - vbX, vbH = Math.ceil(maxY + pad) - vbY;
+  // Scale the CSS max-width with the viewBox so the wheel itself stays the
+  // same size on wide screens rather than shrinking to make room for labels.
+  const maxWidth = Math.round(340 * vbW / size);
+
   return `
-    <svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="Life balance wheel">
+    <svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" style="max-width:${maxWidth}px" class="radar-svg" role="img" aria-label="Life balance wheel">
       <defs>
         <radialGradient id="radarFill" cx="50%" cy="50%" r="65%">
           <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
@@ -69,6 +98,23 @@ export function renderRadar(areas, size = 280) {
       ${dotsAndLabels}
     </svg>
   `;
+}
+
+// Matches .radar-label's 9.5px semibold sans; CHAR_W errs wide so the
+// estimate over- rather than under-reserves room.
+const LINE_H = 11;
+const CHAR_W = 6;
+const WRAP_AT = 13;
+
+/** Greedy word wrap; a single word longer than WRAP_AT keeps its own line. */
+function wrapLabel(name) {
+  const lines = [];
+  for (const word of String(name).split(/\s+/).filter(Boolean)) {
+    const last = lines[lines.length - 1];
+    if (last && (last + ' ' + word).length <= WRAP_AT) lines[lines.length - 1] = last + ' ' + word;
+    else lines.push(word);
+  }
+  return lines.length ? lines : [''];
 }
 
 /** Closed Catmull-Rom spline through pts, rendered as cubic beziers. */
