@@ -447,9 +447,18 @@ a{ color: var(--accent); }
 .area-admin-order{ display:flex; flex-direction:column; gap:1px; flex-shrink:0; }
 .reorder-btn{ background:none; border:none; color: var(--ink-soft); cursor:pointer; font-size:0.7rem; padding:1px 4px; }
 .reorder-btn:disabled{ opacity:0.25; cursor:default; }
-.area-inline-form{ display:flex; align-items:center; gap:8px; flex:1; }
-.area-inline-form input[type="text"]{ flex:1; border:1px solid var(--line-strong); border-radius:8px; padding:7px 9px; font-size:0.88rem; font-weight:400; color:var(--ink); }
-.area-inline-form input[type="color"]{ width:30px; height:30px; padding:0; border:1px solid var(--line-strong); border-radius:8px; }
+.area-inline-form{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+.area-inline-form input[type="text"], .add-area-form input[type="text"]{ flex:1; min-width:0; border:1px solid var(--line-strong); border-radius:8px; padding:7px 9px; font-size:0.88rem; font-weight:400; color:var(--ink); background: var(--paper); }
+.area-inline-form input[type="color"], .add-area-form input[type="color"]{ flex-shrink:0; width:30px; height:30px; padding:0; border:1px solid var(--line-strong); border-radius:8px; }
+.add-area-form{ align-items:center; flex-wrap:nowrap; }
+@media (max-width: 560px){
+  /* Arrows + colour + name on one line, Save + Archive right-aligned below,
+     so the name keeps its full width instead of being squeezed by buttons. */
+  .area-admin-row{ flex-wrap:wrap; row-gap:6px; }
+  .area-inline-form{ display:contents; }
+  .area-inline-form input[type="text"]{ flex:1 1 calc(100% - 80px); }
+  .area-inline-form .btn{ margin-left:auto; }
+}
 .area-admin-name{ flex:1; font-size:0.9rem; }
 .archived-details{ margin-top:14px; font-size:0.85rem; color: var(--ink-soft); }
 .archived-details summary{ cursor:pointer; font-weight:600; }
