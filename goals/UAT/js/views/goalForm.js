@@ -44,7 +44,7 @@ function formHtml(areas, goal, prefill) {
   const g = goal || {
     area_id: areas[0].id, title: '', description: '', why: '',
     horizon: 'monthly', status: 'active', start_date: todayISO(), target_date: '',
-    measure_type: 'numeric', target_value: '', start_value: 0, unit: '', direction: 'increase',
+    measure_type: 'numeric', target_value: '', start_value: 0, unit: '', direction: 'increase', cumulative: false,
     priority: 3,
     ...prefill
   };
@@ -111,6 +111,10 @@ function formHtml(areas, goal, prefill) {
               <select name="direction">${DIRECTIONS.map((d) => opt(d, d === 'increase' ? 'Increasing' : 'Decreasing', g.direction)).join('')}</select>
             </label>
           </div>
+          <label class="checkbox-label">
+            <input type="checkbox" name="cumulative" ${g.cumulative ? 'checked' : ''}>
+            <span>Each update adds to the total <span class="field-hint">(e.g. savings: log £500 each time, not the running total)</span></span>
+          </label>
         </div>
 
         <div id="passfail-fields" ${passFailVisible ? '' : 'hidden'}>
@@ -199,6 +203,7 @@ function bindForm(root, areas, goal, isEdit, prefill) {
       payload.target_value = Number(fd.get('target_value'));
       payload.unit = fd.get('unit') || null;
       payload.direction = fd.get('direction');
+      payload.cumulative = fd.get('cumulative') === 'on';
     } else if (measureType === 'pass_fail') {
       const pfTarget = fd.get('pf_target_value');
       payload.target_value = pfTarget ? Number(pfTarget) : null;
