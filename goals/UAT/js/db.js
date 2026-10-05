@@ -226,6 +226,41 @@ export async function listAreaSummary() {
   return unwrap(await supabase.from('area_summary').select('*').order('sort_order', { ascending: true }));
 }
 
+// ---------------- fitness (Today's training card) ----------------
+// Same project, same signed-in account, so the dashboard reads and ticks
+// the Fitness app's schema through this client. Writes mirror
+// fitness/js/db.js's dailyChecks.upsert exactly, so a tick made here shows
+// in the Fitness app and vice versa.
+
+export async function getFitnessDay(dateISO) {
+  if (DEMO_MODE) return demoFitnessDay(dateISO);
+  return unwrap(await supabase.schema('fitness').rpc('get_day_bundle', { p_date: dateISO }));
+}
+
+export async function setFitnessCheck(dateISO, itemId, isChecked) {
+  if (DEMO_MODE) { demoFitnessChecks[itemId] = isChecked; return; }
+  unwrap(await supabase.schema('fitness').from('daily_checks')
+    .upsert({ user_id: requireUser(), log_date: dateISO, item_id: itemId, is_checked: isChecked },
+      { onConflict: 'user_id,log_date,item_id' })
+    .select().single());
+}
+
+// UAT has no Fitness backend: a fixed two-session day, ticks held in memory.
+const demoFitnessChecks = {};
+function demoFitnessDay(dateISO) {
+  return {
+    date: dateISO,
+    block: { id: 'demo-block', name: 'Demo block' },
+    day_type: 'lift',
+    checks: { ...demoFitnessChecks },
+    sessions: [
+      { session_type: 'run', title: 'Intervals (PM)', summary: 'Evening intervals.',
+        run: { distance_km: 8.5, effort: 'intervals', detail: '6 x 800m hard, 2 min jog recovery' } },
+      { session_type: 'upper', title: 'Upper lift', summary: 'On the gym floor at 06:00.', run: null }
+    ]
+  };
+}
+
 // ---------------- reviews ----------------
 
 export async function listPendingReviews() {

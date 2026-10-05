@@ -8,6 +8,7 @@ import { periodLabel, periodBoundsContaining, horizonToPeriodType } from '../per
 import { renderRadar } from '../charts/radar.js';
 import { renderPaceBar } from '../charts/paceBar.js';
 import { renderMomentumGrid } from '../charts/momentumGrid.js';
+import { loadTrainingDay, trainingCardHtml, bindTrainingCard } from './trainingCard.js';
 import {
   loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions, needsAttentionPillHtml,
   pickerHtml, bindPicker, areaDotHtml
@@ -16,10 +17,11 @@ import {
 export async function renderDashboard(root) {
   root.innerHTML = loadingHtml('Loading your goals…');
   try {
-    const [areas, goalsActive, pending] = await Promise.all([
+    const [areas, goalsActive, pending, trainingDay] = await Promise.all([
       db.listAreas(),
       db.listGoals({ status: 'active' }),
-      db.listPendingReviews().catch(() => [])
+      db.listPendingReviews().catch(() => []),
+      loadTrainingDay()
     ]);
 
     if (!areas.length) {
@@ -41,12 +43,14 @@ export async function renderDashboard(root) {
 
     root.innerHTML = [
       `<section class="card hero-card">${renderRadar(radarData(areas, goals))}</section>`,
+      trainingCardHtml(trainingDay),
       renderPendingReviewCards(pending, goals.length),
       renderGoalsSection(areas, goals),
       await renderMomentumSection(goals)
     ].join('');
 
     bindDashboardEvents(root, goals);
+    bindTrainingCard(root);
   } catch (err) {
     root.innerHTML = errorHtml(err) + hintIfSchemaMissing(err);
   }

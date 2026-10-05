@@ -1,11 +1,9 @@
 // Supabase client for the Goals & Progress app.
 //
 // This shares a Supabase project (and therefore an origin, and therefore
-// localStorage) with the anonymous Naples/Thailand dashboards elsewhere in
-// this repo. Those dashboards never call any auth method, so today there is
-// no live collision — but we still pin an explicit, distinct storageKey so
-// this app's session token can never be written to, or read from, the same
-// localStorage slot as anything else on this origin, now or if that changes.
+// localStorage) with the other apps in this repo. The session lives under an
+// explicit storageKey shared only with the Fitness app (see below), never
+// the default slot anything else on this origin might use.
 //
 // db.schema scopes every query through this client at `goals.*` — the
 // anon/publishable key below is the same one used by the dashboards; access
@@ -22,12 +20,27 @@ if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
   throw new Error('Supabase JS library not loaded — check the CDN <script> tag in index.html.');
 }
 
+// One sign-in for Goals and Fitness: both apps read/write the session under
+// this shared key (fitness/js/supabaseClient.js has the same block — keep
+// them in sync). Same project and same account, so one session serves both.
+// Each app's old per-app key is adopted once and then deleted — if it were
+// left behind, signing out would just re-adopt it on the next load.
+const SHARED_AUTH_KEY = 'cm-apps-auth';
+const LEGACY_AUTH_KEYS = ['goals-tracker-auth', 'fitness-auth'];
+try {
+  if (!localStorage.getItem(SHARED_AUTH_KEY)) {
+    const legacy = LEGACY_AUTH_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
+    if (legacy) localStorage.setItem(SHARED_AUTH_KEY, legacy);
+  }
+  LEGACY_AUTH_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch (_) { /* storage blocked (private mode etc.) — just sign in normally */ }
+
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   db: {
     schema: 'goals'
   },
   auth: {
-    storageKey: 'goals-tracker-auth',
+    storageKey: SHARED_AUTH_KEY,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true

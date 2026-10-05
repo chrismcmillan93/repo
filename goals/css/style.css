@@ -442,6 +442,21 @@ a{ color: var(--accent); }
 .yg-unit{ font-size:0.62rem; color: var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; }
 .yg-rating{ font-size:0.78rem; color: var(--warn); margin:0; text-align:center; }
 
+/* ---------- today's training (fitness) card ---------- */
+.training-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.training-open{ font-size:0.82rem; font-weight:600; color: var(--accent); text-decoration:none; white-space:nowrap; }
+.training-open:hover{ text-decoration:underline; }
+.training-list{ list-style:none; margin:0; padding:0; }
+.training-row{ padding:10px 0; border-top:1px solid var(--line); }
+.training-row:first-child{ border-top:none; }
+.training-check{ display:flex; align-items:flex-start; gap:11px; cursor:pointer; }
+.training-check input{ width:20px; height:20px; margin:2px 0 0; flex-shrink:0; accent-color: var(--accent); cursor:pointer; }
+.training-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.training-title{ font-size:0.95rem; font-weight:600; color: var(--ink); }
+.training-detail{ font-size:0.8rem; color: var(--ink-soft); line-height:1.4; }
+.training-row.is-done .training-title{ text-decoration:line-through; color: var(--ink-soft); }
+.training-error{ margin:8px 0 0; font-size:0.8rem; color: var(--error); }
+
 /* ---------- areas admin ---------- */
 .area-admin-list, .goal-admin-list{ list-style:none; margin:0 0 14px; padding:0; }
 .area-admin-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--line); }
