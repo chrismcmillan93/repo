@@ -281,6 +281,8 @@ a{ color: var(--accent); }
   font-size:0.95rem; color: var(--ink); background: var(--paper); font-weight:400;
 }
 .stacked-form textarea{ resize:vertical; min-height:52px; }
+.stacked-form label.checkbox-label{ flex-direction:row; align-items:flex-start; gap:8px; margin-top:12px; font-weight:500; color: var(--ink); }
+.stacked-form .checkbox-label input[type="checkbox"]{ padding:0; width:18px; height:18px; flex-shrink:0; margin:1px 0 0; accent-color: var(--accent); }
 .form-row{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
 .form-row label{ flex:1; min-width:120px; }
 .picker-label{ font-size:0.82rem; font-weight:600; color: var(--ink-soft); }

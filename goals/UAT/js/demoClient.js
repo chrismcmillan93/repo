@@ -41,7 +41,9 @@ function computeGoalProgress(store) {
     const hits = ups.filter((u) => Number(u.value) >= 1).length;
 
     let percentComplete = null;
-    const currentValue = latest && latest.value !== null && latest.value !== undefined ? Number(latest.value) : Number(g.start_value || 0);
+    const currentValue = g.measure_type === 'numeric' && g.cumulative
+      ? Number(g.start_value || 0) + ups.reduce((sum, u) => sum + (u.value === null || u.value === undefined ? 0 : Number(u.value)), 0)
+      : (latest && latest.value !== null && latest.value !== undefined ? Number(latest.value) : Number(g.start_value || 0));
     if (g.measure_type === 'numeric' && g.target_value !== null && g.target_value !== undefined && Number(g.target_value) !== Number(g.start_value)) {
       percentComplete = clamp01((currentValue - Number(g.start_value)) / (Number(g.target_value) - Number(g.start_value)));
     } else if (g.measure_type === 'milestone' && ms.length > 0) {
