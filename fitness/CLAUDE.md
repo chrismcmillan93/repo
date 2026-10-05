@@ -759,6 +759,31 @@ week 4's already-seeded row becomes the real start) and cleaned up every
 week's easy-run `detail` text that referenced the old "from Tue 29 Sept"
 start date, now wrong.
 
+## One sign-in with Goals, and Goals' "Today's training" card
+
+Goals is the home screen; Fitness is a section of it (2026-10-05). Three
+links between the apps, nothing merged:
+
+- **Shared session.** Both `fitness/js/supabaseClient.js` and
+  `goals/js/supabaseClient.js` (+ `goals/UAT/`) use storageKey
+  `cm-apps-auth`. Chris's one account (`chris@…`) owns both apps' data, so
+  one session serves both; signing out of either signs out of both. On load
+  each client adopts an old per-app session (`fitness-auth` /
+  `goals-tracker-auth`) if the shared slot is empty, then **deletes both old
+  keys** — leaving them would make sign-out undo itself on the next load.
+  Keep the two blocks identical. Test fixtures that seed `fitness-auth`
+  still work (adopted on load).
+- **Links.** "Fitness ›" in the Goals menu; "‹ Goals" in Fitness's top bar.
+- **Card.** `goals/js/views/trainingCard.js` shows today's
+  `get_day_bundle()` sessions under the Goals balance wheel, tickable. It
+  reads/writes through Goals' client with `.schema('fitness')`, writing
+  `daily_checks` in exactly `db.dailyChecks.upsert`'s shape (`item_id`
+  `session:<type>`, `onConflict user_id,log_date,item_id`), dated by
+  **local** date like `todayStr()` (Goals' own `todayISO()` is UTC). So:
+  **changing session tick ids or `get_day_bundle()`'s `sessions` shape here
+  breaks that card too.** It hides itself outside a block or if the fetch
+  fails; no offline queue (a failed tick reverts and says so).
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,

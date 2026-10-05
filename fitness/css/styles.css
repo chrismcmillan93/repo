@@ -75,7 +75,12 @@ a { color: inherit; }
   color: var(--slate);
 }
 
+.utility-bar .signed-in-as { margin-left: auto; margin-right: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.home-link { color: var(--paper); text-decoration: none; font-weight: 600; padding: 6px 0; flex-shrink: 0; margin-right: 12px; }
+.home-link:hover { color: var(--dawn); }
+
 .signout-btn {
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--line);
   color: var(--slate);
