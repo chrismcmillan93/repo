@@ -3,20 +3,14 @@
 // this card and the Fitness app's Today screen always agree.
 
 import * as db from '../db.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, todayISO } from '../utils.js';
 
 // Same display order as fitness/js/utils.js resolveSessionsForDay().
 const SESSION_TYPE_ORDER = { upper: 0, lower: 0, run: 1, rest: 2, muay_thai: 3 };
 
-/** Local calendar date, matching the Fitness app — not UTC, which is a day behind just after midnight in BST. */
-export function localTodayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 /** Fetches today's bundle; resolves to null on any failure so the dashboard still renders. */
 export function loadTrainingDay() {
-  const date = localTodayISO();
+  const date = todayISO();
   return db.getFitnessDay(date).then((bundle) => (bundle ? { ...bundle, date } : null)).catch((err) => {
     console.warn('Today\'s training card unavailable:', err && err.message);
     return null;
