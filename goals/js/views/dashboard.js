@@ -194,7 +194,7 @@ function lastNMonths(n) {
   const out = [];
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() - i, 1));
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     const label = d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
     out.push({ key, label });

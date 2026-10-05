@@ -8,7 +8,9 @@ export function escapeHtml(str) {
 }
 
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  // Local calendar date, not UTC — UTC is still "yesterday" until 1am in BST.
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /** 'YYYY-MM-DD' -> 'DD/MM/YYYY' (en-GB), tolerant of null/invalid input. */

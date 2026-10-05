@@ -10,6 +10,8 @@
 // than reading a frozen snapshot — otherwise adding an update would never
 // move a pace bar or hit-rate in preview.
 
+import { todayISO } from './utils.js';
+
 function matchesFilters(row, filters) {
   return filters.every((f) => {
     if (f.op === 'eq') return row[f.col] === f.val;
@@ -24,7 +26,6 @@ function matchesFilters(row, filters) {
 function makeId() { return 'demo-' + Math.random().toString(36).slice(2, 10); }
 
 function clamp01(n) { return Math.max(0, Math.min(1, n)); }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
 function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 
 // Mirrors goals.goal_progress (see the migration that created it) exactly,

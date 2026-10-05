@@ -779,7 +779,7 @@ links between the apps, nothing merged:
   reads/writes through Goals' client with `.schema('fitness')`, writing
   `daily_checks` in exactly `db.dailyChecks.upsert`'s shape (`item_id`
   `session:<type>`, `onConflict user_id,log_date,item_id`), dated by
-  **local** date like `todayStr()` (Goals' own `todayISO()` is UTC). So:
+  **local** date (Goals' `todayISO()`, same as Fitness's `todayStr()`). So:
   **changing session tick ids or `get_day_bundle()`'s `sessions` shape here
   breaks that card too.** It hides itself outside a block or if the fetch
   fails; no offline queue (a failed tick reverts and says so).
