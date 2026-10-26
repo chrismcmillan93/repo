@@ -8,6 +8,20 @@ Supabase straight from the browser with the anon key — there is no Next.js, no
 no package.json anywhere in this repo, and none should be added without discussing it
 first (a static-hosting deploy and a framework build step are two different projects).
 
+## Supabase keep-alive
+
+Both projects (`dashboards-new` and `walking-up-hills`, the latter used by `wainwrights/`)
+are on the free tier and get auto-paused after ~7 days without activity. A pg_cron job
+running `select 1` turned out **not** to count: Supabase still sent a pause warning
+(2026-10-26) while it ran fine, because it never goes through the API. Current setup:
+- `.github/workflows/supabase-keepalive.yml`: a daily GitHub Actions job that makes a real
+  REST request to each project with the public anon key. This is the main defence. It is a
+  scheduled job, not a build step. GitHub only runs scheduled workflows from `main`, and
+  turns them off after 60 days with no repo activity.
+- A daily `keep-alive-daily-rest-ping` pg_cron job in each project that uses pg_net to call
+  its own REST URL (migrations `*_keepalive_daily_rest_ping`). This is the backup.
+`walking-up-hills` migrations from now on live in `supabase/walking-up-hills/migrations/`.
+
 ## USA trip planner (`/usa`)
 
 A single-traveller trip planner for a 14-night USA trip in May 2027, replacing a
