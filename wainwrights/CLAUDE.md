@@ -28,8 +28,14 @@ starts within 12 miles (car-camping weekend).
   or to the one named in `PLANNER_BASE_OVERRIDES` where straight-line nearest
   is the wrong side of a ridge. Fells sharing a base are chained greedily
   (hops ≤ 2 mi, loop ≤ 13 mi, ≤ 5 summits). Distance = straight-line loop ×
-  1.3; ascent = base → highest summit + an allowance per extra summit. Shown
-  with "~" and an "estimates" note, and no route link. Result: 17 named + ~62
+  1.3; ascent = base → highest summit + an allowance per extra summit.
+  Each suggested walk is then matched to a real AllTrails route
+  (`PLANNER_ALLTRAILS`, keyed by the walk's highest fell, found via the
+  AllTrails search 2026-10-29): its distance, ascent, route type and link
+  replace the estimate. The AllTrails route may include extra summits or skip
+  one of the walk's fells, so the card names it. A walk with no entry falls
+  back to the estimate, shown with "~" and an "estimates" note. Changing the
+  bases or overrides can change a walk's highest fell — re-check the matches. Result: 17 named + ~62
   suggested walks covering all 214 fells. Fix a bad suggestion by adding an
   override, not by editing the algorithm.
 - **Results:** top 8 for the chosen day, then "Show all N walks". Every card

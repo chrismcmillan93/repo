@@ -15,7 +15,20 @@ They just need their keys:
 - [ ] **Test planner:** enter your postcode; drive times should no longer say "estimate".
       Sanity-check the start points / distances for walks you know.
 
-## 2. Wainwrights as an installable phone app (PWA)
+## 2. Host a hike (to work out on Saturday)
+
+Idea: let a Wainwrights user host a walk others can join — e.g. pick a walk from the planner,
+set a date, meeting point (the parking link) and spaces, and share it. Open questions to settle:
+
+- [ ] Who can see a hosted hike — friends/team only, anyone with the link, or public on the app?
+- [ ] Joining: request + host approves, or first come first served? Waitlist?
+- [ ] What joiners see: meeting point, time, route, host's contact — and what stays private.
+- [ ] Notifications (email when someone joins / the hike changes) — needs an email provider.
+- [ ] Safety basics: kit list, turnaround time, cancel-for-weather by the host.
+- [ ] Ticking fells for everyone who went, after the walk.
+- [ ] Fits the existing teams feature? (`teams` / `team_members` already exist on walking-up-hills.)
+
+## 3. Wainwrights as an installable phone app (PWA)
 
 Paste this into Claude Code (repo `chrismcmillan93/repo`, `beta` branch):
 

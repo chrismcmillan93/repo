@@ -84,8 +84,15 @@
         const extra = chain.filter(f => f !== top).reduce((s, f) => s + Math.max(60, 0.35 * (f.m - 300)), 0);
         const ascent = Math.round((Math.max(100, top.m - base.elev) + extra) / 10) * 10;
         const names = chain.map(f => f.name);
+        const at = (typeof PLANNER_ALLTRAILS !== "undefined") && PLANNER_ALLTRAILS[top.name];
         const label = (names.length === 1 ? names[0] : names.slice(0, -1).join(", ") + " & " + names[names.length - 1]) + " from " + base.name.split(",")[0];
-        out.push({
+        out.push(at ? {
+          // A real AllTrails route: use its distance, ascent and link.
+          id: "gen_" + base.key + "_" + out.length, generated: true, alltrails: at, label, url: at.url,
+          start: { key: base.key, name: base.name, lat: base.lat, lng: base.lng },
+          miles: at.miles, ascent: at.ascent, linear: at.type !== "Circular",
+          fells: chain, top, hours: naismith(at.miles, at.ascent)
+        } : {
           id: "gen_" + base.key + "_" + out.length, generated: true, label, url: null,
           start: { key: base.key, name: base.name, lat: base.lat, lng: base.lng },
           miles, ascent, fells: chain, top, hours: naismith(miles, ascent)
@@ -386,6 +393,7 @@
 
   function walkCardHtml(r, rank){
     const w = r.w, wx = r.wx, d = r.d;
+    const est = w.generated && !w.alltrails ? "~" : "";
     const fellChips = w.fells
       .slice().sort((a, b) => b.m - a.m)
       .map(f => `<span class="chal-chip ${climbed[f.name] ? "is-done" : "is-new"}">${esc(f.name)}</span>`).join("");
@@ -403,13 +411,13 @@
     return `
       <article class="chal-card plan-walk">
         <h3><span class="plan-rank">${rank}</span>${esc(w.label)}</h3>
-        <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fell${w.fells.length === 1 ? "" : "s"} · ${w.generated ? "~" : ""}${w.miles} mi · ${w.generated ? "~" : ""}${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.linear ? " · one-way" : ""}</p>
-        ${w.generated ? '<p class="plan-est">Suggested walk — distance, ascent and route are estimates. Plan the line on a map.</p>' : ""}
+        <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fell${w.fells.length === 1 ? "" : "s"} · ${est}${w.miles} mi · ${est}${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.alltrails ? " · " + esc(w.alltrails.type.toLowerCase()) : w.linear ? " · one-way" : ""}</p>
+        ${w.alltrails ? `<p class="plan-est">AllTrails route: ${esc(w.alltrails.name)}</p>` : w.generated ? '<p class="plan-est">Suggested walk — distance, ascent and route are estimates. Plan the line on a map.</p>' : ""}
         ${wxTxt}
         <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         <div class="chal-fell-list">${fellChips}</div>
-        ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">Route details ↗</a>` : ""}
+        ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}
       </article>`;
   }
 
