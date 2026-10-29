@@ -37,9 +37,21 @@
   const naismith = (miles, ascent) => miles / 3 + ascent / 600;
 
   // Named rounds from the tracker (planner-walks.js).
+  const AT_BASE = "https://www.alltrails.com/en-gb/trail/england/cumbria/";
   const namedWalks = Object.entries(PLANNER_WALKS).map(([id, w]) => {
     const fells = Object.values(fellsByName).filter(f => (f.routes || []).includes(id));
-    return Object.assign({ id, fells, top: topOf(fells), hours: naismith(w.miles, w.ascent) }, w);
+    const a = (typeof PLANNER_ALLTRAILS_NAMED !== "undefined") && PLANNER_ALLTRAILS_NAMED[id];
+    const base = Object.assign({ id, fells, top: topOf(fells) }, w);
+    if (a) {
+      // Real AllTrails figures and link; the original guide becomes a second link.
+      Object.assign(base, {
+        alltrails: { name: a.name, url: AT_BASE + a.slug, type: a.type },
+        guideUrl: w.url, url: AT_BASE + a.slug,
+        miles: a.miles, ascent: a.ascent, linear: a.type !== "Circular"
+      });
+    }
+    base.hours = naismith(base.miles, base.ascent);
+    return base;
   }).filter(w => w.fells.length && w.top);
 
   // Suggested walks for every fell no named round covers: each fell goes to
@@ -417,7 +429,7 @@
         <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         <div class="chal-fell-list">${fellChips}</div>
-        ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}
+        ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
       </article>`;
   }
 

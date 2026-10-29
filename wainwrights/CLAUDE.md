@@ -29,7 +29,9 @@ starts within 12 miles (car-camping weekend).
   is the wrong side of a ridge. Fells sharing a base are chained greedily
   (hops ≤ 2 mi, loop ≤ 13 mi, ≤ 5 summits). Distance = straight-line loop ×
   1.3; ascent = base → highest summit + an allowance per extra summit.
-  Each suggested walk is then matched to a real AllTrails route
+  Named rounds use `PLANNER_ALLTRAILS_NAMED` (by route id) the same way, keeping
+  their original guide as a second "Route guide" link. Each suggested walk is
+  matched to a real AllTrails route
   (`PLANNER_ALLTRAILS`, keyed by the walk's highest fell, found via the
   AllTrails search 2026-10-29): its distance, ascent, route type and link
   replace the estimate. The AllTrails route may include extra summits or skip

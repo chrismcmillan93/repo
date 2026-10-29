@@ -1410,3 +1410,4 @@
   .plan-pair-note{ font-size: 14px; color: var(--ink-soft); margin: 0 0 4px; }
   .plan-maps{ display: inline-block; font-family: var(--font-mono); font-size: 11.5px; color: var(--tarn); margin: -2px 0 10px; }
   .plan-est{ font-size: 12px !important; color: var(--ink-faint) !important; font-style: italic; margin: -4px 0 8px !important; }
+  .plan-guide{ margin-left: 14px; }

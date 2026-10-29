@@ -181,3 +181,26 @@ const PLANNER_ALLTRAILS = {
   "Burnbank Fell": { name: "Burnbank Fell Circular", url: "https://www.alltrails.com/en-gb/trail/england/cumbria/burnbank-fell-circular", miles: 3.4, ascent: 270, type: "Circular" },
   "Mellbreak": { name: "Mellbreak and Crummock Water Circular", url: "https://www.alltrails.com/en-gb/trail/england/cumbria/mellbreak-and-crummock-water-circular", miles: 6.9, ascent: 473, type: "Circular" }
 };
+
+// AllTrails routes for the named rounds above, keyed by route id (found
+// 2026-10-29). Their distance/ascent replace the typical figures; the
+// original guide link (url above) is kept as a second link.
+const PLANNER_ALLTRAILS_NAMED = {
+  coniston_horseshoe:      { name: "Dixon Ground, Old Man of Coniston, Swirl How, and Wetherlam Circular", slug: "dixon-ground-old-man-of-coniston-swirl-how-and-wetherlam-circular", miles: 9.0, ascent: 987, type: "Circular" },
+  bowfell_crinkles:        { name: "Esk Pike, Bowfell, and Crinkle Crags Circular", slug: "esk-pike-bowfel-and-crinkle-crags-circular", miles: 9.8, ascent: 994, type: "Circular" },
+  scafell_traverse:        { name: "Wasdale Head and Scafell Pike Circular", slug: "wasdale-head-and-scafell-pike-circular", miles: 7.3, ascent: 925, type: "Circular" },
+  wasdale_screes:          { name: "Illgill Head and Whin Rigg", slug: "illgill-head-and-whin-rigg", miles: 9.0, ascent: 657, type: "Circular" },
+  glaramara_ridge:         { name: "Glaramara, Red Beck Top, and Allen Crags Circular", slug: "glaramara-red-beck-top-and-allen-crags-circular", miles: 9.4, ascent: 828, type: "Circular" },
+  fairfield_horseshoe:     { name: "Fairfield Horseshoe via Stone Arthur", slug: "fairfield-horseshoe-with-stone-arthur", miles: 11.8, ascent: 1171, type: "Circular" },
+  helvellyn_striding_edge: { name: "Helvellyn, Striding Edge and Swirral Edge Circular", slug: "helvellyn-swirrel-edge-and-striding-edge-circular", miles: 8.0, ascent: 852, type: "Circular" },
+  dodds_traverse:          { name: "Wanthwaite to High Broadrayne via Clough Head and Helvellyn", slug: "wanthwaite-to-high-broadrayne-via-clough-head-and-helvellyn", miles: 13.4, ascent: 1604, type: "Point-to-point" },
+  kentmere_horseshoe:      { name: "Kentmere Horseshoe Circular", slug: "kentmere-horseshoe-circular", miles: 11.7, ascent: 1001, type: "Circular" },
+  langdale_pikes:          { name: "Langdale Pikes: Pike of Stickle, Pavey Ark, and Harrison Stickle", slug: "langdale-pikes-pavey-ark-harrison-stickle-and-pike-of-stickle-circular", miles: 5.7, ascent: 743, type: "Circular" },
+  skiddaw_horseshoe:       { name: "Ullock Pike, Long Side, Carl Side, Skiddaw and Bakestall Circular", slug: "ullock-pike-long-side-carl-side-skiddaw-and-bakestall-circular", miles: 7.3, ascent: 865, type: "Circular" },
+  mungrisdale_round:       { name: "Souther Fell, Mungrisdale Common, Bannerdale Crags, and Bowscale Fell", slug: "souther-fell-mungrisdale-common-bannerdale-crags-and-bonscale-fell", miles: 10.4, ascent: 713, type: "Circular" },
+  coledale_round:          { name: "The Coledale Horseshoe", slug: "the-coledale-horseshoe", miles: 9.3, ascent: 1174, type: "Circular" },
+  newlands_round:          { name: "Catbells to Robinson via Maiden Moor, High Spy, and Dale Head", slug: "catbells-to-robinson-via-maiden-moor-high-spy-and-dale-head", miles: 11.8, ascent: 1155, type: "Circular" },
+  buttermere_horseshoe:    { name: "Fleetwith Pike, Haystacks, High Stile, and Red Pike Circular", slug: "fleetwith-pike-haystacks-high-stile-and-red-pike-circular", miles: 9.6, ascent: 1170, type: "Circular" },
+  mosedale_horseshoe:      { name: "Mosedale Horseshoe: Steeple, Pillar, and Yewbarrow Circular", slug: "mosedale-horseshoe-steeple-pike-and-yewbarrow-circular", miles: 11.1, ascent: 1184, type: "Circular" },
+  great_gable_group:       { name: "Base Brown, Great Gable, Kirk Fell and Grey Knotts Circular", slug: "base-brown-great-gable-kirk-fell-and-grey-knotts-circular", miles: 8.8, ascent: 1268, type: "Circular" }
+};
