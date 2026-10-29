@@ -26,16 +26,76 @@
   let selectedDay = null;
   let pairMode = false;
   let showAll = false;
+  let expanded = false;        // "Show all" pressed for the current day
+  const INITIAL_SHOWN = 8;
 
   // ---------- fells & walks ----------
   const fellsByName = {};
   FELLS_DATA.forEach(b => b.fells.forEach(f => { fellsByName[f.name] = f; }));
 
-  const walks = Object.entries(PLANNER_WALKS).map(([id, w]) => {
+  const topOf = fells => fells.reduce((a, f) => (!a || f.m > a.m ? f : a), null);
+  const naismith = (miles, ascent) => miles / 3 + ascent / 600;
+
+  // Named rounds from the tracker (planner-walks.js).
+  const namedWalks = Object.entries(PLANNER_WALKS).map(([id, w]) => {
     const fells = Object.values(fellsByName).filter(f => (f.routes || []).includes(id));
-    const top = fells.reduce((a, f) => (!a || f.m > a.m ? f : a), null);
-    return Object.assign({ id, fells, top, hours: w.miles / 3 + w.ascent / 600 }, w);
+    return Object.assign({ id, fells, top: topOf(fells), hours: naismith(w.miles, w.ascent) }, w);
   }).filter(w => w.fells.length && w.top);
+
+  // Suggested walks for every fell no named round covers: each fell goes to
+  // its nearest valley car park (PLANNER_BASES), then fells sharing a car
+  // park are chained into walks of up to 5 summits, each hop under ~2 miles,
+  // loop under ~13 miles. Distance = straight-line loop x 1.3 for paths;
+  // ascent = car park to highest summit plus a rough allowance per extra
+  // summit. Estimates, and labelled as such on the page.
+  const PATH_FACTOR = 1.3, MAX_HOP_MILES = 2.0, MAX_LOOP_MILES = 13, MAX_FELLS = 5;
+  const generatedWalks = (function(){
+    const covered = new Set(namedWalks.flatMap(w => w.fells.map(f => f.name)));
+    const byBase = new Map();
+    Object.values(fellsByName).forEach(f => {
+      if (covered.has(f.name) || f.lat == null) return;
+      let best = null, bestD = Infinity;
+      const forced = (typeof PLANNER_BASE_OVERRIDES !== "undefined") && PLANNER_BASE_OVERRIDES[f.name];
+      if (forced) best = PLANNER_BASES.find(b => b.key === forced) || null;
+      if (!best) PLANNER_BASES.forEach(b => { const d = haversineMiles(b, f); if (d < bestD) { bestD = d; best = b; } });
+      if (!byBase.has(best.key)) byBase.set(best.key, { base: best, fells: [] });
+      byBase.get(best.key).fells.push(f);
+    });
+    const loopMiles = (base, chain) => {
+      let d = haversineMiles(base, chain[0]);
+      for (let i = 1; i < chain.length; i++) d += haversineMiles(chain[i - 1], chain[i]);
+      return (d + haversineMiles(chain[chain.length - 1], base)) * PATH_FACTOR;
+    };
+    const out = [];
+    byBase.forEach(({ base, fells }) => {
+      const left = fells.slice().sort((a, b) => haversineMiles(base, a) - haversineMiles(base, b));
+      while (left.length) {
+        const chain = [left.shift()];
+        for (;;) {
+          const last = chain[chain.length - 1];
+          let pick = -1, pickD = Infinity;
+          left.forEach((f, i) => { const d = haversineMiles(last, f); if (d < pickD) { pickD = d; pick = i; } });
+          if (pick < 0 || pickD > MAX_HOP_MILES || chain.length >= MAX_FELLS) break;
+          if (loopMiles(base, chain.concat(left[pick])) > MAX_LOOP_MILES) break;
+          chain.push(left.splice(pick, 1)[0]);
+        }
+        const top = topOf(chain);
+        const miles = Math.max(2, Math.round(loopMiles(base, chain) * 2) / 2);
+        const extra = chain.filter(f => f !== top).reduce((s, f) => s + Math.max(60, 0.35 * (f.m - 300)), 0);
+        const ascent = Math.round((Math.max(100, top.m - base.elev) + extra) / 10) * 10;
+        const names = chain.map(f => f.name);
+        const label = (names.length === 1 ? names[0] : names.slice(0, -1).join(", ") + " & " + names[names.length - 1]) + " from " + base.name.split(",")[0];
+        out.push({
+          id: "gen_" + base.key + "_" + out.length, generated: true, label, url: null,
+          start: { key: base.key, name: base.name, lat: base.lat, lng: base.lng },
+          miles, ascent, fells: chain, top, hours: naismith(miles, ascent)
+        });
+      }
+    });
+    return out;
+  })();
+
+  const walks = namedWalks.concat(generatedWalks);
 
   // ---------- helpers ----------
   function haversineMiles(a, b){
@@ -313,12 +373,16 @@
       `<button type="button" class="lb-toggle-btn ${d === selectedDay ? "is-active" : ""} ${isWeekend(d) ? "is-weekend" : ""}" data-day="${d}" role="tab" aria-selected="${d === selectedDay}">${dayLabel(d)}</button>`
     ).join("");
     el.querySelectorAll("[data-day]").forEach(b => b.addEventListener("click", () => {
-      selectedDay = b.dataset.day; renderDays(); renderResults();
+      selectedDay = b.dataset.day; expanded = false; renderDays(); renderResults();
     }));
     el.style.display = pairMode ? "none" : "";
   }
 
   function verdictClass(v){ return v === "Good" ? "is-good" : v === "Fair" ? "is-fair" : v === "Poor" ? "is-poor" : "is-bad"; }
+
+  function mapsUrl(p){
+    return `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(5)},${p.lng.toFixed(5)}&travelmode=driving`;
+  }
 
   function walkCardHtml(r, rank){
     const w = r.w, wx = r.wx, d = r.d;
@@ -339,11 +403,13 @@
     return `
       <article class="chal-card plan-walk">
         <h3><span class="plan-rank">${rank}</span>${esc(w.label)}</h3>
-        <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fells · ${w.miles} mi · ${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.linear ? " · one-way" : ""}</p>
+        <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fell${w.fells.length === 1 ? "" : "s"} · ${w.generated ? "~" : ""}${w.miles} mi · ${w.generated ? "~" : ""}${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.linear ? " · one-way" : ""}</p>
+        ${w.generated ? '<p class="plan-est">Suggested walk — distance, ascent and route are estimates. Plan the line on a map.</p>' : ""}
         ${wxTxt}
-        <p class="plan-meta">Start: ${esc(w.start.name)} · ${driveTxt}</p>
+        <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
+        <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         <div class="chal-fell-list">${fellChips}</div>
-        <a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">Route details ↗</a>
+        ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">Route details ↗</a>` : ""}
       </article>`;
   }
 
@@ -355,7 +421,7 @@
     const unclimbed = Object.keys(fellsByName).filter(n => !climbed[n]);
     const covered = new Set(walks.flatMap(w => w.fells.map(f => f.name)));
     const inWalks = unclimbed.filter(n => covered.has(n)).length;
-    cov.textContent = `The planner's ${walks.length} walks cover ${inWalks} of your ${unclimbed.length} remaining fells. More rounds will be added over time.`;
+    cov.textContent = `${namedWalks.length} named rounds plus ${generatedWalks.length} suggested walks cover ${inWalks} of your ${unclimbed.length} remaining fells.`;
 
     if (pairMode) {
       const p = bestPair();
@@ -368,8 +434,13 @@
         ${walkCardHtml(p.y, 2)}`);
       return;
     }
-    const ranked = rankFor(selectedDay).slice(0, 5);
-    setResults(ranked.map((r, i) => walkCardHtml(r, i + 1)).join(""));
+    const ranked = rankFor(selectedDay);
+    const shown = expanded ? ranked : ranked.slice(0, INITIAL_SHOWN);
+    const more = ranked.length - shown.length;
+    setResults(shown.map((r, i) => walkCardHtml(r, i + 1)).join("")
+      + (more > 0 ? `<div class="share-row"><button type="button" class="btn" id="planner-more">Show all ${ranked.length} walks</button></div>` : ""));
+    const btn = document.getElementById("planner-more");
+    if (btn) btn.addEventListener("click", () => { expanded = true; renderResults(); });
   }
 
   // ---------- startup ----------

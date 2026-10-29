@@ -22,8 +22,18 @@ starts within 12 miles (car-camping weekend).
   array in `fells-data.js`; this file adds start point, miles, ascent, and a
   copy of the label/link from `ROUTES` in `tracker.js` (private there).
   Start points, distance and ascent are typical rounded figures, not GPX —
-  labelled as such on the page. 17 walks today; coverage is shown on the
-  page. Walking time is Naismith (3 mph + 1 h per 600 m).
+  labelled as such on the page. Walking time is Naismith (3 mph + 1 h per 600 m).
+- **Suggested walks (every other fell):** fells not on a named round are each
+  assigned to their nearest car park in `PLANNER_BASES` (≈60 valley bases),
+  or to the one named in `PLANNER_BASE_OVERRIDES` where straight-line nearest
+  is the wrong side of a ridge. Fells sharing a base are chained greedily
+  (hops ≤ 2 mi, loop ≤ 13 mi, ≤ 5 summits). Distance = straight-line loop ×
+  1.3; ascent = base → highest summit + an allowance per extra summit. Shown
+  with "~" and an "estimates" note, and no route link. Result: 17 named + ~62
+  suggested walks covering all 214 fells. Fix a bad suggestion by adding an
+  override, not by editing the algorithm.
+- **Results:** top 8 for the chosen day, then "Show all N walks". Every card
+  has a Google Maps directions link to its parking spot.
 - **Location (privacy):** user chooses full postcode or district only. The
   browser looks it up on postcodes.io and saves only a point snapped to a
   ~1 mile grid plus the district (e.g. `PR2`) to `planner_user_location`
