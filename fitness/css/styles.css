@@ -798,3 +798,67 @@ a { color: inherit; }
   max-width: 90%;
 }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
+
+/* ---------------- Lifting (Hevy) ---------------- */
+/* Same quiet palette as everything else: numbers in Big Shoulders, gains in
+   sage, dawn only on the trend line's latest point and the primary button. */
+
+.lift-sync {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 0.85rem; color: var(--slate); margin-bottom: 14px;
+}
+.lift-sync.is-error .lift-sync-status { color: var(--rust); }
+.lift-sync-btn { padding: 7px 12px; font-size: 0.82rem; white-space: nowrap; }
+.empty-state code { font-size: 0.85em; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+.lift-pr-list, .lift-list, .lift-maxed-list { list-style: none; margin: 0; padding: 0; }
+.lift-pr, .lift-maxed { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lift-pr:first-child, .lift-maxed:first-child, .lift-row:first-child { border-top: none; }
+.lift-maxed { display: block; }
+.lift-pr-main, .lift-row-main { display: flex; flex-direction: column; min-width: 0; }
+.lift-pr-title { font-weight: 600; }
+.lift-pr-set { color: var(--slate); font-size: 0.82rem; }
+.lift-pr-num { text-align: right; white-space: nowrap; }
+.lift-big { font-family: 'Big Shoulders Display', sans-serif; font-weight: 700; font-size: 1.5rem; }
+.lift-unit { color: var(--slate); font-size: 0.75rem; margin-left: 4px; }
+.lift-gain { display: block; color: var(--sage); font-size: 0.8rem; font-weight: 600; }
+.lift-maxed-advice { margin: 4px 0 0; font-size: 0.88rem; }
+
+.lift-row { border-top: 1px solid var(--line); }
+.lift-row-btn {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  background: none; border: none; padding: 10px 0; text-align: left; cursor: pointer;
+}
+.lift-row-side { display: grid; grid-template-columns: auto auto; align-items: center; justify-items: end; column-gap: 8px; flex-shrink: 0; }
+.lift-row-num { font-family: 'Big Shoulders Display', sans-serif; font-weight: 700; font-size: 1.15rem; }
+.lift-change { grid-column: 1 / -1; font-size: 0.75rem; color: var(--slate); }
+.lift-change.is-up { color: var(--sage); }
+.lift-change.is-down { color: var(--rust); }
+.lift-spark { width: 72px; height: 22px; }
+.lift-spark polyline, .lift-detail-chart polyline { fill: none; stroke: var(--slate); stroke-width: 1.6; stroke-linejoin: round; }
+.lift-spark circle, .lift-detail-chart circle { fill: var(--dawn); }
+.lift-detail { padding: 4px 0 14px; }
+.lift-detail-chart { width: 100%; height: auto; }
+.lift-detail-chart polyline { stroke: var(--dawn); stroke-width: 2.2; }
+.lift-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 8px; }
+.lift-table th { text-align: left; color: var(--slate); font-weight: 500; padding: 4px 6px 4px 0; border-bottom: 1px solid var(--line); }
+.lift-table td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
+
+.muscle-grid { display: flex; flex-direction: column; gap: 8px; }
+.muscle-row { display: grid; grid-template-columns: 7.5rem 1fr 5.5rem; align-items: end; gap: 10px; }
+.muscle-name { font-size: 0.85rem; text-transform: capitalize; align-self: center; }
+.muscle-bars { display: flex; align-items: flex-end; gap: 3px; height: 28px; }
+.muscle-bar { flex: 1; background: var(--line); border-radius: 2px 2px 0 0; }
+.muscle-bar.is-current { background: var(--sage); }
+.muscle-num { font-family: 'Big Shoulders Display', sans-serif; font-weight: 700; text-align: right; align-self: center; }
+.muscle-num small { font-family: 'Work Sans', sans-serif; font-weight: 400; color: var(--slate); font-size: 0.72rem; }
+
+.post-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.post-controls select, .post-controls input {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; font-size: 0.95rem; color: var(--paper);
+}
+.post-preview { display: flex; justify-content: center; margin-bottom: 12px; }
+.post-preview .post-canvas { width: 46%; max-width: 220px; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+.post-preview.is-strip { justify-content: flex-start; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+.post-preview.is-strip .post-canvas { width: 62%; max-width: 240px; flex-shrink: 0; scroll-snap-align: start; }

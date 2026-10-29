@@ -796,3 +796,37 @@ links between the apps, nothing merged:
   used by `usa` and `goals` in this repo — each top-level app keeps its own copy
   rather than importing across app boundaries, matching how `usa`/`goals` already do
   it, not a new decision made here.
+
+## Lifting tab (Hevy) — 2026-10-29
+
+New `#/lifting` route (`views/lifting.js`) showing what was actually lifted,
+mirrored from Hevy. Everything else in this app answers "did the session
+happen"; this answers "is it getting stronger". **Read-only** — Hevy stays
+where lifts are logged, and nothing here writes to `daily_checks`.
+
+- **Data:** `fitness.hevy_workouts`, `hevy_sets`, `hevy_exercise_templates`,
+  `hevy_sync_state` (migration `fitness_hevy_tables`). The browser has
+  SELECT only, scoped to its own `user_id`; only the Edge Function writes.
+- **Sync:** Edge Function `hevy-sync` (`supabase/functions/hevy-sync/`,
+  deployed to `dashboards-new`). First run pulls full history from
+  `/v1/workouts`; later runs use `/v1/workouts/events` since the stored
+  high-water mark, so edits and deletes in Hevy come through. A workout's
+  sets are replaced wholesale on every update. Runs when Chris taps "Sync
+  now", or automatically when the tab opens and the last sync is >6 h old.
+- **Secrets needed** (Dashboard → Edge Functions → Secrets): `HEVY_API_KEY`
+  (Hevy Pro) and `HEVY_OWNER_EMAIL` (only that account may sync — this
+  project also hosts other people's `usa` accounts). Until set, the tab shows
+  a "Hevy isn't connected yet" card and the function returns `not_configured`.
+- **Conventions in `lifting/analysis.js`:** dumbbell weights are the TOTAL of
+  both dumbbells, as logged, so 100 kg = the gym's 2 × 50 kg max and is
+  labelled "kg total". Warm-ups never count. e1RM is Epley from 1–12 rep sets
+  only; an exercise's first session is a baseline, not a PR. "At the rack's
+  limit" flags dumbbell lifts that hit 100 kg total in the last 6 weeks.
+  Weekly sets by muscle count secondary muscles as half a set.
+- **Posts (`lifting/posters.js`):** canvas-drawn PNGs for @cmfitnesslog — PR
+  story and month story (1080×1920), month carousel (5 × 1080×1350). Shared
+  via the Web Share API on phones (straight to Instagram), downloaded
+  otherwise. Nothing is uploaded anywhere.
+- Tested with Playwright against mocked REST responses (same approach as the
+  Testing section above): renders, expands a lift, builds all three post
+  types, no console errors. Not yet tested against real Hevy data.
