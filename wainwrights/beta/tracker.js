@@ -363,11 +363,14 @@
           const climbed = !!state[f.name];
           const visible = fellMatchesSearch(f);
           const isMountain = f.m >= MOUNTAIN_M;
-          // Routed via Google rather than linking alltrails.com directly: the
-          // AllTrails app claims its own domain but drops the search query,
-          // stranding mobile users on its home screen.
-          const at = "https://www.google.com/search?q="
-                   + encodeURIComponent("alltrails " + f.name + " Lake District walk");
+          // A specific AllTrails trail page for this fell (fells-data.js,
+          // `alltrails`). Trail pages open properly in the AllTrails app; an
+          // AllTrails *search* link doesn't (the app drops the query and lands
+          // on its home screen), so the Google search is only a fallback.
+          const at = (f.alltrails && f.alltrails.url)
+            ? f.alltrails.url
+            : "https://www.google.com/search?q="
+              + encodeURIComponent("alltrails " + f.name + " Lake District walk");
           const osm = "https://www.openstreetmap.org/?mlat=" + f.lat + "&mlon=" + f.lng
                     + "#map=15/" + f.lat + "/" + f.lng;
           const challengeBadge = (f.challenges && f.challenges.length)
@@ -600,8 +603,10 @@
         .flatMap(area=> area.fells)
         .filter(f=> f.routes && f.routes.indexOf(key) !== -1);
 
-      const routeAt = "https://www.google.com/search?q="
-                     + encodeURIComponent("alltrails " + route.label + " Lake District walk");
+      const routeAt = (typeof ROUTE_ALLTRAILS !== "undefined" && ROUTE_ALLTRAILS[key])
+        ? ROUTE_ALLTRAILS[key]
+        : "https://www.google.com/search?q="
+          + encodeURIComponent("alltrails " + route.label + " Lake District walk");
 
       html += '<div class="route-modal-section">';
       html += '  <p class="route-modal-label">' + escapeHtml(route.label) + '</p>';

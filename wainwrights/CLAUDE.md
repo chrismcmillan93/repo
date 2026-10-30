@@ -59,3 +59,23 @@ starts within 12 miles (car-camping weekend).
 - Tested with Playwright against mocked Supabase, Open-Meteo and postcodes.io
   responses: ranking, saving a location (confirmed no postcode in the
   payload), weekend pair, remove. Not yet tested against the live services.
+
+## AllTrails links on the tracker (`beta/`) — 2026-10-30
+
+Each fell's "Routes" link and each route pop-up's "AllTrails →" link now go
+to a specific AllTrails trail page, not a Google search. (A link to an
+AllTrails *search* gets taken over by the AllTrails app, which drops the
+query; trail pages open properly. That was why it went via Google before.)
+
+- **Per fell:** `alltrails: {name, url}` on every fell in `beta/fells-data.js`
+  (all 214). Chosen as a real AllTrails route whose name includes that fell —
+  mostly reused from the planner's matches, the rest found by AllTrails
+  search. Six planner matches that only shared a name with a different fell
+  (Raise, White Side, Hart Crag, High Pike (Scandale), Harter Fell (Mardale),
+  Red Pike (Wasdale)) were replaced with the right fell's route. Rampsgill
+  Head and Red Pike (Wasdale) use routes that cross them without naming
+  Rampsgill Head. A fell with no `alltrails` falls back to the Google search.
+- **Per named route:** `ROUTE_ALLTRAILS` (route id → URL) at the end of
+  `beta/fells-data.js`, same routes as `PLANNER_ALLTRAILS_NAMED`. Keep the two
+  in step if one changes.
+- Production `wainwrights/fells-data.js` and `tracker.js` are untouched.
