@@ -1499,3 +1499,15 @@
   .install-modal ol{ margin: 10px 0 0 20px; padding: 0; }
   .install-modal li{ margin: 4px 0; }
   .install-modal .install-actions{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .offline-cover{ position: fixed; inset: 0; z-index: 90; background: var(--paper); overflow: auto; }
+  .update-bar{
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--green-deep); color: var(--paper-card);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 8px 8px 8px 16px; max-width: calc(100vw - 28px);
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em;
+  }
+  .update-bar .update-bar-go{ padding: 6px 12px; }
+  .update-bar-x{ background: none; border: none; color: inherit; font-size: 18px; line-height: 1; padding: 4px 8px; cursor: pointer; opacity: 0.8; }
