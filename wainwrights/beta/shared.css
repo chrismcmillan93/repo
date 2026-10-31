@@ -1511,3 +1511,4 @@
   }
   .update-bar .update-bar-go{ padding: 6px 12px; }
   .update-bar-x{ background: none; border: none; color: inherit; font-size: 18px; line-height: 1; padding: 4px 8px; cursor: pointer; opacity: 0.8; }
+  .perf-text{ font-family: var(--font-mono); font-size: 11px; line-height: 1.45; white-space: pre; text-align: left; width: 100%; box-sizing: border-box; resize: none; }

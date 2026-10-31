@@ -263,6 +263,23 @@ cannot affect `wainwrights/`.
   signed-in view's top bar, so it is not on the sign-in screen. Styles: `.install-chip`
   and `.install-modal` in `beta/shared.css`. (It was a collapsed card above the tracker
   footer until 2026-10-31.)
+- **Launch diagnostics (added 2026-10-31 for a slow cold start on an iPad):**
+  - *Timing readout:* tap "THE WAINWRIGHTS" (or the sign-in title) 5 times in a row (the
+    install chip doesn't count) and `pwa.js` opens a "Timing" panel with a Copy button.
+    It lists, from the start of that page load: service worker started, page received,
+    first paint, first contentful paint, `pwa.js` ran, DOM ready, app shown (signed in),
+    fell list rendered, everything loaded; the 5 slowest files (and whether they came from
+    the cache); and the last 6 launches (kept in `localStorage` `ww_perf_log`, saved 4 s
+    after load; `app`/`web` = installed or browser, `sw`/`NO-sw` = worker controlling).
+    It can't see the OS's own launch screen before the page starts.
+  - *Why a white screen:* the Google Fonts stylesheet was render-blocking, so a slow or
+    hung request left the screen white (simulated: first paint 2,596 ms with a 2.5 s fonts
+    request, 76 ms after the fix). It is now loaded with `media="print" onload="this.media='all'"`
+    (plus a `<noscript>` fallback); the `display=swap` in its URL keeps text visible in a
+    fallback font until it arrives. Each page also has `<style>html{background:#e8e2d0}</style>`
+    in `<head>` so the first paint is paper-coloured, not white.
+  - Ruled out by measurement: device speed (with the CPU slowed 6x the fell list still
+    renders in about 1.4 s) and the service worker (about 70 ms to relaunch).
 - **To promote:** copy the files, icons and `offline.html` up and rename the manifest `name`
   (drop "(beta)"); rename the cache prefix in `sw.js` (`wainwrights-beta-`) too.
   The Auth redirect list already covers `/wainwrights/**`.

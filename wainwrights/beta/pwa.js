@@ -145,7 +145,127 @@
     });
   }
 
+  // ---- Timing readout (diagnostics) --------------------------------------------------
+  // Tap "THE WAINWRIGHTS" (or the sign-in title) 5 times in a row to open it. It shows how
+  // long this page load took, step by step, plus the last few launches, with a Copy button.
+  // Times are from the start of the page load; the phone/tablet's own launch screen before
+  // that can't be seen from inside the page.
+  var perfMarks = {};
+  function mark(name){ if (!(name in perfMarks)) perfMarks[name] = Math.round(performance.now()); }
+  mark("pwa.js ran");
+  function watchApp(){
+    var app = document.getElementById("app-content"), list = document.getElementById("areas");
+    if (app && typeof MutationObserver !== "undefined") {
+      var check = function(){ if (app.style.display !== "none") mark("app shown"); };
+      new MutationObserver(check).observe(app, { attributes: true, attributeFilter: ["style"] });
+      check();
+    }
+    if (list && typeof MutationObserver !== "undefined") {
+      var seen = function(){ if (list.children.length) mark("fell list rendered"); };
+      new MutationObserver(seen).observe(list, { childList: true });
+      seen();
+    }
+  }
+  var PERF_LOG = "ww_perf_log";
+  function paintTimes(){
+    var p = {};
+    try { performance.getEntriesByType("paint").forEach(function(e){ p[e.name] = e.startTime; }); } catch (e) {}
+    return p;
+  }
+  function navEntry(){ try { return performance.getEntriesByType("navigation")[0] || {}; } catch (e) { return {}; } }
+  function saveLaunch(){
+    try {
+      var n = navEntry(), p = paintTimes();
+      var log = JSON.parse(localStorage.getItem(PERF_LOG) || "[]");
+      log.push({ at: new Date().toISOString().slice(0, 16).replace("T", " "),
+        sw: !!(navigator.serviceWorker && navigator.serviceWorker.controller), inst: !!standalone,
+        fp: Math.round(p["first-paint"] || 0), fcp: Math.round(p["first-contentful-paint"] || 0),
+        shown: perfMarks["app shown"] || 0, list: perfMarks["fell list rendered"] || 0, load: Math.round(n.loadEventEnd || 0) });
+      localStorage.setItem(PERF_LOG, JSON.stringify(log.slice(-6)));
+    } catch (e) {}
+  }
+  function ms(v){ return (v === undefined || v === null || isNaN(v) || v <= 0) ? "-" : Math.round(v) + " ms"; }
+  function pad(s, n){ s = String(s); while (s.length < n) s += " "; return s; }
+  function perfReport(){
+    var n = navEntry(), p = paintTimes(), out = [];
+    var ctl = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+    out.push("Wainwrights timing  " + new Date().toISOString().slice(0, 19).replace("T", " "));
+    out.push("Installed app: " + (standalone ? "yes" : "no") + "   Online: " + navigator.onLine +
+      (navigator.connection && navigator.connection.effectiveType ? "   Network: " + navigator.connection.effectiveType : ""));
+    out.push("Service worker controlling this page: " + (ctl ? "yes" : "NO") + "   Page load type: " + (n.type || "?"));
+    out.push("");
+    out.push("Time from the start of this page load:");
+    [["Service worker started", ctl ? n.workerStart : 0], ["Page received", n.responseEnd], ["First paint", p["first-paint"]],
+     ["First contentful paint", p["first-contentful-paint"]], ["pwa.js ran", perfMarks["pwa.js ran"]],
+     ["Page ready (DOM)", n.domContentLoadedEventEnd], ["App shown (signed in)", perfMarks["app shown"]],
+     ["Fell list rendered", perfMarks["fell list rendered"]], ["Everything loaded", n.loadEventEnd]
+    ].forEach(function(r){ out.push("  " + pad(r[0], 26) + ms(r[1])); });
+    try {
+      var res = performance.getEntriesByType("resource").slice().sort(function(a, b){ return b.duration - a.duration; }).slice(0, 5);
+      if (res.length) {
+        out.push(""); out.push("Slowest files:");
+        res.forEach(function(r){
+          var name = r.name.replace(location.origin + location.pathname.replace(/[^/]*$/, ""), "").replace(/^https?:\/\//, "").slice(0, 44);
+          out.push("  " + pad(name, 46) + pad(ms(r.duration), 9) + (r.transferSize === 0 ? "cache" : Math.round(r.transferSize / 1024) + " KB"));
+        });
+      }
+    } catch (e) {}
+    try {
+      var log = JSON.parse(localStorage.getItem(PERF_LOG) || "[]");
+      if (log.length) {
+        out.push(""); out.push("Recent launches (first paint / app shown / fell list / loaded):");
+        log.forEach(function(l){ out.push("  " + l.at + (l.inst ? " app" : " web") + (l.sw ? " sw" : " NO-sw") + "  " + ms(l.fp) + " / " + ms(l.shown) + " / " + ms(l.list) + " / " + ms(l.load)); });
+      }
+    } catch (e) {}
+    out.push(""); out.push(navigator.userAgent);
+    return out.join("\n");
+  }
+  var perfModal = null, perfText = null;
+  function openPerf(){
+    if (!perfModal) {
+      perfModal = el("div", "terms-modal");
+      perfModal.setAttribute("role", "dialog");
+      perfModal.setAttribute("aria-modal", "true");
+      var card = el("div", "terms-card");
+      card.style.maxWidth = "560px"; card.style.width = "100%";
+      card.appendChild(el("h3", null, "Timing"));
+      perfText = el("textarea", "lock-input perf-text");
+      perfText.readOnly = true; perfText.rows = 24; perfText.spellcheck = false;
+      card.appendChild(perfText);
+      var actions = el("div", "install-actions");
+      var copy = el("button", "btn lock-btn", "Copy");
+      copy.type = "button";
+      copy.addEventListener("click", function(){
+        perfText.focus(); perfText.select();
+        var done = function(){ copy.textContent = "Copied"; setTimeout(function(){ copy.textContent = "Copy"; }, 1500); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(perfText.value).then(done, function(){ try { document.execCommand("copy"); done(); } catch (e) {} });
+        else { try { document.execCommand("copy"); done(); } catch (e) {} }
+      });
+      var close = el("button", "btn", "Close");
+      close.type = "button";
+      close.addEventListener("click", function(){ perfModal.style.display = "none"; });
+      actions.appendChild(copy); actions.appendChild(close);
+      card.appendChild(actions);
+      perfModal.appendChild(card);
+      perfModal.addEventListener("click", function(e){ if (e.target === perfModal) perfModal.style.display = "none"; });
+      document.body.appendChild(perfModal);
+    }
+    perfText.value = perfReport();
+    perfModal.style.display = "flex";
+  }
+  var taps = [];
+  document.addEventListener("click", function(e){
+    var t = e.target;
+    if (!t || !t.closest || t.closest(".install-chip") || !t.closest(".topnav-word, .lock-title")) { taps = []; return; }
+    var now = Date.now();
+    taps = taps.filter(function(x){ return now - x < 4000; });
+    taps.push(now);
+    if (taps.length >= 5) { taps = []; openPerf(); }
+  });
+  window.addEventListener("load", function(){ mark("load"); setTimeout(saveLaunch, 4000); });
+
   function init(){
+    watchApp();
     if (navigator.onLine === false) showOffline();
     if (standalone) return;
     var word = document.querySelector(".topnav-word");
