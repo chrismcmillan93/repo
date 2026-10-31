@@ -347,6 +347,30 @@ position. Both `views/itinerary.js` and `print.js` consume `rows` directly; don'
 reintroduce separate kind-grouped arrays without moving the sort logic with them, or
 the two will drift back out of time order independently.
 
+**Ferry booking + flight/accommodation data update (2026-10-31).** Pure data, no
+schema change — applied via migration `thailand_ferry_booking_and_flight_accommodation_updates`
+straight against the live `thailand` schema (this app has no separate UAT area to
+stage through any more; it *is* the production app since the 2026-09-25 promotion).
+The Bangrak↔Koh Phangan crossing, previously a "Seatran — verify timetable" placeholder
+with `status = 'NEEDS BOOKING'`, is now two real Lomprayah bookings (22 Nov 13:30
+ref `C686644`, 26 Nov 10:45 ref `F507338`, both booked 31 Oct via 12Go) reflected in
+`itinerary_entries.text`/`.description`/`.status` (now `FIXED`) for both days; the
+26 Nov "consider an earlier ferry for buffer" optional entry was deleted outright
+rather than reworded, since booking the earlier 10:45 crossing resolved exactly what
+it was asking, and the corresponding `bookings` checklist rows ("Check Seatran
+timetable", "Decide on an earlier Lomprayah") were marked `is_done`. Also added: PG146's
+booking ref/seat (`DXWOWM`/1D) and TG245's price (£87.01) to `flight_legs` (PG254's ref/seat
+were already correct, confirmed via query rather than assumed). `accommodations.note`
+was rewritten for all three stays with corrected financials and logistics — Hotel
+Indigo Phuket (THB due at property, `paid` reset to `{}` since it isn't prepaid after
+all), Sunrise Resort (THB total, Booking.com's real cancellation terms replacing a
+stale "non-refundable", ID/card-at-checkin requirement, the ferry refs duplicated in
+since this is the stay either side of both crossings), and Divalux (corrected GBP/THB
+total, shuttle timing/pickup detail, Booking.com ref). **The Divalux Booking.com
+reservation PIN was deliberately left out of the note** — a ref number alone identifies
+the booking for the "reconfirm via messages" ask without the PIN being persisted
+anywhere in the app or database.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.
