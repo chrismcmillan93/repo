@@ -11,6 +11,7 @@ kept as the working area for the next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
 still defaults to the beta URL until it is set by hand in Supabase.
+
 Backend is its own Supabase project, **`walking-up-hills`** (ref
 `jyxtduvkmztexwurrjsf`, eu-west-2) — not `dashboards-new`. Its migrations and
 Edge Functions live under `wainwrights/supabase/`, separate from the repo-root
