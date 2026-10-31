@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Same mountain as the sign-in screen's logo, paper on forest green.
+       Kept inside the central ~56% so the one file works as a maskable icon. -->
+  <rect width="512" height="512" fill="#24392a"/>
+  <path transform="translate(88.7 112.6) scale(23.9)" fill="#e8e2d0" d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"/>
+</svg>

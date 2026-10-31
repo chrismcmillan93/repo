@@ -212,3 +212,44 @@ gain. A button beside it flips direction (shortest/nearest/least climb first by
 default). Walks with no drive data sort last for the driving sort. Changing sort
 resets "Show all". The control hides in weekend-pair mode, which always uses best
 match (`rankFor(day, false)`).
+
+## PWA basics (`beta/` only) — 2026-10-31
+
+Installable app shell, built in `beta/` and **not in production yet**. All paths are
+relative, so the manifest's scope and the service worker's scope are `beta/` and it
+cannot affect `wainwrights/`.
+
+- **Files:** `beta/manifest.webmanifest` (name "The Wainwrights (beta)", standalone,
+  `start_url ./index.html`), `beta/sw.js`, `beta/pwa.js` (registers `sw.js`), and
+  `beta/offline.html`, and `beta/icons/` (`icon.svg` source, `icon-192.png`, `icon-512.png`,
+  `icon-maskable-512.png`, `apple-touch-icon.png`; the logo from the sign-in screen,
+  paper on forest green, kept inside the maskable safe zone). The five pages carry the
+  manifest / theme-colour / icon / `pwa.js` tags in `<head>`; `shared-auth.js` is
+  untouched.
+- **Service worker:** same-origin GETs inside `beta/` only, network first, shell
+  precached on install (`CACHE` is `wainwrights-beta-v2`). Supabase, Open-Meteo,
+  postcodes.io, Google Fonts and the supabase-js CDN are never intercepted or cached.
+  Cache keys drop the query string and fragment, so a hike's share token
+  (`hike.html?t=...`) is never stored. Bump `CACHE` in `sw.js` when the shell list changes.
+- **Offline:** a page load with no connection shows `offline.html` ("You're offline",
+  Try again, reloads itself when the connection returns) rather than a cached page,
+  because the app can't sign in or load anything without Supabase (and supabase-js comes
+  from a CDN), so a cached page only showed a broken sign-in screen. Scripts, styles and
+  icons still come from the cache. No push notifications or background sync.
+- **Install help (tracker, above the footer):** a collapsed "Install the app" card,
+  filled in by `pwa.js` for the device: a real **Install app** button when the browser
+  offers one (`beforeinstallprompt`, Chrome/Edge/Android), Share → Add to Home Screen
+  steps on iPhone/iPad, menu steps on Android, File → Add to Dock on Safari for Mac, a
+  hint otherwise. Hidden once installed or when opened as an installed app
+  (`display-mode: standalone` / `navigator.standalone`). Styles are `.install-card` in
+  `beta/shared.css`.
+- **To promote:** copy the files, icons and `offline.html` up and rename the manifest `name`
+  (drop "(beta)"); rename the cache prefix in `sw.js` (`wainwrights-beta-`) too.
+  The Auth redirect list already covers `/wainwrights/**`.
+- Tested in headless Chromium: worker activates with scope `beta/`, manifest and every
+  icon load, 23 shell entries cached with no query strings or cross-origin URLs, the old
+  v1 cache is deleted, `index`, `planner` and `hike?t=...` show the offline page when
+  offline and reload when back online, a production page is not controlled, and the
+  install card renders correctly for iPhone, Android, desktop Chrome, a simulated
+  install prompt (button calls `prompt()`) and standalone (hidden). Not tested: the real
+  install flow on a phone.
