@@ -58,6 +58,16 @@
     <div class="lb-toggle plan-days" id="planner-days" role="tablist" aria-label="Day"></div>
     <label class="plan-check"><input type="checkbox" id="planner-pair"> Weekend pair — two walks close together, for a car-camping night</label>
     <label class="plan-check"><input type="checkbox" id="planner-all"> Include walks with no new fells</label>
+    <div class="plan-sort" id="planner-sort-wrap">
+      <label for="planner-sort">Sort by</label>
+      <select id="planner-sort" class="lock-input">
+        <option value="best">Best match</option>
+        <option value="walk">Walking distance</option>
+        <option value="drive">Driving distance</option>
+        <option value="ascent">Elevation gain</option>
+      </select>
+      <button type="button" class="btn hike-small" id="planner-sort-dir" aria-label="Reverse the order">Shortest first</button>
+    </div>
   </div>
 
   <div id="planner-results"><p class="chart-note">Loading…</p></div>
