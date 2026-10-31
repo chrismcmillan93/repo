@@ -236,13 +236,17 @@ cannot affect `wainwrights/`.
   because the app can't sign in or load anything without Supabase (and supabase-js comes
   from a CDN), so a cached page only showed a broken sign-in screen. Scripts, styles and
   icons still come from the cache. No push notifications or background sync.
-- **Install help (tracker, above the footer):** a collapsed "Install the app" card,
-  filled in by `pwa.js` for the device: a real **Install app** button when the browser
-  offers one (`beforeinstallprompt`, Chrome/Edge/Android), Share → Add to Home Screen
-  steps on iPhone/iPad, menu steps on Android, File → Add to Dock on Safari for Mac, a
-  hint otherwise. Hidden once installed or when opened as an installed app
-  (`display-mode: standalone` / `navigator.standalone`). Styles are `.install-card` in
-  `beta/shared.css`.
+- **Install help (all pages, top bar):** a small "Install app" chip next to the wordmark,
+  added by `pwa.js` (no per-page markup). It opens a popup (the app's `terms-modal` style;
+  Close, Esc, backdrop click, focus kept inside, focus returned to the chip) with
+  instructions for the device: a real **Install app** button when the browser offers one
+  (`beforeinstallprompt`, Chrome/Edge/Android), Share -> Add to Home Screen steps on
+  iPhone/iPad, menu steps on Android, File -> Add to Dock on Safari for Mac, a hint
+  otherwise. The chip is not added when opened as an installed app (`display-mode:
+  standalone` / `navigator.standalone`) and is hidden after `appinstalled`. It lives in the
+  signed-in view's top bar, so it is not on the sign-in screen. Styles: `.install-chip`
+  and `.install-modal` in `beta/shared.css`. (It was a collapsed card above the tracker
+  footer until 2026-10-31.)
 - **To promote:** copy the files, icons and `offline.html` up and rename the manifest `name`
   (drop "(beta)"); rename the cache prefix in `sw.js` (`wainwrights-beta-`) too.
   The Auth redirect list already covers `/wainwrights/**`.
@@ -250,6 +254,7 @@ cannot affect `wainwrights/`.
   icon load, 23 shell entries cached with no query strings or cross-origin URLs, the old
   v1 cache is deleted, `index`, `planner` and `hike?t=...` show the offline page when
   offline and reload when back online, a production page is not controlled, and the
-  install card renders correctly for iPhone, Android, desktop Chrome, a simulated
-  install prompt (button calls `prompt()`) and standalone (hidden). Not tested: the real
+  install chip and popup work on all five pages for iPhone, Android and desktop Chrome
+  (simulated install prompt: button calls `prompt()` and closes the popup; Esc, backdrop
+  and Close all close it; no chip when standalone or on production). Not tested: the real
   install flow on a phone.
