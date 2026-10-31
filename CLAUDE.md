@@ -454,6 +454,11 @@ offline is **read-only**.
   `context.setOffline(true)` + reload. Detach any CDP session used for
   `Page.getInstallabilityErrors` before testing offline — leaving it attached made the
   offline reload crawl. Lighthouse 11 still has a PWA category (12+ dropped it).
+- **Install button.** `#installBar` at the top of `index.html`, driven by
+  `initInstallButton()` in `pwa.js`: on Chrome/Edge/Android it captures
+  `beforeinstallprompt` and the button opens the real install dialog; on iOS (no such
+  API) it shows the "Share → Add to Home Screen" steps. Hidden when already installed
+  (standalone) or dismissed (`localStorage` `th-install-dismissed`).
 - **Phone setup (once, on good Wi-Fi, before the trip):** open the site, Add to Home
   Screen (iPhone: Share → Add to Home Screen; Android: Install app), open it **from the
   icon** once while online so the snapshot is saved, then test in airplane mode.

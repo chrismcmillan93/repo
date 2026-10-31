@@ -65,3 +65,56 @@ function showUpdateBar(worker) {
   bar.append(msg, go, later);
   document.body.appendChild(bar);
 }
+
+/* ---------------- "Install app" button ---------------- */
+// Chrome/Edge/Android fire `beforeinstallprompt`; we hold it and show a button
+// that triggers the real install dialog. iOS Safari has no such API, so there
+// the same button reveals the manual "Share → Add to Home Screen" steps.
+// Hidden once installed/standalone, or after the user dismisses it.
+const DISMISS_KEY = 'th-install-dismissed';
+
+function isStandalone() {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+}
+function isIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function dismissed() { try { return !!localStorage.getItem(DISMISS_KEY); } catch (_) { return false; } }
+
+export function initInstallButton() {
+  const bar = document.getElementById('installBar');
+  if (!bar || isStandalone() || dismissed()) return;
+  const btn = document.getElementById('installBtn');
+  const hint = document.getElementById('installHint');
+  const close = document.getElementById('installClose');
+  let deferred = null;
+
+  const hide = () => { bar.hidden = true; };
+  close.addEventListener('click', () => {
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch (_) { /* session-only dismissal */ }
+    hide();
+  });
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferred = e;
+    bar.hidden = false;
+  });
+  window.addEventListener('appinstalled', () => { deferred = null; hide(); });
+
+  btn.addEventListener('click', async () => {
+    if (deferred) {
+      deferred.prompt();
+      await deferred.userChoice.catch(() => {});
+      deferred = null;
+      hide();
+    } else {
+      hint.hidden = !hint.hidden; // iOS: toggle the manual steps
+    }
+  });
+
+  if (isIos()) {
+    hint.textContent = 'Tap the Share icon in Safari’s toolbar, then “Add to Home Screen”.';
+    bar.hidden = false;
+  }
+}
