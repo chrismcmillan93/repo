@@ -533,6 +533,29 @@
     });
   }
 
+  function setupTeamStory(){
+    const btn = document.getElementById("team-story-btn");
+    if(!btn) return;
+    btn.onclick = ()=> WWStory.run(btn, async ()=>{
+      const id = currentTeam.team_id;
+      const [sum, mem] = await Promise.all([
+        WW.sb.rpc("team_summary", { p_team_id: id }),
+        WW.sb.rpc("team_leaderboard", { p_team_id: id })
+      ]);
+      if(sum.error) throw sum.error;
+      if(mem.error) throw mem.error;
+      const s = sum.data && sum.data[0];
+      if(!s) throw new Error("no team");
+      const members = (mem.data || []).slice().sort((a,b)=> b.climbed_count - a.climbed_count)
+        .map(m=> ({ name: m.display_name, climbed: m.climbed_count }));
+      return WWStory.teamCard({
+        name: s.name, total: TOTAL, union: s.union_climbed_count,
+        percent: Math.round((s.union_climbed_count / TOTAL) * 100),
+        elevation: Number(s.total_elevation_m || 0), members: members
+      });
+    }, "wainwrights-team.jpg", currentTeam.name || "Team progress");
+  }
+
   function setupTeamInviteCopy(){
     document.getElementById("team-invite-copy").onclick = async (e)=>{
       const btn = e.currentTarget;
@@ -644,6 +667,7 @@
     setupTeamPendingCancel(user);
     setupTeamModeToggle(user);
     setupTeamInviteCopy();
+    setupTeamStory();
     setupTeamLeave(user);
   }
 
