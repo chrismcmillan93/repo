@@ -56,8 +56,14 @@ starts within 12 miles (car-camping weekend).
   bases or overrides can change a walk's highest fell — re-check the matches. Result: 17 named + ~62
   suggested walks covering all 214 fells. Fix a bad suggestion by adding an
   override, not by editing the algorithm.
-- **Results:** top 8 for the chosen day, then "Show all N walks". Every card
-  has a Google Maps directions link to its parking spot.
+- **Results:** top 8 for the chosen day, then "Show all N walks". Every card has a Google
+  Maps directions link to its parking spot, plus (added 2026-10-31) a short note under it:
+  "This parking point is approximate. For exact parking and driving directions, use
+  Directions on the AllTrails route" (linking to the walk's AllTrails route; a walk with no
+  AllTrails match gets "Check the route guide for exactly where to park" instead, though
+  all 79 currently match). The page footnote says the same. The start points are typical
+  car parks written from general knowledge, not AllTrails' trailheads, so the pin and the
+  drive times (measured to those start points) are approximate.
 - **Location (privacy):** user chooses full postcode or district only. The
   browser looks it up on postcodes.io and saves only a point snapped to a
   ~1 mile grid plus the district (e.g. `PR2`) to `planner_user_location`
@@ -72,6 +78,28 @@ starts within 12 miles (car-camping weekend).
   this project uses the new publishable/secret API keys. Until the secret is
   set — or if ORS fails — the page falls back to straight-line × 1.35
   estimates, labelled "estimate".
+- **Start points vs AllTrails trailheads (checked 2026-10-31, not applied).** The AllTrails
+  tools give no trailhead coordinates, and `alltrails.com` itself is behind DataDome bot
+  protection (403 + JS challenge), so pages can't be read automatically. What *does* work:
+  `find_trails_near_location` returns `trail_head_distance_meters` (straight-line distance
+  from the search point to the trailhead), and a length filter (`filters.length`, the
+  route's exact `length_meters`) leaves just that route in the result. Four searches from
+  points ~1.5-2 km N/E/S/W of the current start, solved by least squares, gave positions
+  with residuals under 5 m and a 3 m shift when one reading was dropped. Three samples:
+  Seat Sandal Circular (id 11248355) 54.49063, -3.03622 (the `dunmail` base is 1.25 mi
+  away); Kentmere Horseshoe Circular (11016028) 54.42835, -2.83665 (current start 0.18 mi
+  away); Wasdale Head and Scafell Pike Circular (10432915) 54.46541, -3.25650 (current
+  "Wasdale Head NT car park" start is 1.46 mi away, so some estimates are well off). Doing
+  all 76 routes would take about 300 searches (4 per route) and gives coordinates only, no
+  AllTrails start names. If this is done later: give each walk its own start (never edit
+  `PLANNER_BASES` for it), use a new key per distinct coordinate such as `at-<trailId>`
+  (never reuse an old key with new coordinates, because `planner_drive_times` is cached per
+  key; delete its rows when starts change), keep keys under 60 characters and distinct
+  starts to 80 per `drive-times` call, and let `planner.js` read the start from the
+  walk's AllTrails entry for suggested walks.
+- **Open question:** "Host this walk" still pre-fills the hike's meeting point from the
+  walk's start (the host can paste a different one). With approximate starts, hosts
+  should check it before sharing; consider requiring an explicit meeting point.
 - Tested with Playwright against mocked Supabase, Open-Meteo and postcodes.io
   responses: ranking, saving a location (confirmed no postcode in the
   payload), weekend pair, remove. Not yet tested against the live services.

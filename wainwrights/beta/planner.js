@@ -414,6 +414,14 @@
     return `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(5)},${p.lng.toFixed(5)}&travelmode=driving`;
   }
 
+  // The start point is a typical car park, not AllTrails' own trailhead, so point people at
+  // AllTrails' directions for the exact parking spot.
+  function startNoteHtml(w){
+    return w.alltrails
+      ? `<p class="plan-est">This parking point is approximate. For exact parking and driving directions, use <a href="${esc(w.url)}" target="_blank" rel="noopener">Directions on the AllTrails route ↗</a>.</p>`
+      : `<p class="plan-est">This parking point is approximate. Check the route guide for exactly where to park.</p>`;
+  }
+
   function walkCardHtml(r, rank){
     const w = r.w, wx = r.wx, d = r.d;
     const est = w.generated && !w.alltrails ? "~" : "";
@@ -439,6 +447,7 @@
         ${wxTxt}
         <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
+        ${startNoteHtml(w)}
         <div class="chal-fell-list">${fellChips}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
         <div><button type="button" class="btn plan-host" data-host-walk="${esc(w.id)}">Host this walk</button></div>
