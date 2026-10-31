@@ -261,5 +261,71 @@ export const db = {
       checkError(error);
       return data;
     }
+  },
+
+  // Lifting tab: a read-only mirror of Hevy, filled by the `hevy-sync`
+  // Edge Function. The browser never writes these tables.
+  hevy: {
+    async syncState(userId){
+      const { data, error } = await supabase
+        .from('hevy_sync_state')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      checkError(error);
+      return data;
+    },
+    // Every set since `sinceIso`, oldest first. PostgREST caps a response
+    // at 1,000 rows, so page through with range() until a short page.
+    async listSets(userId, sinceIso){
+      const pageSize = 1000;
+      const out = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from('hevy_sets')
+          .select('hevy_workout_id, exercise_index, set_index, exercise_template_id, exercise_title, set_type, weight_kg, reps, distance_m, duration_s, performed_at')
+          .eq('user_id', userId)
+          .gte('performed_at', sinceIso)
+          .order('performed_at')
+          .order('exercise_index')
+          .order('set_index')
+          .range(from, from + pageSize - 1);
+        checkError(error);
+        out.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+      return out;
+    },
+    async listWorkouts(userId, sinceIso){
+      const { data, error } = await supabase
+        .from('hevy_workouts')
+        .select('hevy_id, title, start_time, end_time')
+        .eq('user_id', userId)
+        .gte('start_time', sinceIso)
+        .order('start_time');
+      checkError(error);
+      return data || [];
+    },
+    async listTemplates(ids){
+      if (!ids.length) return [];
+      const { data, error } = await supabase
+        .from('hevy_exercise_templates')
+        .select('id, title, primary_muscle_group, secondary_muscle_groups, equipment')
+        .in('id', ids);
+      checkError(error);
+      return data || [];
+    },
+    async runSync(){
+      const { data, error } = await supabase.functions.invoke('hevy-sync', { method: 'POST' });
+      if (error) {
+        // FunctionsHttpError carries the JSON body on `context`.
+        let detail = null;
+        try { detail = await error.context.json(); } catch (_) { /* not JSON */ }
+        const err = new Error((detail && detail.message) || error.message || 'Sync failed');
+        err.code = detail && detail.error;
+        throw err;
+      }
+      return data;
+    }
   }
 };

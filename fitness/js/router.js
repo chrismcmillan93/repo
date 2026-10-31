@@ -4,12 +4,14 @@ import * as week from './views/week.js';
 import * as plan from './views/plan.js';
 import * as progress from './views/progress.js';
 import * as checkin from './views/checkin.js';
+import * as lifting from './views/lifting.js';
 
 export const ROUTES = [
   { key: 'today', label: 'Today', view: today },
   { key: 'week', label: 'Week', view: week },
   { key: 'plan', label: 'Plan', view: plan },
   { key: 'progress', label: 'Progress', view: progress },
+  { key: 'lifting', label: 'Lifting', view: lifting },
   { key: 'checkin', label: 'Check-in', view: checkin }
 ];
 

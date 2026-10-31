@@ -22,12 +22,27 @@ function normalizedRedirectPath(pathname){
 
 export const REDIRECT_URL = window.location.origin + normalizedRedirectPath(window.location.pathname);
 
+// One sign-in for Goals and Fitness: both apps read/write the session under
+// this shared key (goals/js/supabaseClient.js has the same block — keep
+// them in sync). Same project and same account, so one session serves both.
+// Each app's old per-app key is adopted once and then deleted — if it were
+// left behind, signing out would just re-adopt it on the next load.
+const SHARED_AUTH_KEY = 'cm-apps-auth';
+const LEGACY_AUTH_KEYS = ['fitness-auth', 'goals-tracker-auth'];
+try {
+  if (!localStorage.getItem(SHARED_AUTH_KEY)) {
+    const legacy = LEGACY_AUTH_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
+    if (legacy) localStorage.setItem(SHARED_AUTH_KEY, legacy);
+  }
+  LEGACY_AUTH_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch (_) { /* storage blocked (private mode etc.) — just sign in normally */ }
+
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   db: {
     schema: SUPABASE_SCHEMA
   },
   auth: {
-    storageKey: 'fitness-auth',
+    storageKey: SHARED_AUTH_KEY,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true

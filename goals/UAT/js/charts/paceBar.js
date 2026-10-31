@@ -24,9 +24,10 @@ export function renderPaceBar(percentComplete, percentElapsed, colour, customLab
     markerHtml = `<div class="pace-marker" style="left:${markerPct}%" title="Expected by now: ${formatPercent(elapsed)}"></div>`;
   }
 
+  // The marker's hover title is invisible on phones, so the caption names it too.
   const label = customLabel || (complete === null
     ? (elapsed !== null ? `On track marker at ${formatPercent(elapsed)} — no measure logged yet` : 'No numeric measure')
-    : `${formatPercent(complete)} complete`);
+    : `${formatPercent(complete)} complete${elapsed !== null ? ` · ${formatPercent(elapsed)} expected by now` : ''}`);
 
   return `
     <div class="pace-bar ${paceClass}">

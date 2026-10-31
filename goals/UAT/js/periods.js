@@ -46,8 +46,8 @@ export function periodBoundsContaining(periodType, dateISO) {
 /** The most recently completed month/quarter/year, matching pending_reviews(). */
 export function previousPeriod(periodType, now) {
   const d = now || new Date();
-  const y = d.getUTCFullYear();
-  const m = d.getUTCMonth() + 1;
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
   if (periodType === 'month') {
     return m === 1 ? monthBounds(y - 1, 12) : monthBounds(y, m - 1);
   }
@@ -134,8 +134,8 @@ export function enumeratePeriods(periodType, fromDateISO, toDateISO) {
 export function recentPeriods(periodType, count) {
   const out = [];
   const now = new Date();
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth() + 1;
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
   if (periodType === 'month') {
     let year = y, month = m - 1; // start from the most recently completed month
     for (let i = 0; i < count; i++) {

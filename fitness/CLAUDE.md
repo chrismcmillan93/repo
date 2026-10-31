@@ -731,6 +731,59 @@ on the ~2,156 kcal figure given as the reconciliation check, not from a
 real per-gram rate the way every other food here is. Worth confirming with
 Chris if he has the actual figure.
 
+## One-off single-day schedule adjustments
+
+A real-world pattern worth keeping in mind: because this block runs once
+(8 weeks, 2026-09-14 to 2026-11-08, no repeating cycle), a `(day_of_week,
+week_number)` pair with a specific `week_number` always identifies exactly
+one calendar date. That makes it the right tool for a genuine one-off
+change to a single day, not just for the "standing override that repeats
+every time this week comes around" case it was originally built for.
+
+Example (29 Sept, week 3 Tuesday): Chris missed Monday's upper lift and its
+evening intervals entirely, and moved the upper lift to Tuesday instead,
+with Tuesday's own evening run undecided between the normal easy run and
+Monday's missed intervals. Handled as:
+- A new `session_templates` row for `(day_of_week=2, week_number=3)`,
+  `session_type='upper'`, titled "Upper lift (make-up from Monday)" --
+  additive alongside Tuesday's existing sessions, touches no other Tuesday.
+- The Tuesday easy run's own `run_plan.detail` updated to note the
+  Monday-intervals alternative, rather than inventing a real choice-group
+  mechanism (which this schema doesn't have, unlike `usa`/`thailand_uat`'s
+  itinerary choice groups) for a single ambiguous day.
+- Nothing written to `daily_checks` -- that's Chris's own tap once he's
+  actually done it, not something to fill in on his behalf.
+
+Also pushed Tuesday's Muay Thai back one week (deleted the week-3 row,
+week 4's already-seeded row becomes the real start) and cleaned up every
+week's easy-run `detail` text that referenced the old "from Tue 29 Sept"
+start date, now wrong.
+
+## One sign-in with Goals, and Goals' "Today's training" card
+
+Goals is the home screen; Fitness is a section of it (2026-10-05). Three
+links between the apps, nothing merged:
+
+- **Shared session.** Both `fitness/js/supabaseClient.js` and
+  `goals/js/supabaseClient.js` (+ `goals/UAT/`) use storageKey
+  `cm-apps-auth`. Chris's one account (`chris@…`) owns both apps' data, so
+  one session serves both; signing out of either signs out of both. On load
+  each client adopts an old per-app session (`fitness-auth` /
+  `goals-tracker-auth`) if the shared slot is empty, then **deletes both old
+  keys** — leaving them would make sign-out undo itself on the next load.
+  Keep the two blocks identical. Test fixtures that seed `fitness-auth`
+  still work (adopted on load).
+- **Links.** "Fitness ›" in the Goals menu; "‹ Goals" in Fitness's top bar.
+- **Card.** `goals/js/views/trainingCard.js` shows today's
+  `get_day_bundle()` sessions under the Goals balance wheel, tickable. It
+  reads/writes through Goals' client with `.schema('fitness')`, writing
+  `daily_checks` in exactly `db.dailyChecks.upsert`'s shape (`item_id`
+  `session:<type>`, `onConflict user_id,log_date,item_id`), dated by
+  **local** date (Goals' `todayISO()`, same as Fitness's `todayStr()`). So:
+  **changing session tick ids or `get_day_bundle()`'s `sessions` shape here
+  breaks that card too.** It hides itself outside a block or if the fetch
+  fails; no offline queue (a failed tick reverts and says so).
+
 ## Working notes for future sessions
 
 - Every list-style query in `db.js` filters by what actually scopes it (`user_id`,
@@ -743,3 +796,37 @@ Chris if he has the actual figure.
   used by `usa` and `goals` in this repo — each top-level app keeps its own copy
   rather than importing across app boundaries, matching how `usa`/`goals` already do
   it, not a new decision made here.
+
+## Lifting tab (Hevy) — 2026-10-29
+
+New `#/lifting` route (`views/lifting.js`) showing what was actually lifted,
+mirrored from Hevy. Everything else in this app answers "did the session
+happen"; this answers "is it getting stronger". **Read-only** — Hevy stays
+where lifts are logged, and nothing here writes to `daily_checks`.
+
+- **Data:** `fitness.hevy_workouts`, `hevy_sets`, `hevy_exercise_templates`,
+  `hevy_sync_state` (migration `fitness_hevy_tables`). The browser has
+  SELECT only, scoped to its own `user_id`; only the Edge Function writes.
+- **Sync:** Edge Function `hevy-sync` (`supabase/functions/hevy-sync/`,
+  deployed to `dashboards-new`). First run pulls full history from
+  `/v1/workouts`; later runs use `/v1/workouts/events` since the stored
+  high-water mark, so edits and deletes in Hevy come through. A workout's
+  sets are replaced wholesale on every update. Runs when Chris taps "Sync
+  now", or automatically when the tab opens and the last sync is >6 h old.
+- **Secrets needed** (Dashboard → Edge Functions → Secrets): `HEVY_API_KEY`
+  (Hevy Pro) and `HEVY_OWNER_EMAIL` (only that account may sync — this
+  project also hosts other people's `usa` accounts). Until set, the tab shows
+  a "Hevy isn't connected yet" card and the function returns `not_configured`.
+- **Conventions in `lifting/analysis.js`:** dumbbell weights are the TOTAL of
+  both dumbbells, as logged, so 100 kg = the gym's 2 × 50 kg max and is
+  labelled "kg total". Warm-ups never count. e1RM is Epley from 1–12 rep sets
+  only; an exercise's first session is a baseline, not a PR. "At the rack's
+  limit" flags dumbbell lifts that hit 100 kg total in the last 6 weeks.
+  Weekly sets by muscle count secondary muscles as half a set.
+- **Posts (`lifting/posters.js`):** canvas-drawn PNGs for @cmfitnesslog — PR
+  story and month story (1080×1920), month carousel (5 × 1080×1350). Shared
+  via the Web Share API on phones (straight to Instagram), downloaded
+  otherwise. Nothing is uploaded anywhere.
+- Tested with Playwright against mocked REST responses (same approach as the
+  Testing section above): renders, expands a lift, builds all three post
+  types, no console errors. Not yet tested against real Hevy data.

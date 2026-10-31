@@ -1,9 +1,9 @@
 // Supabase connection for the fitness tracker.
 //
 // Shares the `dashboards-new` project (and therefore an origin, and
-// therefore localStorage) with usa/goals/thailand_uat in this repo -- each
-// app gets its own schema and its own auth storageKey (see
-// supabaseClient.js) so signing in here never collides with those apps.
+// therefore localStorage) with usa/goals/thailand in this repo -- each app
+// gets its own schema. The auth session is deliberately shared with Goals
+// (one sign-in for both, see supabaseClient.js) and with nothing else.
 //
 // NOTE: the `fitness` schema must be added to Project Settings -> Data API
 // -> "Exposed schemas" in the Supabase dashboard before this app can reach

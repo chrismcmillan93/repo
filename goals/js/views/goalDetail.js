@@ -77,7 +77,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
     ${goal.measure_type === 'numeric' ? `
       <section class="card">
         <p class="card-eyebrow">Value over time</p>
-        ${renderSparkline(ascUpdates.filter((u) => u.value !== null), area.colour)}
+        ${renderSparkline(valueSeries(goal, ascUpdates), area.colour)}
       </section>` : ''}
 
     <section class="card">
@@ -91,7 +91,7 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
 
     <section class="card">
       <p class="card-eyebrow">Timeline</p>
-      ${renderTimeline(updates, goal.measure_type)}
+      ${renderTimeline(updates, goal.measure_type, !!goal.cumulative)}
     </section>
 
     <section class="card">
@@ -99,6 +99,16 @@ function renderPage(goal, p, area, updates, milestones, reviewRefs) {
       ${renderReviewRefs(reviewRefs)}
     </section>
   `;
+}
+
+/** Points for "Value over time": running total for cumulative goals, raw readings otherwise. */
+function valueSeries(goal, ascUpdates) {
+  const withValue = ascUpdates.filter((u) => u.value !== null && u.value !== undefined);
+  if (!goal.cumulative) return withValue;
+  let total = Number(goal.start_value || 0);
+  const series = withValue.map((u) => ({ ...u, value: (total += Number(u.value)) }));
+  // Anchor at the start value so a single deposit still draws a trend line.
+  return [{ occurred_on: goal.start_date, value: Number(goal.start_value || 0) }, ...series];
 }
 
 function renderMeasureDetail(goal, p) {
@@ -160,7 +170,7 @@ function renderAddUpdateForm(goal) {
         <label>Note
           <textarea name="note" rows="2" placeholder="What happened, what you noticed…"></textarea>
         </label>
-        ${goal.measure_type === 'numeric' ? `<label>Value${goal.unit ? ' (' + escapeHtml(goal.unit) + ')' : ''}
+        ${goal.measure_type === 'numeric' ? `<label>${goal.cumulative ? 'Amount added' : 'Value'}${goal.unit ? ' (' + escapeHtml(goal.unit) + ')' : ''}
           <input type="number" step="any" name="value">
         </label>` : ''}
         <label class="picker-label">Confidence it'll land</label>
@@ -239,13 +249,13 @@ function renderMilestonesSection(milestones) {
   `;
 }
 
-function renderTimeline(updates, measureType) {
+function renderTimeline(updates, measureType, cumulative) {
   if (!updates.length) return emptyStateHtml('No updates yet', 'Add your first one above.');
   return `<ul class="timeline-list">${updates.map((u) => `
     <li class="timeline-item">
       <div class="timeline-item-head">
         <span class="timeline-date">${formatDateDMY(u.occurred_on)}</span>
-        ${timelineValueHtml(u, measureType)}
+        ${timelineValueHtml(u, measureType, cumulative)}
         ${u.confidence ? `<span class="timeline-confidence" title="Confidence">Confidence ${u.confidence}/5</span>` : ''}
       </div>
       ${u.note ? `<div class="timeline-note">${renderNote(u.note)}</div>` : ''}
@@ -253,8 +263,11 @@ function renderTimeline(updates, measureType) {
   `).join('')}</ul>`;
 }
 
-function timelineValueHtml(u, measureType) {
+function timelineValueHtml(u, measureType, cumulative) {
   if (u.value === null || u.value === undefined) return '';
+  if (measureType === 'numeric' && cumulative && Number(u.value) >= 0) {
+    return `<span class="timeline-value">+${formatNumber(u.value)}</span>`;
+  }
   if (measureType === 'pass_fail') {
     return Number(u.value) >= 1
       ? `<span class="timeline-value pf-hit">✓ Achieved</span>`

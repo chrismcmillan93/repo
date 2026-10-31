@@ -25,7 +25,7 @@ function renderPage(active, archived, goals, query) {
     <section class="card">
       <p class="card-eyebrow">Life areas</p>
       ${active.length ? `<ul class="area-admin-list">${active.map((a, i) => areaRowHtml(a, i, active.length)).join('')}</ul>` : emptyStateHtml('No areas yet', 'Add your first one below.')}
-      <form id="add-area-form" class="form-row">
+      <form id="add-area-form" class="form-row add-area-form">
         <input type="text" name="name" placeholder="New area name" maxlength="60" required>
         <input type="color" name="colour" value="#6b7280">
         <button type="submit" class="btn btn-quiet btn-sm">Add area</button>

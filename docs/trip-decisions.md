@@ -209,6 +209,24 @@ both real network failures (this sandbox can't reach either real API to confirm
 which one, if either, was actually down in production) and a controlled
 fail-then-succeed sequence to prove the retry now actually happens.
 
+## Flights priced (fares checked 3 Oct 2026)
+All three flight placeholders filled in with real routings/fares from Google Flights.
+Status stays `placeholder` until actually booked — this is pricing research, not a
+booking confirmation.
+
+- **UK → Austin:** BA1381 MAN→LHR 07:45, 2h10 connection, BA191 LHR→AUS 15:25 nonstop
+  (777). £558. Book as part of one BA.com multi-city itinerary with the return below.
+  Pay with Amex Gold (2x points).
+- **Austin → Las Vegas:** Southwest WN314, nonstop 21:55→22:55 (737 MAX 8) — leaves a
+  full last day in Austin before flying out. £135. Book direct at southwest.com; pay
+  in USD via Monzo/Revolut to avoid the Amex FX fee.
+- **Los Angeles → UK:** BA280 LAX→LHR 17:05 nonstop (777, overnight), 3h05 connection,
+  BA1368 LHR→MAN. £432. Same multi-city BA booking as the outbound.
+
+Total flights: £1,125. The Austin→Las Vegas leg is still a separate one-way Southwest
+booking, not part of the BA multi-city fare — correct, since BA doesn't serve that
+domestic hop.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date

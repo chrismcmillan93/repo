@@ -15,7 +15,7 @@ import { loadReviewGoalDetails, renderReadOnlyReview } from './reviewShared.js';
 export async function renderReviewsArchive(root, params) {
   root.innerHTML = loadingHtml('Loading reviews…');
   try {
-    const year = Number((params.query || {}).year) || new Date().getUTCFullYear();
+    const year = Number((params.query || {}).year) || new Date().getFullYear();
     const [reviews, goals] = await Promise.all([
       db.listReviews(),
       db.listGoals({ includeArchived: true })

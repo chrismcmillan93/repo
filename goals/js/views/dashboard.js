@@ -8,6 +8,7 @@ import { periodLabel, periodBoundsContaining, horizonToPeriodType } from '../per
 import { renderRadar } from '../charts/radar.js';
 import { renderPaceBar } from '../charts/paceBar.js';
 import { renderMomentumGrid } from '../charts/momentumGrid.js';
+import { loadTrainingDay, trainingCardHtml, bindTrainingCard } from './trainingCard.js';
 import {
   loadingHtml, errorHtml, emptyStateHtml, overdueBannerHtml, bindOverdueActions, needsAttentionPillHtml,
   pickerHtml, bindPicker, areaDotHtml
@@ -16,10 +17,11 @@ import {
 export async function renderDashboard(root) {
   root.innerHTML = loadingHtml('Loading your goals…');
   try {
-    const [areas, goalsActive, pending] = await Promise.all([
+    const [areas, goalsActive, pending, trainingDay] = await Promise.all([
       db.listAreas(),
       db.listGoals({ status: 'active' }),
-      db.listPendingReviews().catch(() => [])
+      db.listPendingReviews().catch(() => []),
+      loadTrainingDay()
     ]);
 
     if (!areas.length) {
@@ -41,12 +43,14 @@ export async function renderDashboard(root) {
 
     root.innerHTML = [
       `<section class="card hero-card">${renderRadar(radarData(areas, goals))}</section>`,
+      trainingCardHtml(trainingDay),
       renderPendingReviewCards(pending, goals.length),
       renderGoalsSection(areas, goals),
       await renderMomentumSection(goals)
     ].join('');
 
     bindDashboardEvents(root, goals);
+    bindTrainingCard(root);
   } catch (err) {
     root.innerHTML = errorHtml(err) + hintIfSchemaMissing(err);
   }
@@ -143,7 +147,7 @@ function quickUpdateFormHtml(g) {
     <button type="button" class="quick-update-toggle" data-action="toggle-quick-update">+ Add update</button>
     <form class="quick-update-form" hidden data-quick-update-for="${g.id}">
       <textarea name="note" placeholder="What happened?" rows="2"></textarea>
-      ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="Value${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
+      ${g.measure_type === 'numeric' ? `<input type="number" step="any" name="value" placeholder="${g.cumulative ? 'Amount added' : 'Value'}${g.unit ? ' (' + escapeHtml(g.unit) + ')' : ''}">` : ''}
       <label class="picker-label">Confidence</label>
       ${pickerHtml(`qu-${g.id}`, '', ['Very low', 'Low', 'Medium', 'High', 'Very high'])}
       <button type="submit" class="btn btn-primary btn-sm">Save update</button>
@@ -190,7 +194,7 @@ function lastNMonths(n) {
   const out = [];
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() - i, 1));
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
     const label = d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
     out.push({ key, label });

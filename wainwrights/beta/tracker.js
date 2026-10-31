@@ -192,6 +192,7 @@
       if(error) throw error;
       flashSaved();
       showSyncStatus("ok");
+      refreshTodayButton();
     }catch(e){
       console.error("Supabase save failed", e);
       showSyncStatus("error", "Couldn't save that tick to Supabase — it'll stay local for now.");
@@ -363,11 +364,14 @@
           const climbed = !!state[f.name];
           const visible = fellMatchesSearch(f);
           const isMountain = f.m >= MOUNTAIN_M;
-          // Routed via Google rather than linking alltrails.com directly: the
-          // AllTrails app claims its own domain but drops the search query,
-          // stranding mobile users on its home screen.
-          const at = "https://www.google.com/search?q="
-                   + encodeURIComponent("alltrails " + f.name + " Lake District walk");
+          // A specific AllTrails trail page for this fell (fells-data.js,
+          // `alltrails`). Trail pages open properly in the AllTrails app; an
+          // AllTrails *search* link doesn't (the app drops the query and lands
+          // on its home screen), so the Google search is only a fallback.
+          const at = (f.alltrails && f.alltrails.url)
+            ? f.alltrails.url
+            : "https://www.google.com/search?q="
+              + encodeURIComponent("alltrails " + f.name + " Lake District walk");
           const osm = "https://www.openstreetmap.org/?mlat=" + f.lat + "&mlon=" + f.lng
                     + "#map=15/" + f.lat + "/" + f.lng;
           const challengeBadge = (f.challenges && f.challenges.length)
@@ -600,8 +604,10 @@
         .flatMap(area=> area.fells)
         .filter(f=> f.routes && f.routes.indexOf(key) !== -1);
 
-      const routeAt = "https://www.google.com/search?q="
-                     + encodeURIComponent("alltrails " + route.label + " Lake District walk");
+      const routeAt = (typeof ROUTE_ALLTRAILS !== "undefined" && ROUTE_ALLTRAILS[key])
+        ? ROUTE_ALLTRAILS[key]
+        : "https://www.google.com/search?q="
+          + encodeURIComponent("alltrails " + route.label + " Lake District walk");
 
       html += '<div class="route-modal-section">';
       html += '  <p class="route-modal-label">' + escapeHtml(route.label) + '</p>';
@@ -981,6 +987,49 @@
     setTimeout(()=>{ btn.textContent = originalText; btn.disabled = false; }, 2500);
   }
 
+  // ---------- today's ticks story ----------
+  //
+  // Fells ticked since local midnight (checkbox_states.ticked_at, recorded by a
+  // trigger from 2026-10-31 on; older ticks have no date and can't appear).
+
+  async function todaysTicks(){
+    if(!WW.sb || !WW.currentUser) return [];
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    const { data, error } = await WW.sb
+      .from(TABLE).select("item_id,ticked_at")
+      .eq("dashboard_id", DASHBOARD_ID).eq("user_id", WW.currentUser.id)
+      .eq("is_checked", true).gte("ticked_at", midnight.toISOString())
+      .order("ticked_at", { ascending: true });
+    if(error) throw error;
+    const byName = {};
+    FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ byName[f.name] = f; }));
+    return (data || []).filter(r=> byName[r.item_id] && state[r.item_id]).map(r=> byName[r.item_id]);
+  }
+
+  async function refreshTodayButton(){
+    const btn = document.getElementById("share-today-btn");
+    if(!btn || !window.WWStory) return;
+    try{
+      const fells = await todaysTicks();
+      btn.style.display = fells.length ? "" : "none";
+    }catch(e){ console.error("Could not check today's ticks", e); }
+  }
+
+  function shareTodayCard(){
+    const btn = document.getElementById("share-today-btn");
+    WWStory.run(btn, async ()=>{
+      const fells = await todaysTicks();
+      if(!fells.length) throw new Error("no ticks today");
+      const c = computeCounts();
+      return WWStory.dayCard({
+        dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
+        fells: fells.map(f=> ({ name: f.name, m: f.m })),
+        climbed: c.climbed, total: TOTAL, percent: c.percent,
+        gain: fells.reduce((n, f)=> n + f.m, 0)
+      });
+    }, "wainwrights-today.jpg", "Fells I ticked today");
+  }
+
   // ---------- profile / first-sign-in name prompt ----------
 
   async function loadProfile(userId){
@@ -1038,6 +1087,8 @@
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
     document.getElementById("share-btn").onclick = shareProgressCard;
+    document.getElementById("share-today-btn").onclick = shareTodayCard;
+    refreshTodayButton();
     subscribeRealtime(user.id);
 
     const profile = await loadProfile(user.id);
