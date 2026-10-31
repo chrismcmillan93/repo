@@ -348,6 +348,7 @@
         ${detail}
       </article>
       ${body}
+      ${(h.is_host || h.my_status === "approved") && h.status !== "cancelled" ? `<div class="share-row"><button class="btn" data-action="story">Share to Instagram Story</button></div>` : ""}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
@@ -452,6 +453,18 @@
     if (a === "open-cancel") { const d = $("hike-cancel"); if (d) { d.open = true; d.scrollIntoView({ block: "center" }); } return; }
     if (a === "open-report") { $("hike-report").innerHTML = `<div class="plan-card hike-form"><label>What's wrong with this hike?<textarea class="lock-input hike-text" id="rep-reason" rows="3" maxlength="500"></textarea></label><div class="share-row"><button class="btn" data-action="send-report">Send report</button></div></div>`; return; }
     if (a === "copy") { try { await navigator.clipboard.writeText(hikeLink(token)); flash("Link copied."); } catch (er) { flash("Couldn't copy — select the link and copy it by hand.", true); } return; }
+    if (a === "story") {
+      return WWStory.run(btn, async () => {
+        const people = await rpc("hike_story_people", { p_hike_id: hike.id });
+        const w = hike.walk || {}, d = new Date(hike.start_at);
+        return WWStory.hikeCard({
+          title: hike.title, past: hike.status === "completed" || d < new Date(),
+          dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
+          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null,
+          people: (people || []).map(p => ({ name: p.display_name, handle: p.instagram_handle }))
+        });
+      }, "wainwrights-hike.jpg", hike.title);
+    }
     if (a === "share") { try { await navigator.share({ title: hike.title, text: "Join me on a hike: " + hike.title, url: hikeLink(token) }); } catch (er) {} return; }
     if (a === "unblock") return guard(btn, async () => { await rpc("unblock_hiker", { p_user_id: uid }); await showList(); });
     if (a === "send-report") return guard(btn, async () => { await rpc("report_hike", { p_token: token, p_reason: $("rep-reason").value }); $("hike-report").innerHTML = ""; flash("Thanks — your report has been sent."); });

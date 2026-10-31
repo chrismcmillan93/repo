@@ -147,3 +147,29 @@ the corrected function — never rewrite an applied migration, add another).
   and tick-for-everyone flow as planner hikes (`walk_key = 'custom'`).
 - **Not built (by choice):** waitlist, public listing, postponing as its own
   status (edit the time instead), a scheduled forecast check.
+
+## Instagram Story sharing (`beta/story.js`) — 2026-10-31
+
+Three 1080×1920 canvas images in the app's paper-grid look, shared through the
+Web Share API (files) with a download fallback. A website can't open Instagram's
+Story composer or add link stickers, so the person picks Instagram in the share
+sheet (or saves the image and adds it from photos). Content stays out of the
+top/bottom ~250px that Instagram covers; footer is the app name only.
+
+- **Today's ticks** (tracker "Share today's fells", shown only when something was
+  ticked today): reads `checkbox_states.ticked_at >= local midnight`. `ticked_at`
+  is set by trigger `private.set_ticked_at` (migration
+  `20261031170000_wainwrights_story_sharing.sql`) on insert/update when a
+  wainwrights row becomes checked, null when unchecked — so it also covers
+  `complete_hike`. Ticks made before 2026-10-31 have no date and can't appear.
+- **Hosted hike** (hike page, host or approved attendee, not cancelled): title,
+  date, fells, miles/ascent, and walkers' display names plus @handles. Names and
+  handles come from `hike_story_people(hike_id)` (SECURITY DEFINER, authenticated
+  only, host/approved attendees only; after the host confirms attendance only
+  those who attended). Handles are `leaderboard_opt_in.instagram_handle`; people
+  without one show a name only.
+- **Team** (leaderboard, "Share team to Instagram Story"): union fells/%, total
+  elevation, full member list from `team_summary` + `team_leaderboard`.
+- Tested: trigger and `hike_story_people` access in rolled-back SQL; image layout
+  rendered in headless Chromium; existing page tests still pass. The share sheet
+  itself needs a real phone.
