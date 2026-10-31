@@ -348,10 +348,28 @@
         ${detail}
       </article>
       ${body}
-      ${(h.is_host ? (h.status === "completed" || (h.status === "open" && hasStarted())) : h.my_status === "approved" && h.status !== "cancelled") ? `<div class="hike-actions"><button class="btn" data-action="story">Share to Instagram Story</button></div>` : ""}
+      ${storyCardHtml()}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
+  }
+
+  function storyCardHtml(){
+    const h = hike;
+    if (h.status === "cancelled") return "";
+    const started = h.status === "completed" || hasStarted();
+    const after = `<div class="hike-story-opt${started ? "" : " is-off"}">
+        <h4>After the walk</h4>
+        <p>${h.is_host ? "A “we walked” card: the fells, the distance and who came, with names and @handles." : "A “we walked” card: the fells, the distance and who came, with names and @handles."}</p>
+        <button class="btn" data-action="story" ${started ? "" : "disabled"}>${started ? "Share the walk" : "Opens when the walk starts"}</button></div>`;
+    if (!h.is_host) return h.my_status === "approved" ? `<div class="plan-card"><h3 class="hike-sub">Instagram Story</h3><div class="hike-story-grid">${after}</div></div>` : "";
+    const invite = `<div class="hike-story-opt${started ? " is-off" : ""}">
+        <h4>Invite people</h4>
+        <p>An invitation with the details and places left. Copies the link — add it as a Link sticker so people can ask for a place.</p>
+        <button class="btn" data-action="story-invite" ${started ? "disabled" : ""}>${started ? "Closed — walk has started" : "Share the invite"}</button></div>`;
+    return `<div class="plan-card"><h3 class="hike-sub">Instagram Story</h3>
+      <p class="chart-note">Two different stories — one to get people along, one to show who walked.</p>
+      <div class="hike-story-grid">${invite}${after}</div></div>`;
   }
 
   function attendeeNames(){
@@ -398,8 +416,8 @@
     // share
     html += `<div class="plan-card"><h3 class="hike-sub">Share this hike</h3>
       <p class="hike-link-box" id="hike-link">${esc(hikeLink(token))}</p>
-      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}${h.status === "open" && !hasStarted() ? '<button class="btn" data-action="story-invite">Instagram Story</button>' : ""}</div>
-      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point and your contact.${h.status === "open" && !hasStarted() ? " The Instagram Story button copies the link — add it to the story as a Link sticker." : ""}</p></div>`;
+      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}</div>
+      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point and your contact.</p></div>`;
     if (h.status === "open") {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
         <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>

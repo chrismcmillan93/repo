@@ -1464,3 +1464,11 @@
   /* hike action buttons: wrap and fit the card on narrow screens */
   .hike-actions{ display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 8px; }
   .hike-actions .btn{ flex: 1 1 140px; min-width: 0; text-align: center; }
+
+  /* Instagram story options on the hike page */
+  .hike-story-grid{ display: grid; gap: 10px; grid-template-columns: 1fr; margin-top: 10px; }
+  .hike-story-opt{ border: 1px solid var(--ink-faint); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); }
+  .hike-story-opt h4{ margin: 0 0 4px; font-family: 'Fraunces', Georgia, serif; font-size: 18px; color: var(--green-deep); }
+  .hike-story-opt p{ margin: 0 0 10px; font-size: 14px; color: var(--ink-soft); line-height: 1.4; }
+  .hike-story-opt .btn{ width: 100%; }
+  .hike-story-opt.is-off{ opacity: .6; }
