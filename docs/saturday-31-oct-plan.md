@@ -17,16 +17,105 @@ They just need their keys:
 
 ## 2. Host a hike (to work out on Saturday)
 
-Idea: let a Wainwrights user host a walk others can join — e.g. pick a walk from the planner,
-set a date, meeting point (the parking link) and spaces, and share it. Open questions to settle:
+Idea: let a Wainwrights user host a walk others can join — pick a walk from the planner, set a date,
+meeting point (the parking link) and spaces, and share a link. Scope: **medium** (usable by other
+app users). Order: this first; Azure (section 4) and the PWA are deferred until after.
 
-- [ ] Who can see a hosted hike — friends/team only, anyone with the link, or public on the app?
-- [ ] Joining: request + host approves, or first come first served? Waitlist?
-- [ ] What joiners see: meeting point, time, route, host's contact — and what stays private.
-- [ ] Notifications (email when someone joins / the hike changes) — needs an email provider.
-- [ ] Safety basics: kit list, turnaround time, cancel-for-weather by the host.
-- [ ] Ticking fells for everyone who went, after the walk.
-- [ ] Fits the existing teams feature? (`teams` / `team_members` already exist on walking-up-hills.)
+### Decisions (settled 31 Oct)
+
+- **Visibility: anyone with the link.** Private by default; no public listing. The host shares the
+  link (WhatsApp, Instagram).
+- **Sign-in required** to request a place (existing magic-link / 6-digit code). The host sees a
+  display name.
+- **Joining: the host approves each request.** Spaces cap approvals; no waitlist for now.
+- **Before approval, a visitor sees:** route, date, time, difficulty, general area. **Hidden until
+  approved:** exact parking pin and the host's contact.
+- **Notifications: in-app plus email** (request received, approved/declined, hike edited, hike
+  cancelled). Needs an email provider (e.g. Resend free tier) called from an Edge Function.
+- **Host tools:** cancel / postpone for weather; edit time, meeting point and spaces (edits email
+  everyone approved); kit list + turnaround time shown to joiners (editable default list);
+  "tick fells for everyone" after the walk (each attendee can undo their own).
+- **Teams: a hike can optionally be tied to a team** (`teams` / `team_members` already exist on
+  walking-up-hills). Team members are auto-approved.
+
+### Added later on 31 Oct
+
+- **Email: use the existing Resend setup** (already sends the magic links from the custom domain).
+  Stay on it for now. Azure is deferred: hosted hikes get built first, on GitHub Pages beta, and
+  the architecture gets sorted when we migrate. (This changes today's order: hikes before Azure.)
+- **Link format:** random share token in the URL (`hike.html?t=<token>`), at least 16 random
+  characters, so hikes can't be guessed.
+- **Weather:** the hike page shows the forecast at summit height (Open-Meteo, as the planner does)
+  and a warning banner when it's poor. The host gets an in-app nudge to cancel/postpone when the
+  forecast turns bad within 48 hours. Cancelling stays a manual host action.
+- **Safety warning:** host must acknowledge a responsibility statement when creating a hike;
+  joiners acknowledge it when requesting a place. Wording: the host is a fellow walker, not a
+  qualified leader; everyone is responsible for their own kit, fitness and navigation; check the
+  Mountain Weather Information Service forecast; turn back if conditions change. Report and block
+  are included (below).
+- **Tick for everyone, with confirmation:** after the start time, the host sees the approved
+  attendees as a list with a tick beside each name, and must tick "I confirm these people
+  attended" before the button works. Fells are ticked only for the ticked people. Each person is
+  notified and can undo it with one tap ("I wasn't on this walk"); the undo removes only ticks
+  the hike added, never ones they already had.
+
+### Data model (walking-up-hills, `public` schema, via migration)
+
+Private details live in their own table instead of hiding columns, so a mistake in a query can't
+leak them.
+
+- `hikes`: `id`, `host_id` (auth user), `share_token` (unique), `title`, `walk_key` (planner walk
+  id), `walk_snapshot` jsonb (label, fell list, miles, ascent, area — copied so later planner
+  changes don't alter a booked hike), `area` text, `start_at`, `spaces` int, `status`
+  (`open` | `cancelled` | `postponed` | `completed`), `status_note`, `kit` text[],
+  `turnaround_time`, `team_id` (nullable → `teams`), `host_ack_at`, `attendance_confirmed_at`,
+  `created_at`, `updated_at`.
+- `hike_private`: `hike_id` (pk), `meet_lat`, `meet_lng`, `meet_note`, `host_contact`.
+- `hike_attendees`: pk (`hike_id`, `user_id`); `display_name`, `status` (`requested` | `approved` |
+  `declined` | `withdrawn` | `removed`), `message`, `safety_ack_at`, `attended` bool null,
+  `requested_at`, `decided_at`.
+- `hike_ticks`: (`hike_id`, `user_id`, `fell_id`) — the ticks a hike created, so undo is exact.
+- `hike_notifications`: `id`, `user_id`, `hike_id`, `kind`, `body`, `read_at`, `email_sent_at`,
+  `created_at`.
+- `hike_reports`: `id`, `hike_id`, `reporter_id`, `reason`, `created_at`.
+- `host_blocks`: pk (`host_id`, `blocked_user_id`).
+
+**Access rules (RLS):**
+- `hikes`: host full access; approved attendees read. Everyone else gets nothing directly.
+- Public link view goes through a SECURITY DEFINER function `get_hike_by_token(token)` returning
+  only title, route, date, time, difficulty, area, spaces left, status and the forecast inputs —
+  never the pin or contact. It is a function rather than a policy for the same reason as the
+  `usa` schema: avoids policy-to-policy recursion.
+- `hike_private`: host plus approved attendees (and team members who are auto-approved) only.
+- `hike_attendees`: a person sees their own row; the host sees all rows for their hike; approved
+  attendees see the names of other approved attendees.
+- Writes that cross users go through SECURITY DEFINER functions, not direct table writes:
+  `request_hike_place`, `decide_request` (host), `withdraw`, `cancel_hike`, `edit_hike`,
+  `complete_hike(hike_id, attendee_ids[], confirmed)` and `undo_hike_ticks(hike_id)`.
+  `complete_hike` refuses unless `confirmed` is true, the hike has started, and every id is an
+  approved attendee; it writes the ticks into `checkbox_states` for those users and records them
+  in `hike_ticks`.
+- A blocked user's request is declined automatically. Team hikes: members of `team_id` are
+  approved on request, still subject to spaces.
+
+### Build status (31 Oct)
+
+Built on beta: migrations applied to walking-up-hills, `hike-notify` deployed, `hike.html` +
+"Host this walk" on planner walks, Hikes nav link. SQL and page tests pass against mocks.
+Still to do: try it with two real accounts, send a real email, then tell people.
+
+### Original build plan
+
+1. Migration + `get_advisors` check on walking-up-hills (SECURITY DEFINER functions must set a
+   fixed `search_path` and be callable by `authenticated` only — the existing team functions
+   callable by anon are a separate known warning).
+2. Edge Function `hike-notify` sends the emails through Resend. Check the existing Resend
+   secret name and sender address before writing it, and reuse both.
+3. `hike.html` (beta): public view, request flow, host dashboard, attendee list, kit list,
+   weather banner, safety wording, report and block.
+4. "Host this walk" button on each planner walk.
+5. Playwright tests against mocks, plus a real second account for the cross-user checks
+   (the mock doesn't enforce RLS).
 
 ## 3. Wainwrights as an installable phone app (PWA)
 

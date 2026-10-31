@@ -430,6 +430,7 @@
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         <div class="chal-fell-list">${fellChips}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
+        <div><button type="button" class="btn plan-host" data-host-walk="${esc(w.id)}">Host this walk</button></div>
       </article>`;
   }
 
@@ -462,6 +463,22 @@
     const btn = document.getElementById("planner-more");
     if (btn) btn.addEventListener("click", () => { expanded = true; renderResults(); });
   }
+
+  // "Host this walk": hand the walk to hike.html (hosted hikes) via sessionStorage.
+  document.getElementById("planner-results").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-host-walk]");
+    if (!b) return;
+    const w = walks.find(x => x.id === b.dataset.hostWalk);
+    if (!w) return;
+    try {
+      sessionStorage.setItem("ww_host_walk", JSON.stringify({
+        id: w.id, label: w.label, miles: w.miles, ascent: w.ascent, fells: w.fells.map(f => f.name),
+        top_name: w.top.name, top_m: w.top.m, top_lat: w.top.lat, top_lng: w.top.lng,
+        start_name: w.start.name, start_lat: w.start.lat, start_lng: w.start.lng, url: w.url || null
+      }));
+    } catch (err) { return; }
+    window.location.href = "hike.html?new=1";
+  });
 
   // ---------- startup ----------
   WW.onAuthReady(async (u) => {

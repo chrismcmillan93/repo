@@ -79,3 +79,62 @@ query; trail pages open properly. That was why it went via Google before.)
   `beta/fells-data.js`, same routes as `PLANNER_ALLTRAILS_NAMED`. Keep the two
   in step if one changes.
 - Production `wainwrights/fells-data.js` and `tracker.js` are untouched.
+
+## Hosted hikes (`beta/hike.html`) — 2026-10-31
+
+A user hosts a walk from the planner ("Host this walk" on any walk card), shares a
+link, approves each request, then ticks the fells for everyone who came.
+Migrations: `20261031150000_wainwrights_hosted_hikes.sql` plus
+`20261031151500_wainwrights_hosted_hikes_fix_url_regex.sql` (the first
+`create_hike` used a regex repetition above Postgres's 255 cap; the second is
+the corrected function — never rewrite an applied migration, add another).
+
+- **Access model:** link-only (random 32-char `share_token`), sign-in required.
+  Before approval a visitor sees title, route, date, area, spaces, forecast; the
+  parking pin and host contact live in `hike_private` and are returned only to
+  the host and approved attendees. Clients have SELECT only on the `hike*`
+  tables; **every write is a SECURITY DEFINER function** (`create_hike`,
+  `request_hike_place`, `decide_hike_request`, `remove_hike_attendee`,
+  `withdraw_hike_place`, `edit_hike`, `cancel_hike`, `complete_hike`,
+  `undo_hike_ticks`, `report_hike`, `unblock_hiker`) that checks the caller.
+  `get_hike_by_token` is the one read the page uses; it decides what the caller
+  may see. RLS helpers live in the unexposed `private` schema so policies on
+  `hikes` and `hike_attendees` can't recurse through each other.
+- **Joining:** host approves each request; spaces cap approvals (re-checked
+  under a row lock). A hike tied to a team auto-approves approved team members.
+  Hosts can remove and block (`host_blocks`); a blocked user's request is
+  silently declined. Declined/removed people can't re-request.
+- **Tick for everyone (`complete_hike`):** only after the start time (and within
+  14 days), only for approved attendees the host selects, only with an explicit
+  `confirmed` flag (the page's "I confirm everyone ticked was on this walk"
+  box). It writes into `checkbox_states` for those people plus the host, ticking
+  only fells they don't already have, and records exactly those in `hike_ticks`.
+  Each walker is notified and can `undo_hike_ticks`, which unticks only what the
+  hike added. Fell names are validated against `fell_heights` when the hike is
+  created, so a hand-crafted snapshot can't tick arbitrary rows.
+- **Weather and safety:** hike page shows the Open-Meteo summit forecast for the
+  hike day (within 7 days; thresholds: gust ≥35 mph, rain ≥3 mm or feels ≤ -2 °C
+  = "Take care"; gust ≥45, rain ≥8 or feels ≤ -8 = "Poor"), an MWIS link, and
+  nudges the host to cancel when it's marginal/poor within 48 h. Hosts and
+  joiners both must tick a safety acknowledgement (stored: `host_ack_at`,
+  `safety_ack_at`). Report button writes to `hike_reports` (no client read
+  policy on purpose — read it with SQL).
+- **Email:** Edge Function `hike-notify` (verify_jwt false, authenticates the
+  caller itself) sends unsent `hike_notifications` for one hike through Resend,
+  called by the page after each action. Secrets on walking-up-hills:
+  `RESEND_API_KEY`, `HIKE_FROM_EMAIL` (set by hand — the dashboard-assisted
+  secret flow was paused by Supabase), optional `SITE_URL`. Emails carry the
+  message and a link only — never the pin or contact. Claim-then-send, 3 tries.
+  If the page's call fails, emails wait until the next action on that hike
+  (notifications older than 3 days are not sent); a scheduled sweeper would be
+  the fix if that ever matters.
+- **Sign-in round trip:** the magic link returns without the query string, so
+  `hike.js` keeps the token in sessionStorage for 15 minutes and restores it.
+  Visit `hike.html?list=1` for the "my hikes" list (nav link).
+- **Tested:** SQL level in a rolled-back transaction with simulated users
+  (stranger vs approved vs declined vs host, full hike, ack and confirmation
+  refusals, anon refused, tick + undo leaving the walker's own ticks alone);
+  page level with Playwright against a mocked Supabase. Not yet tried with two
+  real accounts or a real Resend send — do that before telling anyone.
+- **Not built (by choice):** waitlist, public listing, postponing as its own
+  status (edit the time instead), a scheduled forecast check.
