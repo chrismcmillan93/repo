@@ -41,8 +41,11 @@
     "Waterproof jacket and trousers", "Warm layer, hat and gloves", "Map and compass (or offline map)",
     "Head torch", "Food and water", "First aid kit and whistle", "Charged phone"
   ];
+  // WhatsApp group invite links only (same pattern as set_hike_whatsapp in the database).
+  const WA_RE = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9_-]{8,64}(\?[A-Za-z0-9=&_.%-]{0,100})?$/;
+  const waOk = v => !v || (v.length <= 200 && WA_RE.test(v));
   const ERRORS = {
-    not_signed_in: "Please sign in again.", ack_required: "Please tick the box to confirm you've read the safety notes.",
+    not_signed_in: "Please sign in again.", bad_whatsapp: "That doesn't look like a WhatsApp invite link. It should start with https://chat.whatsapp.com/", ack_required: "Please tick the box to confirm you've read the safety notes.",
     bad_title: "Give the hike a title (3–80 characters).", bad_area: "Add the area (2–60 characters), e.g. \"Glenridding\".",
     bad_start: "Pick a start time in the future (within 120 days).", bad_spaces: "Spaces must be between 1 and 20.",
     bad_meeting_point: "The meeting point must be in the Lake District.", bad_kit: "Kit list: up to 20 items, each under 60 characters.",
@@ -167,6 +170,7 @@
         <label>Meeting point — Google Maps link or "lat, lng" (required; in Google Maps press and hold the car park, then copy the coordinates). Only approved walkers see it.<input class="lock-input" id="n-point" placeholder="54.5436, -2.9490"></label>
         <label>Meeting point note<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park"></label>
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
+        <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
         <label>Kit list (one per line)<textarea class="lock-input hike-text" id="n-kit" rows="6">${esc(DEFAULT_KIT.join("\n"))}</textarea></label>
         ${teamSelectHtml(teams)}
@@ -217,6 +221,7 @@
         <label>Meeting point note (only approved walkers see this)<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park, by the toilets" value="${esc(walk.start_name || "")}"></label>
         <label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
+        <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
         <label>Kit list (one per line)<textarea class="lock-input hike-text" id="n-kit" rows="6">${esc(DEFAULT_KIT.join("\n"))}</textarea></label>
         ${teamSelectHtml(teams)}
@@ -256,6 +261,8 @@
         top_lat: walk.top_lat, top_lng: walk.top_lng, start_name: walk.start_name, url: walk.url || null
       };
     }
+    const wa = $("n-wa").value.trim();
+    if (!waOk(wa)) { flash(ERRORS.bad_whatsapp, true); return; }
     const kit = $("n-kit").value.split("\n").map(s => s.trim()).filter(Boolean);
     const team = $("n-team") ? $("n-team").value : "";
     const res = await rpc("create_hike", {
@@ -264,6 +271,8 @@
       p_turnaround: $("n-turn").value || null, p_meet_lat: lat, p_meet_lng: lng, p_meet_note: $("n-note").value,
       p_contact: $("n-contact").value, p_team_id: team || null, p_ack: $("n-ack").checked
     });
+    // Saved by its own call; if it fails the hike still exists and the host can add the link under "Edit details".
+    if (wa) { try { await rpc("set_hike_whatsapp", { p_hike_id: res.id, p_url: wa }); } catch (e) {} }
     try { sessionStorage.removeItem(HOST_WALK); } catch (e) {}
     location.href = "hike.html?t=" + encodeURIComponent(res.share_token);
   }
@@ -326,6 +335,7 @@
         <p><a class="plan-maps" href="${mapsUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions to the meeting point in Google Maps ↗</a></p>
         ${priv.meet_note ? `<p>${esc(priv.meet_note)}</p>` : ""}
         ${priv.host_contact ? `<p><strong>Host contact:</strong> ${esc(priv.host_contact)}</p>` : ""}
+        ${priv.whatsapp_url && waOk(priv.whatsapp_url) ? `<p><a class="btn" href="${esc(priv.whatsapp_url)}" target="_blank" rel="noopener noreferrer">Join the WhatsApp chat ↗</a></p>` : ""}
       </div>` : "";
 
     let body = "";
@@ -391,7 +401,7 @@
     if (h.status !== "open") return html;
     if (hasStarted()) return html + '<p class="chart-note">This hike has already started.</p>';
     if (s === "approved") {
-      html += `<div class="hike-note-box is-good"><strong>You're in.</strong> The meeting point and host contact are above. <button class="btn hike-small" data-action="withdraw">Pull out</button></div>` + attendeeNames();
+      html += `<div class="hike-note-box is-good"><strong>You're in.</strong> The meeting point, host contact and WhatsApp chat (if the host added one) are above. <button class="btn hike-small" data-action="withdraw">Pull out</button></div>` + attendeeNames();
     } else if (s === "requested") {
       html += `<div class="hike-note-box"><strong>Request sent.</strong> The host will approve or decline it, and you'll get an email. <button class="btn hike-small" data-action="withdraw">Withdraw request</button></div>`;
     } else if (s === "declined" || s === "removed") {
@@ -401,7 +411,7 @@
     } else {
       html += `<form id="hike-request" class="plan-card hike-form">
         <h3 class="hike-sub">Ask to join</h3>
-        <p class="chart-note">The host approves each person. The exact meeting point and host contact are shown once you're approved. Your display name is shown to the host.</p>
+        <p class="chart-note">The host approves each person. The exact meeting point, host contact and WhatsApp chat link are shown once you're approved. Your display name is shown to the host.</p>
         <label>Message to the host (optional) — your experience, anything they should know<textarea class="lock-input hike-text" id="r-msg" rows="3" maxlength="300"></textarea></label>
         <label class="plan-check"><input type="checkbox" id="r-ack"> I've read the safety notes below. I'm responsible for my own safety.</label>
         <div class="share-row"><button class="btn" type="submit" id="r-submit">Ask to join</button></div></form>`;
@@ -417,7 +427,7 @@
     html += `<div class="plan-card"><h3 class="hike-sub">Share this hike</h3>
       <p class="hike-link-box" id="hike-link">${esc(hikeLink(token))}</p>
       <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}</div>
-      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point and your contact.</p></div>`;
+      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point, your contact and the WhatsApp link.</p></div>`;
     if (h.status === "open") {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
         <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>
@@ -450,6 +460,7 @@
         <label>Meeting point note<input class="lock-input" id="e-note" maxlength="300" value="${esc(p.meet_note || "")}"></label>
         <label>Meeting point (Google Maps link or "lat, lng")<input class="lock-input" id="e-point" value="${esc(p.meet_lat != null ? Number(p.meet_lat).toFixed(5) + ", " + Number(p.meet_lng).toFixed(5) : "")}"></label>
         <label>Your contact<input class="lock-input" id="e-contact" maxlength="120" value="${esc(p.host_contact || "")}"></label>
+        <label>WhatsApp group invite link (only approved walkers see it; clear to remove)<input class="lock-input" id="e-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..." value="${esc(p.whatsapp_url || "")}"></label>
         <label>Turnaround time<input class="lock-input" id="e-turn" type="time" value="${esc(h.turnaround_time || "")}"></label>
         <label>Kit list (one per line)<textarea class="lock-input hike-text" id="e-kit" rows="6">${esc((h.kit || []).join("\n"))}</textarea></label>
         <label>Message to everyone approved or waiting (optional — they get an email if you change the time, place or add a message)<input class="lock-input" id="e-msg" maxlength="250" placeholder="e.g. Moved to 08:30 to beat the rain"></label>
@@ -521,6 +532,8 @@
       const pt = parsePoint($("e-point").value);
       if (pt === "bad") { flash("Couldn't read that meeting point. Use a Google Maps link or \"lat, lng\".", true); return; }
       if (pt) { lat = pt.lat; lng = pt.lng; }
+      const wa = $("e-wa").value.trim();
+      if (!waOk(wa)) { flash(ERRORS.bad_whatsapp, true); return; }
       const kit = $("e-kit").value.split("\n").map(s => s.trim()).filter(Boolean);
       if (!$("e-when").value) throw new Error("bad_start");
       await rpc("edit_hike", {
@@ -528,6 +541,7 @@
         p_meet_lat: lat, p_meet_lng: lng, p_meet_note: $("e-note").value, p_contact: $("e-contact").value,
         p_kit: kit, p_turnaround: $("e-turn").value || null, p_note: $("e-msg").value
       });
+      if (wa !== (hike.private.whatsapp_url || "")) await rpc("set_hike_whatsapp", { p_hike_id: hike.id, p_url: wa });
       await notify(hike.id); await reload(); flash("Saved.");
     });
     if (a === "complete") return guard(btn, async () => {
