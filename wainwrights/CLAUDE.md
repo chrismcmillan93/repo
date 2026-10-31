@@ -3,11 +3,15 @@
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
 
-**As of 2026-10-31, production equals beta.** Every file in `beta/` was copied
-into `wainwrights/` (PR #19), so the planner, hosted hikes, Instagram Story
-sharing and direct AllTrails links are live. The one deliberate difference:
-production's `leaderboard.html` has no "beta" badge on the heading. `beta/` is
-kept as the working area for the next round of changes. The section headings
+**As of the end of 2026-10-31, production equals beta.** Every file in `beta/` was copied
+into `wainwrights/` (PR #19, then the PWA / launch-speed work), so the planner, hosted
+hikes, Instagram Story sharing, direct AllTrails links and the installable app are live.
+**Three deliberate differences** (keep them when promoting again, i.e. copy, then
+re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
+`manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
+and `sw.js` uses the cache name `wainwrights-prod-v1` / prefix `wainwrights-prod-` (beta:
+`wainwrights-beta-v4` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
 was set to `https://app.chris-mcmillan.co.uk/wainwrights` on 2026-10-31, so hike
@@ -213,11 +217,17 @@ default). Walks with no drive data sort last for the driving sort. Changing sort
 resets "Show all". The control hides in weekend-pair mode, which always uses best
 match (`rankFor(day, false)`).
 
-## PWA basics (`beta/` only) — 2026-10-31
+## PWA (beta and production) — 2026-10-31
 
-Installable app shell, built in `beta/` and **not in production yet**. All paths are
-relative, so the manifest's scope and the service worker's scope are `beta/` and it
-cannot affect `wainwrights/`.
+Installable app shell, built in `beta/` and promoted to `wainwrights/` the same day. All
+paths are relative, so each copy's manifest scope and service worker scope is its own
+folder. They are **separate installs and separate workers**: the production worker
+(`/wainwrights/`) and the beta one (`/wainwrights/beta/`, the more specific scope, so beta
+pages keep using it). Cache Storage is shared across the whole origin, so the two use
+different cache namespaces (`wainwrights-prod-*` and `wainwrights-beta-*`) and each
+worker only ever deletes its own. Do not give them a common prefix, or one would delete
+the other's cache. The text below describes `beta/`; production is the same apart from
+the three differences listed at the top of this file.
 
 - **Files:** `beta/manifest.webmanifest` (name "The Wainwrights (beta)", standalone,
   `start_url ./index.html`), `beta/sw.js`, `beta/pwa.js` (registers `sw.js`), and
@@ -280,9 +290,13 @@ cannot affect `wainwrights/`.
     in `<head>` so the first paint is paper-coloured, not white.
   - Ruled out by measurement: device speed (with the CPU slowed 6x the fell list still
     renders in about 1.4 s) and the service worker (about 70 ms to relaunch).
-- **To promote:** copy the files, icons and `offline.html` up and rename the manifest `name`
-  (drop "(beta)"); rename the cache prefix in `sw.js` (`wainwrights-beta-`) too.
-  The Auth redirect list already covers `/wainwrights/**`.
+- **Promoting again:** copy every file in `beta/` (including `icons/`, `offline.html`,
+  `sw.js`, `pwa.js`, `manifest.webmanifest`) up with `cp`, then re-apply the three
+  differences at the top of this file. If you add a file to `SHELL` in `sw.js`, copy it up
+  too. Bump `CACHE` in the worker you changed so users get the "New version ready" bar.
+  The Auth redirect list already covers `/wainwrights/**`. Emailed hike links
+  (`SITE_URL`) now fall inside the production app's scope, so Chrome on Android and desktop
+  can open them in the installed app; iOS can't (no link capture for home-screen apps).
 - Tested in headless Chromium: worker activates with scope `beta/`, manifest and every
   icon load, 25 entries cached (shell plus supabase-js and Google Fonts CSS) with no query strings
   or tokens on same-origin keys, old caches deleted, `index` and `hike?t=...` show the

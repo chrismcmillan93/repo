@@ -1476,3 +1476,39 @@
   .plan-sort{ display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .plan-sort label{ font-size: 13px; color: var(--ink-soft); }
   .plan-sort select{ width: auto; min-width: 0; flex: 1 1 150px; text-align: left; letter-spacing: normal; text-transform: none; }
+
+  /* ---------- Install chip + popup (all pages, added by pwa.js) ---------- */
+  .install-chip{
+    margin-left: 10px;
+    vertical-align: middle;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    line-height: 1;
+    padding: 4px 9px;
+    background: var(--paper-card);
+    color: var(--green-deep);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .install-chip:hover{ border-color: var(--green); }
+  .install-chip[hidden]{ display: none; }
+  .install-modal ol{ margin: 10px 0 0 20px; padding: 0; }
+  .install-modal li{ margin: 4px 0; }
+  .install-modal .install-actions{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .offline-cover{ position: fixed; inset: 0; z-index: 90; background: var(--paper); overflow: auto; }
+  .update-bar{
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--green-deep); color: var(--paper-card);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 8px 8px 8px 16px; max-width: calc(100vw - 28px);
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em;
+  }
+  .update-bar .update-bar-go{ padding: 6px 12px; }
+  .update-bar-x{ background: none; border: none; color: inherit; font-size: 18px; line-height: 1; padding: 4px 8px; cursor: pointer; opacity: 0.8; }
+  .perf-text{ font-family: var(--font-mono); font-size: 11px; line-height: 1.45; white-space: pre; text-align: left; width: 100%; box-sizing: border-box; resize: none; }
