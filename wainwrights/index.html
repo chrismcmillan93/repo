@@ -44,6 +44,8 @@
       <a href="index.html" class="is-active">Tracker</a>
       <a href="leaderboard.html">Leaderboard</a>
       <a href="challenges.html">Challenges</a>
+      <a href="planner.html">Planner</a>
+      <a href="hike.html?list=1">Hikes</a>
     </nav>
   </div>
 
@@ -118,6 +120,11 @@
     <div id="chart-books"></div>
   </div>
 
+  <div class="share-row">
+    <button type="button" class="btn lock-btn" id="share-btn">Share progress</button>
+    <button type="button" class="btn lock-btn" id="share-today-btn" style="display:none;">Share today's fells</button>
+  </div>
+
   <div class="section-heading"><h2>The seven regions</h2><div class="rule"></div></div>
   <div class="search-row">
     <input type="text" class="search-input" id="search" placeholder="Search a fell by name…">
@@ -143,6 +150,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared-auth.js"></script>
 <script src="fells-data.js"></script>
+<script src="story.js"></script>
 <script src="tracker.js"></script>
 </body>
 </html>
