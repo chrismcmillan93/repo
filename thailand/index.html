@@ -22,6 +22,11 @@
      the pin-screen CSS in style.css is left in place to bring it back easily. -->
 
 <div id="appShell">
+  <div id="installBar" class="install-bar" hidden>
+    <button type="button" id="installBtn" class="install-btn">⬇ Install app</button>
+    <span id="installHint" class="install-hint" hidden>Use your browser menu → Install app / Add to Home Screen.</span>
+    <button type="button" id="installClose" class="install-close" aria-label="Dismiss">×</button>
+  </div>
   <header class="app-header">
     <div class="app-header-inner">
       <p class="eyebrow">Thailand · Nov 2026</p>

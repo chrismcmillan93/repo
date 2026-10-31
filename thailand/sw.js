@@ -21,7 +21,7 @@
 // js, icons, manifest). Changing this file's bytes is what makes browsers install
 // a new worker; the new version value also renames the caches so the old ones
 // are deleted on activate.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = 'thailand-shell-' + VERSION;
 const EXT_CACHE = 'thailand-ext-' + VERSION;
 const PREFIX = 'thailand-';

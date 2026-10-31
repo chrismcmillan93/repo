@@ -205,3 +205,9 @@ a{ color:var(--gold); }
 .update-bar{ position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; align-items:center; justify-content:center; gap:0.7rem; padding:0.6rem 1rem; background:var(--teal); border-top:1px solid rgba(232,163,61,0.35); color:var(--paper); font-size:0.78rem; }
 .update-bar button{ background:var(--gold); color:var(--teal-deep); border:none; border-radius:8px; padding:0.35rem 0.8rem; font-weight:700; font-size:0.78rem; cursor:pointer; }
 .update-bar .update-later{ background:transparent; color:var(--muted); font-weight:600; }
+
+.install-bar{ display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:0.45rem 1rem; background:var(--teal); border-bottom:1px solid rgba(232,163,61,0.25); }
+.install-bar[hidden], .install-hint[hidden]{ display:none; }
+.install-btn{ background:var(--gold); color:var(--teal-deep); border:none; border-radius:8px; padding:0.4rem 0.9rem; font-family:var(--font-head); font-weight:700; font-size:0.78rem; cursor:pointer; }
+.install-hint{ color:var(--body); font-size:0.72rem; }
+.install-close{ background:transparent; border:none; color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer; padding:0.1rem 0.4rem; }
