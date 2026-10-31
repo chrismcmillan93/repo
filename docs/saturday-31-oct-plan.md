@@ -90,15 +90,16 @@ Review this plan, then help me implement steps 1–3 on the beta branch.
 Goal: host the Wainwrights site on Azure Static Web Apps (Free plan) instead of GitHub Pages, as the
 first step in building Azure experience. Backend stays on Supabase; nothing else in the repo moves.
 
-### Decide first
+### Decisions
 
-- [ ] **Domain.** Its own standalone domain (already planned) or a subdomain such as
-      `wainwrights.chris-mcmillan.co.uk`? Either works as a free custom domain on Static Web Apps.
-- [ ] **Order with the PWA work (section 3).** The service worker's scope and the manifest's start URL
-      depend on the final address. Either move to Azure first, or keep every path in the PWA work relative
-      so it works at `/wainwrights/beta/` today and at `/` on the new domain.
-- [ ] **Beta.** Static Web Apps gives each pull request its own preview URL, which could replace the
-      `/beta/` folder — or keep `/beta/` as a path on the new site.
+- **Domain: decide later.** Build and test on Azure's free `*.azurestaticapps.net` address. Production
+  stays on GitHub Pages (`app.chris-mcmillan.co.uk/wainwrights/`) until the domain is chosen, then
+  switch once. This avoids making users sign in again twice (once for the Azure address, again for
+  the final domain) and reinstalling the phone app twice.
+- **Beta: use Azure's preview addresses.** Each pull request gets its own preview URL (the Free plan
+  allows 3 at a time), replacing the `/beta/` folder on the Azure site.
+- [ ] **Order with the PWA work (section 3).** Keep every path in the PWA work relative, so it works
+      at `/wainwrights/beta/` today, on the Azure address, and on the final domain without changes.
 
 ### Steps
 
@@ -110,7 +111,11 @@ first step in building Azure experience. Backend stays on Supabase; nothing else
 3. Add `staticwebapp.config.json`: security headers, a 404 page, and caching rules (short cache on
    HTML and the service worker, long cache on icons and data).
 4. Test on the `*.azurestaticapps.net` address: sign-in, ticking fells, leaderboard, challenges,
-   planner.
+   planner. Add that address to Supabase's redirect URLs first, plus a wildcard for the preview
+   addresses (e.g. `https://<app-name>-*.azurestaticapps.net/**`), or sign-in links won't come back.
+
+**Later, once the domain is chosen:**
+
 5. Add the custom domain in Azure and the DNS records at your domain provider; Azure issues the
    certificate for free.
 6. **Supabase (walking-up-hills) → Authentication → URL configuration:** add the new site URL and
