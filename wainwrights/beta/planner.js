@@ -421,7 +421,7 @@
       .slice().sort((a, b) => b.m - a.m)
       .map(f => `<span class="chal-chip ${climbed[f.name] ? "is-done" : "is-new"}">${esc(f.name)}</span>`).join("");
     const driveTxt = d
-      ? `${d.estimated ? "about " : ""}${fmtDuration(d.minutes)} · ${d.estimated ? "~" : ""}${d.miles} mi${d.estimated ? " (estimate)" : ""}`
+      ? `${d.estimated ? "about " : ""}${fmtDuration(d.minutes)} · ${d.estimated ? "~" : ""}${d.miles} mi from postcode${d.estimated ? " (estimate)" : ""}`
       : `<a href="#planner-location">Add your area</a> for drive times`;
     const wxTxt = wx ? `
       <div class="plan-wx">
