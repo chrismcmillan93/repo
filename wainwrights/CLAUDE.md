@@ -173,3 +173,8 @@ top/bottom ~250px that Instagram covers; footer is the app name only.
 - Tested: trigger and `hike_story_people` access in rolled-back SQL; image layout
   rendered in headless Chromium; existing page tests still pass. The share sheet
   itself needs a real phone.
+- **Hike invite** (hike page, host only, open and not yet started): "Share invite to
+  Instagram Story" draws a "Join me on a hike" card (title, date, fells, distance,
+  host, area, places left, start time) and copies the hike link to the clipboard so
+  it can be added as a Link sticker in the empty middle of the image. The link is
+  the access token, so it is never printed on the image; no meeting point appears.

@@ -220,6 +220,33 @@
     return toBlob(canvas);
   }
 
+  // invitation: "I'm hosting a hike, join me". No meeting point, no link in the
+  // image (the link is the access token; it goes on as a link sticker instead).
+  async function inviteCard(d){
+    await ensureFonts();
+    const { canvas, ctx } = newCard();
+    let y = heading(ctx, TOP, "JOIN ME ON A HIKE", d.title, d.dateLabel);
+    const bits = [{ v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" }];
+    if(d.miles) bits.push({ v: String(d.miles), l: "MILES" });
+    if(d.ascent) bits.push({ v: String(d.ascent), l: "METRES UP" });
+    y = stats(ctx, y, bits);
+    ctx.textAlign = "center"; ctx.fillStyle = C.inkSoft;
+    ctx.font = "italic 500 32px " + SERIF;
+    wrap(ctx, d.fells.join(" · "), W - M * 2).slice(0, 4).forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
+    y += 20;
+    const rows = [
+      { left: "Hosted by", right: d.host },
+      { left: "Area", right: d.area },
+      { left: "Places left", right: d.left + " of " + d.spaces }
+    ];
+    if(d.start) rows.push({ left: "Starts", right: d.start });
+    y = list(ctx, y, rows, { maxRowH: 70 });
+    ctx.fillStyle = C.green; ctx.font = "700 34px " + MONO;
+    spaced(ctx, "TAP THE LINK TO ASK FOR A PLACE", W / 2, y + 50, 2);
+    footer(ctx);
+    return toBlob(canvas);
+  }
+
   // returns "shared" | "downloaded" | "cancelled"
   async function share(blob, filename, title){
     const file = new File([blob], filename, { type: "image/jpeg" });
@@ -252,5 +279,5 @@
     }
   }
 
-  window.WWStory = { dayCard, hikeCard, teamCard, share, run };
+  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, share, run };
 })();

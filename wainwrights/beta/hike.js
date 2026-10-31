@@ -348,6 +348,7 @@
         ${detail}
       </article>
       ${body}
+      ${h.is_host && h.status === "open" && !hasStarted() ? `<div class="share-row"><button class="btn" data-action="story-invite">Share invite to Instagram Story</button></div><p class="chart-note" style="text-align:center;">The link is copied when you share — add it to your story as a Link sticker so people can ask for a place.</p>` : ""}
       ${(h.is_host || h.my_status === "approved") && h.status !== "cancelled" ? `<div class="share-row"><button class="btn" data-action="story">Share to Instagram Story</button></div>` : ""}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
@@ -453,6 +454,18 @@
     if (a === "open-cancel") { const d = $("hike-cancel"); if (d) { d.open = true; d.scrollIntoView({ block: "center" }); } return; }
     if (a === "open-report") { $("hike-report").innerHTML = `<div class="plan-card hike-form"><label>What's wrong with this hike?<textarea class="lock-input hike-text" id="rep-reason" rows="3" maxlength="500"></textarea></label><div class="share-row"><button class="btn" data-action="send-report">Send report</button></div></div>`; return; }
     if (a === "copy") { try { await navigator.clipboard.writeText(hikeLink(token)); flash("Link copied."); } catch (er) { flash("Couldn't copy — select the link and copy it by hand.", true); } return; }
+    if (a === "story-invite") {
+      try { await navigator.clipboard.writeText(hikeLink(token)); } catch (er) { /* link is also on the page */ }
+      return WWStory.run(btn, async () => {
+        const w = hike.walk || {}, d = new Date(hike.start_at);
+        return WWStory.inviteCard({
+          title: hike.title, host: hike.host_name, area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
+          dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
+          start: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null
+        });
+      }, "wainwrights-hike-invite.jpg", hike.title);
+    }
     if (a === "story") {
       return WWStory.run(btn, async () => {
         const people = await rpc("hike_story_people", { p_hike_id: hike.id });
