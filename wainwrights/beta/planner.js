@@ -410,16 +410,27 @@
 
   function verdictClass(v){ return v === "Good" ? "is-good" : v === "Fair" ? "is-fair" : v === "Poor" ? "is-poor" : "is-bad"; }
 
+  function mapsUrl(p){
+    return `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(5)},${p.lng.toFixed(5)}&travelmode=driving`;
+  }
+
+  // The start point is a typical car park, not AllTrails' own trailhead, so point people at
+  // AllTrails' directions for the exact parking spot.
+  function startNoteHtml(w){
+    return w.alltrails
+      ? `<p class="plan-est">This parking point is approximate. For exact parking and driving directions, use <a href="${esc(w.url)}" target="_blank" rel="noopener">Directions on the AllTrails route ↗</a>.</p>`
+      : `<p class="plan-est">This parking point is approximate. Check the route guide for exactly where to park.</p>`;
+  }
+
   function walkCardHtml(r, rank){
     const w = r.w, wx = r.wx, d = r.d;
     const est = w.generated && !w.alltrails ? "~" : "";
     const fellChips = w.fells
       .slice().sort((a, b) => b.m - a.m)
       .map(f => `<span class="chal-chip ${climbed[f.name] ? "is-done" : "is-new"}">${esc(f.name)}</span>`).join("");
-    // Start points are typical car parks, not AllTrails' trailheads, so every drive figure is approximate.
     const driveTxt = d
-      ? `Drive to near ${esc(w.start.name)}: approx. ${fmtDuration(d.minutes)} · ${d.estimated ? "~" : ""}${Math.round(d.miles)} mi from postcode${d.estimated ? " (straight-line estimate)" : ""}`
-      : `Near ${esc(w.start.name)} · <a href="#planner-location">Add your area</a> for drive times`;
+      ? `${d.estimated ? "about " : ""}${fmtDuration(d.minutes)} · ${d.estimated ? "~" : ""}${d.miles} mi from postcode${d.estimated ? " (estimate)" : ""}`
+      : `<a href="#planner-location">Add your area</a> for drive times`;
     const wxTxt = wx ? `
       <div class="plan-wx">
         <span class="plan-verdict ${verdictClass(wx.verdict)}">${wx.verdict}</span>
@@ -434,7 +445,9 @@
         <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fell${w.fells.length === 1 ? "" : "s"} · ${est}${w.miles} mi · ${est}${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.alltrails ? " · " + esc(w.alltrails.type.toLowerCase()) : w.linear ? " · one-way" : ""}</p>
         ${w.alltrails ? `<p class="plan-est">AllTrails route: ${esc(w.alltrails.name)}</p>` : w.generated ? '<p class="plan-est">Suggested walk — distance, ascent and route are estimates. Plan the line on a map.</p>' : ""}
         ${wxTxt}
-        <p class="plan-meta">${driveTxt}</p>
+        <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
+        <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
+        ${startNoteHtml(w)}
         <div class="chal-fell-list">${fellChips}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
         <div><button type="button" class="btn plan-host" data-host-walk="${esc(w.id)}">Host this walk</button></div>

@@ -56,14 +56,14 @@ starts within 12 miles (car-camping weekend).
   bases or overrides can change a walk's highest fell — re-check the matches. Result: 17 named + ~62
   suggested walks covering all 214 fells. Fix a bad suggestion by adding an
   override, not by editing the algorithm.
-- **Results:** top 8 for the chosen day, then "Show all N walks". Each card's drive line
-  reads "Drive to near <start name>: approx. 1 h 03 min · 50 mi from postcode" (or "...
-  (straight-line estimate)" when `drive-times` isn't available, or "Near <start name> ·
-  Add your area for drive times" with no saved area). **There is no Google Maps link and
-  no "Park:" claim** (removed 2026-10-31): the start points are typical car parks written
-  from general knowledge, not AllTrails' trailheads, so a pin would send people to a
-  guess. Drive times are still computed to those start points and labelled approximate,
-  including a sentence in the page footnote.
+- **Results:** top 8 for the chosen day, then "Show all N walks". Every card has a Google
+  Maps directions link to its parking spot, plus (added 2026-10-31) a short note under it:
+  "This parking point is approximate. For exact parking and driving directions, use
+  Directions on the AllTrails route" (linking to the walk's AllTrails route; a walk with no
+  AllTrails match gets "Check the route guide for exactly where to park" instead, though
+  all 79 currently match). The page footnote says the same. The start points are typical
+  car parks written from general knowledge, not AllTrails' trailheads, so the pin and the
+  drive times (measured to those start points) are approximate.
 - **Location (privacy):** user chooses full postcode or district only. The
   browser looks it up on postcodes.io and saves only a point snapped to a
   ~1 mile grid plus the district (e.g. `PR2`) to `planner_user_location`
