@@ -84,3 +84,48 @@ Review this plan, then help me implement steps 1–3 on the beta branch.
 - **The planner page** (new this week) uses live forecast and drive-time calls — decide whether it
   should work offline (last forecast cached) or just say "needs signal".
 - **Cache versioning.** Bump a version string on every deploy so the installed app picks up changes.
+
+## 4. Move the Wainwrights front end to Azure Static Web Apps
+
+Goal: host the Wainwrights site on Azure Static Web Apps (Free plan) instead of GitHub Pages, as the
+first step in building Azure experience. Backend stays on Supabase; nothing else in the repo moves.
+
+### Decide first
+
+- [ ] **Domain.** Its own standalone domain (already planned) or a subdomain such as
+      `wainwrights.chris-mcmillan.co.uk`? Either works as a free custom domain on Static Web Apps.
+- [ ] **Order with the PWA work (section 3).** The service worker's scope and the manifest's start URL
+      depend on the final address. Either move to Azure first, or keep every path in the PWA work relative
+      so it works at `/wainwrights/beta/` today and at `/` on the new domain.
+- [ ] **Beta.** Static Web Apps gives each pull request its own preview URL, which could replace the
+      `/beta/` folder — or keep `/beta/` as a path on the new site.
+
+### Steps
+
+1. Create a Static Web App in the Azure portal (Free plan, UK South or West Europe), linked to
+   `chrismcmillan93/repo`. Point it at the Wainwrights folder only, with no build step
+   (app location = the Wainwrights folder, no API, output location empty).
+2. Azure adds a GitHub Actions workflow to the repo. This is the first workflow in the repo — check it only
+   deploys the Wainwrights folder and only runs on changes to it.
+3. Add `staticwebapp.config.json`: security headers, a 404 page, and caching rules (short cache on
+   HTML and the service worker, long cache on icons and data).
+4. Test on the `*.azurestaticapps.net` address: sign-in, ticking fells, leaderboard, challenges,
+   planner.
+5. Add the custom domain in Azure and the DNS records at your domain provider; Azure issues the
+   certificate for free.
+6. **Supabase (walking-up-hills) → Authentication → URL configuration:** add the new site URL and
+   redirect URLs, or magic links will send people back to the old site. Move the auth emails to the
+   new domain at the same time (already on the list).
+7. Leave a redirect at the old GitHub Pages address (`/wainwrights/`), so bookmarks and links still
+   work. GitHub Pages can't do server redirects, so it's a small HTML page that forwards.
+8. Tell existing users they'll need to sign in once more — sign-ins are stored per web address, so
+   they don't carry over to a new domain.
+
+### Things to know
+
+- **Cost:** the Free plan covers this — custom domain, free certificate, preview environments.
+- **No build step still holds:** Azure just publishes the folder as it is.
+- **Supabase calls are unchanged:** the browser talks to Supabase directly, and the planner's Edge
+  Functions already accept calls from any site.
+- **Later (not today):** Azure Functions and Azure Maps for the planner, as already noted in the PWA
+  prompt.
