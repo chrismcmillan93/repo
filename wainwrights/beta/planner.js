@@ -26,6 +26,8 @@
   let selectedDay = null;
   let pairMode = false;
   let showAll = false;
+  let sortKey = "best";        // best | walk | drive | ascent
+  let sortDesc = false;        // for the non-"best" sorts: false = lowest first
   let expanded = false;        // "Show all" pressed for the current day
   const INITIAL_SHOWN = 8;
 
@@ -247,7 +249,7 @@
   }
 
   // ---------- ranking ----------
-  function rankFor(day){
+  function rankFor(day, applySort = true){
     const di = forecast ? forecast.days.indexOf(day) : -1;
     const rows = walks.map(w => {
       const newFells = w.fells.filter(f => !climbed[f.name]);
@@ -265,7 +267,16 @@
       return { w, newFells, wx, d, spare, tight, score };
     });
     const filtered = showAll ? rows : rows.filter(r => r.newFells.length);
-    return (filtered.length ? filtered : rows).sort((a, b) => b.score - a.score);
+    const list = filtered.length ? filtered : rows;
+    if (!applySort || sortKey === "best") return list.sort((a, b) => b.score - a.score);
+    const val = r => sortKey === "walk" ? r.w.miles : sortKey === "ascent" ? r.w.ascent : (r.d ? r.d.miles : null);
+    return list.sort((a, b) => {
+      const x = val(a), y = val(b);
+      if (x == null && y == null) return b.score - a.score;
+      if (x == null) return 1;            // no drive data: always last
+      if (y == null) return -1;
+      return (sortDesc ? y - x : x - y) || (b.score - a.score);
+    });
   }
 
   // Best Saturday + Sunday pair whose starts are close together.
@@ -276,7 +287,7 @@
     const sunIdx = forecast.days.indexOf(sat) + 1;
     const sun = forecast.days[sunIdx];
     if (!sun) return null;
-    const a = rankFor(sat), b = rankFor(sun);
+    const a = rankFor(sat, false), b = rankFor(sun, false);
     let best = null;
     a.slice(0, 8).forEach(x => b.slice(0, 8).forEach(y => {
       if (x.w.id === y.w.id) return;
@@ -434,10 +445,19 @@
       </article>`;
   }
 
+  const SORT_LABELS = { walk: ["Shortest first", "Longest first"], drive: ["Nearest first", "Furthest first"], ascent: ["Least climb first", "Most climb first"] };
+  function syncSortUi(){
+    const btn = document.getElementById("planner-sort-dir");
+    btn.style.display = sortKey === "best" ? "none" : "";
+    if (sortKey !== "best") btn.textContent = SORT_LABELS[sortKey][sortDesc ? 1 : 0];
+    document.getElementById("planner-sort-wrap").style.display = pairMode ? "none" : "";
+  }
+
   function setResults(html){ document.getElementById("planner-results").innerHTML = html; }
 
   function renderResults(){
     if (!forecast) return;
+    syncSortUi();
     const cov = document.getElementById("planner-coverage");
     const unclimbed = Object.keys(fellsByName).filter(n => !climbed[n]);
     const covered = new Set(walks.flatMap(w => w.fells.map(f => f.name)));
@@ -485,6 +505,8 @@
     user = u;
     document.getElementById("planner-pair").addEventListener("change", (e) => { pairMode = e.target.checked; renderDays(); renderResults(); });
     document.getElementById("planner-all").addEventListener("change", (e) => { showAll = e.target.checked; renderResults(); });
+    document.getElementById("planner-sort").addEventListener("change", (e) => { sortKey = e.target.value; sortDesc = false; expanded = false; renderResults(); });
+    document.getElementById("planner-sort-dir").addEventListener("click", () => { sortDesc = !sortDesc; expanded = false; renderResults(); });
     try {
       await Promise.all([loadClimbed(), loadLocation()]);
       renderLocation();

@@ -178,3 +178,12 @@ top/bottom ~250px that Instagram covers; footer is the app name only.
   host, area, places left, start time) and copies the hike link to the clipboard so
   it can be added as a Link sticker in the empty middle of the image. The link is
   the access token, so it is never printed on the image; no meeting point appears.
+
+## Planner sorting (`beta/planner.js`) — 2026-10-31
+
+"Sort by" under the planner controls: Best match (the default scored ranking),
+Walking distance, Driving distance (drive miles from the saved area), Elevation
+gain. A button beside it flips direction (shortest/nearest/least climb first by
+default). Walks with no drive data sort last for the driving sort. Changing sort
+resets "Show all". The control hides in weekend-pair mode, which always uses best
+match (`rankFor(day, false)`).

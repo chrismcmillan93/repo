@@ -1472,3 +1472,7 @@
   .hike-story-opt p{ margin: 0 0 10px; font-size: 14px; color: var(--ink-soft); line-height: 1.4; }
   .hike-story-opt .btn{ width: 100%; }
   .hike-story-opt.is-off{ opacity: .6; }
+
+  .plan-sort{ display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .plan-sort label{ font-size: 13px; color: var(--ink-soft); }
+  .plan-sort select{ width: auto; min-width: 0; flex: 1 1 150px; text-align: left; letter-spacing: normal; text-transform: none; }
