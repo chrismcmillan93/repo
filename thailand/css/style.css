@@ -11,7 +11,11 @@
   --teal-deep:#0E2A2E; --teal:#143C42; --gold:#E8A33D; --paper:#F5EFE0;
   --muted:#8FB0AC; --body:#B7C8C5; --red:#F0654A; --green:#6FBF8C; --blue:#7FB3D9;
   --purple:#9B8AC4;
-  --font-head:'Space Grotesk',sans-serif; --font-mono:'Space Mono',monospace; --font-body:'Inter',sans-serif;
+  /* Web fonts come from Google Fonts (cached by sw.js for offline). If they can't load
+     or aren't cached, these fall back to the platform's own system fonts. */
+  --font-head:'Space Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --font-mono:'Space Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+  --font-body:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
 }
 
 *{ box-sizing:border-box; }
@@ -191,3 +195,13 @@ a{ color:var(--gold); }
   .board{ max-width:none; }
 }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+/* ---------------- offline / PWA ---------------- */
+.offline-banner{ background:rgba(232,163,61,0.12); border-bottom:1px solid rgba(232,163,61,0.25); color:var(--gold); font-size:0.72rem; padding:0.35rem 1.1rem; text-align:center; font-family:var(--font-head); }
+.offline-banner[hidden]{ display:none; }
+.offline-sub{ color:var(--muted); }
+.offline-retry{ margin-left:0.6rem; background:transparent; border:1px solid rgba(232,163,61,0.4); color:var(--gold); border-radius:999px; padding:0.05rem 0.55rem; font-size:0.68rem; font-family:inherit; font-weight:700; cursor:pointer; }
+[data-offline-locked]{ opacity:0.35; cursor:not-allowed !important; }
+.update-bar{ position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; align-items:center; justify-content:center; gap:0.7rem; padding:0.6rem 1rem; background:var(--teal); border-top:1px solid rgba(232,163,61,0.35); color:var(--paper); font-size:0.78rem; }
+.update-bar button{ background:var(--gold); color:var(--teal-deep); border:none; border-radius:8px; padding:0.35rem 0.8rem; font-weight:700; font-size:0.78rem; cursor:pointer; }
+.update-bar .update-later{ background:transparent; color:var(--muted); font-weight:600; }

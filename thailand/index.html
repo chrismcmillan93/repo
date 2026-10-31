@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Thailand trip planner</title>
+<!-- PWA: installable + offline. All paths are relative so this works on any domain. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0E2A2E">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Thailand">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -37,6 +46,8 @@
       <a href="#/costs" data-route="costs">Costs</a>
     </div>
   </nav>
+
+  <div id="offlineBanner" class="offline-banner" role="status" hidden></div>
 
   <main class="app-main" id="app-main">
     <p class="section-note">Loading&hellip;</p>

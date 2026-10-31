@@ -2,6 +2,7 @@
 // window event so the header and the active view can react to a change without
 // prop-drilling. No session here — this app has no per-account auth.
 import { db } from './db.js';
+import { beginLoad, endLoad } from './offline.js';
 
 export const state = {
   trip: null,
@@ -19,6 +20,15 @@ export function legById(id) {
 }
 
 export async function loadCore() {
+  beginLoad(); // db.js flags any table it had to serve from the offline snapshot
+  try {
+    return await loadCoreInner();
+  } finally {
+    endLoad(); // updates the offline banner / write-control locks
+  }
+}
+
+async function loadCoreInner() {
   const trip = await db.trip.get();
   state.trip = trip;
   if (!trip) {
