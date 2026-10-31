@@ -226,18 +226,25 @@ cannot affect `wainwrights/`.
   paper on forest green, kept inside the maskable safe zone). The five pages carry the
   manifest / theme-colour / icon / `pwa.js` tags in `<head>`; `shared-auth.js` is
   untouched.
-- **Service worker (cached first, refreshed in the background):** same-origin GETs inside
+- **Service worker (cache first, checked in the background):** same-origin GETs inside
   `beta/` plus an allow-list of public third-party libraries/fonts (supabase-js on jsDelivr,
-  Google Fonts) are served from the cache immediately and re-fetched in the background
-  (stale-while-revalidate; `CACHE` is `wainwrights-beta-v3`). This was changed from network
-  first on 2026-10-31 because a cold start from the home screen (app closed, not just
-  backgrounded) waited on the network for every file and was very slow on an iPad. With a
-  400 ms-per-request test server a relaunch went from about 880 ms to about 70 ms.
-  **Catch:** after a deploy the first launch still shows the previous version and the next
-  one has the new files (bump `CACHE` when the shell list changes). Supabase API calls,
-  Open-Meteo, postcodes.io and everything else are never intercepted or cached. Same-origin
-  cache keys drop the query string and fragment, so a hike's share token
-  (`hike.html?t=...`) is never stored.
+  Google Fonts) are served from the cache immediately (`CACHE` is `wainwrights-beta-v4`).
+  This replaced network first on 2026-10-31 because a cold start from the home screen (app
+  closed, not just backgrounded) waited on the network for every file and was very slow on
+  an iPad; with a 400 ms-per-request test server a relaunch went from about 880 ms to about
+  70 ms. Supabase API calls, Open-Meteo, postcodes.io and everything else are never
+  intercepted or cached. Same-origin cache keys drop the query string and fragment, so a
+  hike's share token (`hike.html?t=...`) is never stored.
+- **Staying current:** after serving any page load, the worker checks *every* shell file
+  against the server in the background (`cache: "no-cache"`, so a tiny 304 when unchanged;
+  not more than once per 30 s). Changed files are saved and the page is told
+  (`postMessage {type: "update-ready"}`); `pwa.js` then shows a small "New version ready
+  - Reload" bar (dismissable) and one tap loads the new version. A new worker (a bumped
+  `CACHE`) sends the same notice from its `activate`. The launch never waits on any of
+  this. So after a deploy the first launch still shows the previous version, but with the
+  bar; the next one has the new files. This is about the *app's files*, not user data,
+  which always comes live from Supabase. Bump `CACHE` when the shell list changes, and add
+  new shell files to `SHELL` in `sw.js` or they won't be precached or checked.
 - **Offline:** because pages now load from the cache, `pwa.js` covers the page with a
   "You're offline" notice (Try again; reloads itself when the connection returns) when a
   page loads with `navigator.onLine === false`, so the shell never looks like lost
@@ -262,8 +269,9 @@ cannot affect `wainwrights/`.
 - Tested in headless Chromium: worker activates with scope `beta/`, manifest and every
   icon load, 25 entries cached (shell plus supabase-js and Google Fonts CSS) with no query strings
   or tokens on same-origin keys, old caches deleted, `index` and `hike?t=...` show the
-  offline notice when offline and reload when back online, a deploy is picked up on the
-  second launch, a production page is not controlled, and the
+  offline notice when offline and reload when back online, relaunch stays at about 70 ms
+  with the background check running, unchanged files revalidate as 304s, a changed file
+  or a new worker makes the update bar appear and Reload loads the new version, a production page is not controlled, and the
   install chip and popup work on all five pages for iPhone, Android and desktop Chrome
   (simulated install prompt: button calls `prompt()` and closes the popup; Esc, backdrop
   and Close all close it; no chip when standalone or on production). Not tested: the real

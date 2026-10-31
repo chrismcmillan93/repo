@@ -120,6 +120,31 @@
   }
   window.addEventListener("online", function(){ if (cover) location.reload(); });
 
+  // "New version ready" bar. The service worker checks the app's files in the background
+  // after each launch and posts "update-ready" when something changed; one tap reloads
+  // into the new version. Shown at most once per page load unless dismissed and changed again.
+  var updateBar = null;
+  function showUpdate(){
+    if (updateBar || !document.body) return;
+    updateBar = el("div", "update-bar");
+    updateBar.setAttribute("role", "status");
+    var t = el("span", "update-bar-text", "New version ready");
+    var go = el("button", "btn update-bar-go", "Reload");
+    go.type = "button";
+    go.addEventListener("click", function(){ location.reload(); });
+    var x = el("button", "update-bar-x", "\u00d7");
+    x.type = "button";
+    x.setAttribute("aria-label", "Dismiss");
+    x.addEventListener("click", function(){ updateBar.remove(); updateBar = null; });
+    updateBar.appendChild(t); updateBar.appendChild(go); updateBar.appendChild(x);
+    document.body.appendChild(updateBar);
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", function(e){
+      if (e.data && e.data.type === "update-ready") showUpdate();
+    });
+  }
+
   function init(){
     if (navigator.onLine === false) showOffline();
     if (standalone) return;
