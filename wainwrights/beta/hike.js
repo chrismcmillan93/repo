@@ -118,7 +118,8 @@
     const blockRows = ((blocks && blocks.data) || []).map(b => `<li>${esc(b.display_name)} <button class="btn hike-small" data-action="unblock" data-uid="${esc(b.blocked_user_id)}">Unblock</button></li>`).join("");
     root.innerHTML = `
       <div class="section-heading"><h2>Hikes</h2><div class="rule"></div></div>
-      <p class="chart-note" style="margin:-4px 0 14px;">Host a walk from the <a href="planner.html">Planner</a> (pick a walk, then "Host this walk"), or open a link someone has sent you.</p>
+      <p class="chart-note" style="margin:-4px 0 14px;">Host a walk from the <a href="planner.html">Planner</a> (pick a walk, then "Host this walk"), build your own, or open a link someone has sent you.</p>
+      <div class="share-row" style="justify-content:flex-start;margin:0 0 14px;"><a class="btn" href="hike.html?new=1&custom=1">Create a custom hike</a></div>
       <div id="hike-msg" style="display:none;"></div>
       ${rows ? `<div class="hike-list">${rows}</div>` : '<p class="chart-note">You\'re not hosting or joining any hikes yet.</p>'}
       ${noteRows ? `<div class="section-heading plan-subhead"><h2>Updates</h2><div class="rule"></div></div><ul class="hike-notes">${noteRows}</ul>` : ""}
@@ -127,7 +128,73 @@
   }
 
   // ---------- host form ----------
+  async function loadTeams(){
+    // teams the host can tie the hike to
+    try {
+      const mem = await WW.sb.from("team_members").select("team_id,status").eq("user_id", user.id);
+      const ids = ((mem.data) || []).filter(m => m.status === "approved").map(m => m.team_id);
+      const t = await WW.sb.from("teams").select("id,name,admin_user_id");
+      return ((t.data) || []).filter(x => ids.includes(x.id) || x.admin_user_id === user.id);
+    } catch (e) { return []; }
+  }
+  const teamSelectHtml = teams => teams.length ? `<label>Tie to a team (members are approved automatically)<select class="lock-input" id="n-team"><option value="">No team</option>${teams.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join("")}</select></label>` : "";
+
+  // Custom hike: the host names it and ticks the Wainwrights it includes.
+  async function showCustomForm(){
+    const teams = await loadTeams();
+    const min = new Date(Date.now() + 3600 * 1000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const books = FELLS_DATA.map((b, bi) => `
+      <details class="fell-book" data-book="${bi}"><summary>${esc(b.name)} <span class="fell-book-count" data-count-for="${bi}"></span></summary>
+        ${b.fells.map(f => `<label class="plan-check fell-opt" data-name="${esc(f.name.toLowerCase())}"><input type="checkbox" class="f-pick" data-book="${bi}" value="${esc(f.name)}"> ${esc(f.name)} <span class="fell-m">${f.m} m</span></label>`).join("")}
+      </details>`).join("");
+    root.innerHTML = `
+      <div class="section-heading"><h2>Create a custom hike</h2><div class="rule"></div></div>
+      <div id="hike-msg" style="display:none;"></div>
+      <form id="hike-new" class="plan-card hike-form">
+        <label>Title<input class="lock-input" id="n-title" maxlength="80" placeholder="e.g. Skiddaw via Ullock Pike"></label>
+        <label>Area (shown to anyone with the link)<input class="lock-input" id="n-area" maxlength="60" placeholder="e.g. Keswick"></label>
+        <div class="hike-form-fells">
+          <h3 class="hike-sub">Which Wainwrights?</h3>
+          <input class="lock-input" id="f-search" type="search" placeholder="Search fells…" autocomplete="off">
+          <p class="chart-note" id="f-count">No fells picked yet. Up to 30.</p>
+          <div id="f-list">${books}</div>
+        </div>
+        <label>Distance in miles (optional)<input class="lock-input" id="n-miles" type="number" min="1" max="200" step="0.5" inputmode="decimal"></label>
+        <label>Total ascent in metres (optional)<input class="lock-input" id="n-ascent" type="number" min="1" max="20000" step="10" inputmode="numeric"></label>
+        <label>Link to the route (optional — AllTrails, Komoot, OS Maps…)<input class="lock-input" id="n-url" type="url" placeholder="https://…"></label>
+        <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}"></label>
+        <label>Places (not counting you)<input class="lock-input" id="n-spaces" type="number" min="1" max="20" value="4"></label>
+        <label>Meeting point — Google Maps link or "lat, lng" (required; in Google Maps press and hold the car park, then copy the coordinates). Only approved walkers see it.<input class="lock-input" id="n-point" placeholder="54.5436, -2.9490"></label>
+        <label>Meeting point note<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park"></label>
+        <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
+        <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
+        <label>Kit list (one per line)<textarea class="lock-input hike-text" id="n-kit" rows="6">${esc(DEFAULT_KIT.join("\n"))}</textarea></label>
+        ${teamSelectHtml(teams)}
+        ${safetyHtml(true)}
+        <label class="plan-check"><input type="checkbox" id="n-ack"> I've read this and I'm happy to host on these terms.</label>
+        <div class="share-row"><button class="btn" type="submit" id="n-submit">Create hike</button></div>
+        <p class="chart-note">Your display name is shown to people who open the link. Anyone with the link can ask to join; you approve each person. You'll plan the route yourself, so check it on a map before you share it.</p>
+      </form>`;
+    const picks = () => Array.from(document.querySelectorAll(".f-pick:checked"));
+    function refresh(){
+      const n = picks().length;
+      $("f-count").textContent = n ? `${n} fell${n === 1 ? "" : "s"} picked${n > 30 ? " — too many, the limit is 30" : ""}.` : "No fells picked yet. Up to 30.";
+      FELLS_DATA.forEach((b, bi) => {
+        const c = document.querySelectorAll(`.f-pick[data-book="${bi}"]:checked`).length;
+        const el = document.querySelector(`[data-count-for="${bi}"]`); if (el) el.textContent = c ? `· ${c} picked` : "";
+      });
+    }
+    $("f-list").addEventListener("change", refresh);
+    $("f-search").addEventListener("input", () => {
+      const q = $("f-search").value.trim().toLowerCase();
+      document.querySelectorAll(".fell-opt").forEach(l => { l.style.display = !q || l.dataset.name.includes(q) || l.querySelector("input").checked ? "" : "none"; });
+      document.querySelectorAll(".fell-book").forEach(d => { d.open = !!q; });
+    });
+    $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(null)); });
+  }
+
   async function showNewForm(){
+    if (params.get("custom") === "1") return showCustomForm();
     let walk = null;
     try { walk = JSON.parse(sessionStorage.getItem(HOST_WALK) || "null"); } catch (e) {}
     if (!walk || !walk.fells || !walk.fells.length) {
@@ -135,14 +202,7 @@
         <p class="chart-note">Pick a walk in the <a href="planner.html">Planner</a> and press "Host this walk".</p>`;
       return;
     }
-    // teams the host can tie the hike to
-    let teams = [];
-    try {
-      const mem = await WW.sb.from("team_members").select("team_id,status").eq("user_id", user.id);
-      const ids = ((mem.data) || []).filter(m => m.status === "approved").map(m => m.team_id);
-      const t = await WW.sb.from("teams").select("id,name,admin_user_id");
-      teams = ((t.data) || []).filter(x => ids.includes(x.id) || x.admin_user_id === user.id);
-    } catch (e) { /* no teams is fine */ }
+    const teams = await loadTeams();
     const area = (walk.start_name || "").split(",")[1] ? walk.start_name.split(",")[1].trim() : (walk.start_name || "").split(",")[0].trim();
     const min = new Date(Date.now() + 3600 * 1000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     root.innerHTML = `
@@ -159,7 +219,7 @@
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
         <label>Kit list (one per line)<textarea class="lock-input hike-text" id="n-kit" rows="6">${esc(DEFAULT_KIT.join("\n"))}</textarea></label>
-        ${teams.length ? `<label>Tie to a team (members are approved automatically)<select class="lock-input" id="n-team"><option value="">No team</option>${teams.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join("")}</select></label>` : ""}
+        ${teamSelectHtml(teams)}
         ${safetyHtml(true)}
         <label class="plan-check"><input type="checkbox" id="n-ack"> I've read this and I'm happy to host on these terms.</label>
         <div class="share-row"><button class="btn" type="submit" id="n-submit">Create hike</button></div>
@@ -169,20 +229,37 @@
   }
 
   async function createHike(walk){
+    const custom = !walk;
     const whenVal = $("n-when").value;
     if (!whenVal) throw new Error("bad_start");
-    let lat = walk.start_lat, lng = walk.start_lng;
+    let lat, lng, snapshot;
     const pt = parsePoint($("n-point").value);
-    if (pt === "bad") { flash("Couldn't read that meeting point. Use a Google Maps link or \"lat, lng\".", true); return; }
-    if (pt) { lat = pt.lat; lng = pt.lng; }
+    if (pt === "bad" || (custom && !pt)) { flash("Couldn't read the meeting point. Use a Google Maps link that contains coordinates, or \"lat, lng\".", true); return; }
+    if (custom) {
+      const names = Array.from(document.querySelectorAll(".f-pick:checked")).map(x => x.value);
+      if (!names.length) { flash("Pick at least one fell.", true); return; }
+      if (names.length > 30) { flash("A hike can include up to 30 fells.", true); return; }
+      const byName = {}; FELLS_DATA.forEach(b => b.fells.forEach(f => { byName[f.name] = f; }));
+      const top = names.map(n => byName[n]).reduce((a, f) => (!a || f.m > a.m ? f : a), null);
+      const miles = Number($("n-miles").value), ascent = Number($("n-ascent").value), url = $("n-url").value.trim();
+      lat = pt.lat; lng = pt.lng;
+      snapshot = {
+        label: $("n-title").value.trim(), miles: miles > 0 ? miles : null, ascent: ascent > 0 ? Math.round(ascent) : null, fells: names,
+        top_name: top.name, top_m: top.m, top_lat: top.lat, top_lng: top.lng, start_name: $("n-note").value.trim() || null,
+        url: /^https:\/\//.test(url) ? url : null
+      };
+    } else {
+      lat = walk.start_lat; lng = walk.start_lng;
+      if (pt) { lat = pt.lat; lng = pt.lng; }
+      snapshot = {
+        label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells, top_name: walk.top_name, top_m: walk.top_m,
+        top_lat: walk.top_lat, top_lng: walk.top_lng, start_name: walk.start_name, url: walk.url || null
+      };
+    }
     const kit = $("n-kit").value.split("\n").map(s => s.trim()).filter(Boolean);
     const team = $("n-team") ? $("n-team").value : "";
-    const snapshot = {
-      label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells, top_name: walk.top_name, top_m: walk.top_m,
-      top_lat: walk.top_lat, top_lng: walk.top_lng, start_name: walk.start_name, url: walk.url || null
-    };
     const res = await rpc("create_hike", {
-      p_title: $("n-title").value, p_walk_key: String(walk.id), p_walk_snapshot: snapshot, p_area: $("n-area").value,
+      p_title: $("n-title").value, p_walk_key: custom ? "custom" : String(walk.id), p_walk_snapshot: snapshot, p_area: $("n-area").value,
       p_start_at: new Date(whenVal).toISOString(), p_spaces: Number($("n-spaces").value), p_kit: kit,
       p_turnaround: $("n-turn").value || null, p_meet_lat: lat, p_meet_lng: lng, p_meet_note: $("n-note").value,
       p_contact: $("n-contact").value, p_team_id: team || null, p_ack: $("n-ack").checked
@@ -262,7 +339,7 @@
       <div id="hike-msg" style="display:none;"></div>
       <article class="chal-card hike-card">
         <p class="plan-meta">${statusBadge} <strong>${esc(fmtWhen(h.start_at))}</strong> · ${esc(h.area)} · hosted by ${esc(h.host_name)}${h.team_name ? " for " + esc(h.team_name) : h.is_team_hike ? " for a team" : ""}</p>
-        <p class="plan-meta">${esc(w.label || "")} · ${w.miles != null ? w.miles + " mi" : ""}${w.ascent != null ? " · " + w.ascent + " m ascent" : ""}${h.turnaround_time ? " · turn back at <strong>" + esc(h.turnaround_time) + "</strong>" : ""}</p>
+        <p class="plan-meta">${[esc(w.label || ""), w.miles != null ? w.miles + " mi" : "", w.ascent != null ? w.ascent + " m ascent" : "", h.turnaround_time ? "turn back at <strong>" + esc(h.turnaround_time) + "</strong>" : ""].filter(Boolean).join(" · ")}</p>
         <p class="plan-meta">${h.approved_count} of ${h.spaces} places taken${left > 0 && h.status === "open" ? ` · ${left} left` : ""}</p>
         <div class="chal-fell-list">${fells}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">View the route ↗</a>` : ""}

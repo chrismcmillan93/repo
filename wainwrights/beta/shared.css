@@ -1451,3 +1451,10 @@
   .hike-link{ background: none; border: 0; padding: 0; font: inherit; color: var(--tarn); text-decoration: underline; cursor: pointer; }
   .hike-link-box{ font-family: var(--font-mono); font-size: 12px; word-break: break-all; background: var(--paper-deep); padding: 8px 10px; border-radius: var(--radius); }
   .plan-host{ margin-top: 10px; }
+  .fell-book{ border-top: 1px solid var(--line); padding: 6px 0; }
+  .fell-book summary{ cursor: pointer; font-weight: 600; font-size: 14px; color: var(--green-deep); padding: 4px 0; }
+  .fell-book-count{ font-weight: 400; color: var(--ink-faint); font-size: 12px; }
+  .fell-opt{ padding: 3px 0 3px 8px; }
+  .fell-m{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-left: auto; }
+  #f-list{ max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 10px; background: var(--paper-card); }
+  .hike-form-fells .lock-input{ width: 100%; text-align: left; letter-spacing: normal; text-transform: none; }

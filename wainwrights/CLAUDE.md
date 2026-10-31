@@ -136,5 +136,14 @@ the corrected function — never rewrite an applied migration, add another).
   refusals, anon refused, tick + undo leaving the walker's own ticks alone);
   page level with Playwright against a mocked Supabase. Not yet tried with two
   real accounts or a real Resend send — do that before telling anyone.
+- **Custom hikes (`hike.html?new=1&custom=1`, button on the "my hikes" list):** the
+  host names the hike, ticks the Wainwrights it includes from a searchable list
+  grouped by book (up to 30; `create_hike`'s cap was raised from 10 by
+  `20261031160000_wainwrights_hosted_hikes_custom_fell_cap.sql`, which rewrites the one
+  check in the live function definition), and must give a meeting point as a
+  Google Maps link with coordinates or "lat, lng" (short `maps.app.goo.gl` links
+  can't be read). Distance, ascent and a route link are optional. The highest
+  picked fell supplies the forecast point. Same validation, safety box, approval
+  and tick-for-everyone flow as planner hikes (`walk_key = 'custom'`).
 - **Not built (by choice):** waitlist, public listing, postponing as its own
   status (edit the time instead), a scheduled forecast check.
