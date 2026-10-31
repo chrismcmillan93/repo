@@ -10,7 +10,9 @@ production's `leaderboard.html` has no "beta" badge on the heading. `beta/` is
 kept as the working area for the next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
-still defaults to the beta URL until it is set by hand in Supabase.
+was set to `https://app.chris-mcmillan.co.uk/wainwrights` on 2026-10-31, so hike
+emails link to production (the function's built-in default is still the beta URL
+if the secret is ever removed).
 
 Backend is its own Supabase project, **`walking-up-hills`** (ref
 `jyxtduvkmztexwurrjsf`, eu-west-2) — not `dashboards-new`. Its migrations and
@@ -133,7 +135,7 @@ the corrected function — never rewrite an applied migration, add another).
   caller itself) sends unsent `hike_notifications` for one hike through Resend,
   called by the page after each action. Secrets on walking-up-hills:
   `RESEND_API_KEY`, `HIKE_FROM_EMAIL` (set by hand — the dashboard-assisted
-  secret flow was paused by Supabase), optional `SITE_URL`. Emails carry the
+  secret flow was paused by Supabase), `SITE_URL` (production URL, see top). Emails carry the
   message and a link only — never the pin or contact. Claim-then-send, 3 tries.
   If the page's call fails, emails wait until the next action on that hike
   (notifications older than 3 days are not sent); a scheduled sweeper would be
