@@ -388,6 +388,76 @@ under its "Flights" heading; it wasn't touched to add icons or re-labelled, sinc
 only the on-screen header card was asked for — revisit if the PDF should distinguish
 them too.
 
+**Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
+Screen and shows all its trip data with no signal. Two independent layers — the code
+shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that
+offline is **read-only**.
+
+- **Files:** `manifest.webmanifest` (name "Thailand 2026", teal-deep `#0E2A2E` theme and
+  background, relative `start_url`/`scope` `./`), `icons/` (192/512 `any`, 512
+  `maskable`, 180 apple-touch — PNGs rendered from `icons/icon.svg` and
+  `icons/icon-maskable.svg` by screenshotting the SVG in Chromium; no tooling lives in
+  the repo), `sw.js`, `js/pwa.js` (registration + update prompt), `js/offline.js`
+  (state/banner/locking), `js/offlineStore.js` (IndexedDB wrapper). Every path is
+  relative, so none of it is tied to a domain. The SW is registered from `main.js`
+  via `pwa.js`, only on https or localhost.
+- **Shell cache (`sw.js`).** On install it *discovers* the file list instead of
+  hard-coding one: reads `index.html` (stylesheets, scripts, manifest, icons), follows
+  every ES-module `import` through `js/`, reads the manifest's icons, and fetches the
+  Google Fonts CSS referenced by `style.css` plus its latin / latin-ext font files and
+  the supabase-js CDN script. Adding a new module/view needs no edit to `sw.js`.
+  Caches are `thailand-shell-<VERSION>` and `thailand-ext-<VERSION>`; activate deletes
+  any other `thailand-*` cache. Same-origin files are served stale-while-revalidate
+  (instant from cache, refreshed in the background, so a changed file shows up on the
+  *next* load); `index.html` navigations only for `/thailand/` and `/thailand/index.html`.
+  `legacy/`, `uat/` and `sw.js` itself are never intercepted. **Supabase REST requests
+  are never touched by the SW** — they're cross-origin and not matched. If the web fonts
+  aren't cached, `--font-*` in `style.css` fall back to system fonts.
+- **Bumping the cache version.** Edit `const VERSION = 'v1'` at the top of `sw.js`
+  (v2, v3, …). Do it whenever you **add or remove** a shell file (so the new set is
+  precached for offline use) or want installed phones to do a clean refresh; merely
+  editing an existing file also reaches phones via stale-while-revalidate on their next
+  online load, but bumping is the reliable way. The changed `sw.js` installs *beside*
+  the running one and **waits** — it never calls `skipWaiting()` itself. `pwa.js` shows
+  a "A new version is available — Update / Later" bar; Update posts `SKIP_WAITING`, the
+  new worker activates, old caches are deleted and the page reloads once. Never add a
+  bare `skipWaiting()` to `sw.js`.
+- **Data snapshot (`js/db.js` + `js/offlineStore.js`).** Every successful `list()` /
+  `trip.get()` also saves its rows to IndexedDB (`thailand-offline` → `snapshots`),
+  keyed `<tripId>:<table>` plus a `trip` record, and re-checked against the trip id on
+  read, so snapshots can't be mixed across trips. The scoped-by-`trip_id` queries are
+  unchanged. When a read can't reach Supabase (browser offline, request failed/timed
+  out after 8 s, or a 5xx) the snapshot is returned instead; 4xx errors still surface.
+  Once one read in a load has fallen back, the rest skip the network. Successful writes
+  patch the matching snapshot in place, so an edit made online a moment before going
+  offline survives a reload. **Adding a new table:** read it through `listByTrip` /
+  `listByLegOfTrip` (or `readWithSnapshot`) in `db.js` and it's snapshotted
+  automatically.
+- **Read-only offline.** `offline.js` treats the app as read-only when `navigator.onLine`
+  is false **or** the data on screen came from a snapshot (covers dead hotel Wi-Fi where
+  the browser still says "online"). Then: a banner "Offline — showing data saved
+  <time> · editing paused" (with a Retry button) is shown; every write control is
+  locked (`aria-disabled` on buttons, `disabled` on inputs, tooltip, and a tap toasts
+  why) via a `MutationObserver` so re-renders are re-locked; and `db.js`'s
+  `insertOne`/`updateOne`/`removeOne` throw via `assertWritable()` as a backstop. The
+  `online` event reloads live data (if a snapshot was showing) and unlocks everything.
+  **When adding a new write control**, add its `data-action` / draft input `data-role`
+  to the lists at the top of the locking section in `offline.js` (or put `data-write`
+  on it) so it looks locked — the `db.js` guard stops the write either way. Read-only
+  things — expand/collapse, filters, map links, 📄 Export PDF — stay live offline.
+- **Export PDF offline.** `print.js` only reads `state` and writes a local document into
+  a blank window — no network — so it works offline (verified).
+- **Testing it.** No test files are checked in (no package.json). The approach used:
+  serve with `python3 -m http.server`, drive Chromium with Playwright, mock Supabase /
+  the CDN / fonts on a local HTTPS server mapped with `--host-resolver-rules` (a
+  Playwright `context.route` doesn't see service-worker fetches), and use
+  `context.setOffline(true)` + reload. Detach any CDP session used for
+  `Page.getInstallabilityErrors` before testing offline — leaving it attached made the
+  offline reload crawl. Lighthouse 11 still has a PWA category (12+ dropped it).
+- **Phone setup (once, on good Wi-Fi, before the trip):** open the site, Add to Home
+  Screen (iPhone: Share → Add to Home Screen; Android: Install app), open it **from the
+  icon** once while online so the snapshot is saved, then test in airplane mode.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.

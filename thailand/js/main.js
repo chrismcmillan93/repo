@@ -1,6 +1,8 @@
 import { qs, esc, toast, friendlyError } from './utils.js';
 import { state, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
+import { initOfflineUi } from './offline.js';
+import { registerServiceWorker } from './pwa.js';
 
 let routerStarted = false;
 let countdownTimer = null;
@@ -40,10 +42,15 @@ function renderFlightCard() {
 /* ---------------- boot sequencing ---------------- */
 
 async function enterApp() {
+  initOfflineUi();
   try {
     await loadCore();
   } catch (err) {
     toast(friendlyError(err));
+    qs('#app-main').innerHTML = navigator.onLine === false
+      ? '<p class="section-note">You\'re offline and nothing is saved on this device yet. ' +
+        'Open the app once while online so the trip data can be saved for offline use.</p>'
+      : '<p class="section-note">Couldn\'t load the trip data — ' + esc(friendlyError(err)) + '</p>';
     return;
   }
 
@@ -54,7 +61,7 @@ async function enterApp() {
     routerStarted = true;
     initRouter();
     window.addEventListener('th:tripchange', async () => {
-      await loadCore();
+      try { await loadCore(); } catch (err) { toast(friendlyError(err)); return; }
       renderCountdown();
       renderFlightCard();
       renderRoute();
@@ -66,4 +73,5 @@ async function enterApp() {
 
 // PIN gate removed for now — app starts directly, same as the live
 // thailand/index.html. See CLAUDE.md.
+registerServiceWorker();
 enterApp();
