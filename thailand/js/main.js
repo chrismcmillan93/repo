@@ -27,7 +27,9 @@ function renderFlightCard() {
   if (!legs.length) { qs('#flightCard').innerHTML = '<p class="section-note">No flights logged yet.</p>'; return; }
   const rows = legs.map((f, idx) => (
     (idx > 0 ? '<div class="flight-divider"></div>' : '') +
-    '<div class="flight-row"><span class="flight-route">' + esc(f.route) + '</span>' +
+    '<div class="flight-row"><span class="flight-route"><span class="flight-mode-icon" title="' +
+    (f.mode === 'ferry' ? 'Ferry' : 'Flight') + '">' + (f.mode === 'ferry' ? '⛴️' : '✈️') + '</span>' +
+    esc(f.route) + '</span>' +
     '<span class="flight-right">' + esc(f.confirmation || '—') + '</span></div>' +
     '<div class="flight-meta">' + esc(f.airline) + (f.when_label ? ' · ' + esc(f.when_label) : '') + '</div>' +
     (f.detail ? '<div class="flight-meta">' + esc(f.detail) + '</div>' : '')

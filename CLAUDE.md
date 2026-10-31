@@ -371,6 +371,23 @@ reservation PIN was deliberately left out of the note** — a ref number alone i
 the booking for the "reconfirm via messages" ask without the PIN being persisted
 anywhere in the app or database.
 
+**`flight_legs.mode` + the two Lomprayah ferries on the header card (2026-10-31).**
+Added `mode` (`text not null default 'flight'`, checked to `'flight'`/`'ferry'`) so the
+two ferry crossings booked above live as real `flight_legs` rows — same table,
+same `#flightCard` on the main screen (`main.js`'s `renderFlightCard()`) — rather
+than only being described inline inside `itinerary_entries.text`. Existing rows all
+defaulted to `'flight'`, so nothing about them changed. `renderFlightCard()` now
+prefixes each row's route with ✈️ (`mode = 'flight'`) or ⛴️ (`mode = 'ferry'`) via a
+`.flight-mode-icon` span, so the card reads as one mixed, chronologically-sorted
+transport timeline instead of flights only. `sort_order` was renumbered in gaps of
+10 (0/10/20/40/50 for the existing flights) so the two ferries could slot in at
+25 and 35 — between the Phuket→Koh Samui flight and the Koh Samui→Bangkok flight —
+without needing to renumber everything a second time later. `print.js`'s PDF export
+reads from the same `state.flightLegs` array and so already includes the ferries
+under its "Flights" heading; it wasn't touched to add icons or re-labelled, since
+only the on-screen header card was asked for — revisit if the PDF should distinguish
+them too.
+
 ## Trip decisions
 
 `docs/` is this app's memory. `docs/usa-trip-spec.md` is the original build brief.
