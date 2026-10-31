@@ -145,6 +145,19 @@ the corrected function — never rewrite an applied migration, add another).
   can't be read). Distance, ascent and a route link are optional. The highest
   picked fell supplies the forecast point. Same validation, safety box, approval
   and tick-for-everyone flow as planner hikes (`walk_key = 'custom'`).
+- **WhatsApp group link (2026-10-31):** optional field on the create and "Edit details"
+  forms. Stored in `hike_private.whatsapp_url` with the meeting point and host contact,
+  so only the host and approved attendees get it (shown as a "Join the WhatsApp chat"
+  button); someone with just the hike link never sees it. Only
+  `https://chat.whatsapp.com/<code>` links are accepted, checked in the page (`WA_RE`)
+  and again by a column check and by `set_hike_whatsapp(p_hike_id, p_url)`, a host-only,
+  open-hikes-only function (empty string clears it). Migration
+  `20261031180000_wainwrights_hike_whatsapp_link.sql` also re-creates
+  `get_hike_by_token` with the extra key. `create_hike` / `edit_hike` were left alone
+  (new parameters would leave overloads behind); the page calls `set_hike_whatsapp`
+  after them, and a failed save after create just means the host re-adds it under
+  "Edit details". Not emailed to anyone. Tested in a rolled-back transaction: host and
+  approved attendee see it, stranger gets no `private` block, non-host and anon can't set it.
 - **Not built (by choice):** waitlist, public listing, postponing as its own
   status (edit the time instead), a scheduled forecast check.
 
