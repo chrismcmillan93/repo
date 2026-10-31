@@ -4,17 +4,17 @@
 // - Only same-origin GETs are handled. Supabase, Open-Meteo, postcodes.io, Google
 //   Fonts and the supabase-js CDN are never touched or cached, so signed-in data
 //   is always live and nothing private is stored.
-// - Network first, cache as the fallback: a deploy is picked up on the next load
-//   and the cached copy only matters when offline.
+// - Network first, cache as the fallback: a deploy is picked up on the next load.
+//   Offline, page loads get offline.html; other files come from the cache.
 // - Cache keys drop the query string and fragment, so a hike's secret share token
 //   (hike.html?t=...) or an auth code is never written to Cache Storage.
 // Bump CACHE when the shell list changes.
-const CACHE = "wainwrights-beta-v1";
+const CACHE = "wainwrights-beta-v2";
 const SHELL = [
   "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html",
   "shared.css", "shared-auth.js", "pwa.js", "fells-data.js", "story.js", "tracker.js",
   "leaderboard.js", "challenges-data.js", "challenges.js", "planner-walks.js", "planner.js", "hike.js",
-  "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"
+  "offline.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"
 ];
 
 const keyFor = url => { const u = new URL(url); u.search = ""; u.hash = ""; return u.href; };
@@ -53,8 +53,13 @@ self.addEventListener("fetch", event => {
       }
       return res;
     }).catch(() =>
-      caches.match(keyFor(req.url)).then(hit => hit || (req.mode === "navigate" ? caches.match(keyFor(new URL("index.html", self.registration.scope))) : undefined))
-        .then(hit => hit || Response.error())
+      // Page loads that fail show offline.html: the app can't sign in or load data
+      // without a connection, so a cached copy of a page would only show a broken
+      // sign-in screen. Scripts, styles and icons still come from the cache.
+      (req.mode === "navigate"
+        ? caches.match(keyFor(new URL("offline.html", self.registration.scope)))
+        : caches.match(keyFor(req.url))
+      ).then(hit => hit || Response.error())
     )
   );
 });

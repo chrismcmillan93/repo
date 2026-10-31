@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wainwrights — Offline</title>
+<link rel="stylesheet" href="shared.css">
+<meta name="theme-color" content="#24392a">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></div>
+    <h1 class="lock-title">You're offline</h1>
+    <p class="lock-sub">The Wainwrights needs a connection to sign you in and save your fells. Your progress is safe — it's stored online and will be here when you're back.</p>
+    <button type="button" class="btn lock-btn" id="retry">Try again</button>
+  </div>
+</div>
+<script>
+  document.getElementById("retry").addEventListener("click", function(){ location.reload(); });
+  window.addEventListener("online", function(){ location.reload(); });
+</script>
+</body>
+</html>
