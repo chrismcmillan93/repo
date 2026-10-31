@@ -2,6 +2,15 @@
 
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
+
+**As of 2026-10-31, production equals beta.** Every file in `beta/` was copied
+into `wainwrights/` (PR #19), so the planner, hosted hikes, Instagram Story
+sharing and direct AllTrails links are live. The one deliberate difference:
+production's `leaderboard.html` has no "beta" badge on the heading. `beta/` is
+kept as the working area for the next round of changes. The section headings
+below say `beta/...` because that is where each feature was built; the same
+files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
+still defaults to the beta URL until it is set by hand in Supabase.
 Backend is its own Supabase project, **`walking-up-hills`** (ref
 `jyxtduvkmztexwurrjsf`, eu-west-2) — not `dashboards-new`. Its migrations and
 Edge Functions live under `wainwrights/supabase/`, separate from the repo-root
@@ -78,7 +87,7 @@ query; trail pages open properly. That was why it went via Google before.)
 - **Per named route:** `ROUTE_ALLTRAILS` (route id → URL) at the end of
   `beta/fells-data.js`, same routes as `PLANNER_ALLTRAILS_NAMED`. Keep the two
   in step if one changes.
-- Production `wainwrights/fells-data.js` and `tracker.js` are untouched.
+- Promoted to production on 2026-10-31 along with the rest of beta.
 
 ## Hosted hikes (`beta/hike.html`) — 2026-10-31
 
