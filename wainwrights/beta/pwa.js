@@ -100,7 +100,28 @@
     if (chip && !chip.hidden) chip.focus();
   }
 
+  // Pages now come from the cache first (fast launches), so with no connection the
+  // app shell would load and look empty, as if progress were lost. Cover it instead.
+  var cover = null;
+  function showOffline(){
+    if (cover || !document.body) return;
+    cover = el("div", "offline-cover");
+    cover.setAttribute("role", "alert");
+    var screen = el("div", "lock-screen");
+    var card = el("div", "lock-card");
+    var h = el("h1", "lock-title", "You're offline");
+    var p = el("p", "lock-sub", "The Wainwrights needs a connection to sign you in and save your fells. Your progress is safe \u2014 it's stored online and will be here when you're back.");
+    var b = el("button", "btn lock-btn", "Try again");
+    b.type = "button";
+    b.addEventListener("click", function(){ location.reload(); });
+    card.appendChild(h); card.appendChild(p); card.appendChild(b);
+    screen.appendChild(card); cover.appendChild(screen);
+    document.body.appendChild(cover);
+  }
+  window.addEventListener("online", function(){ if (cover) location.reload(); });
+
   function init(){
+    if (navigator.onLine === false) showOffline();
     if (standalone) return;
     var word = document.querySelector(".topnav-word");
     if (!word) return;

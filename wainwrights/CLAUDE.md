@@ -226,16 +226,25 @@ cannot affect `wainwrights/`.
   paper on forest green, kept inside the maskable safe zone). The five pages carry the
   manifest / theme-colour / icon / `pwa.js` tags in `<head>`; `shared-auth.js` is
   untouched.
-- **Service worker:** same-origin GETs inside `beta/` only, network first, shell
-  precached on install (`CACHE` is `wainwrights-beta-v2`). Supabase, Open-Meteo,
-  postcodes.io, Google Fonts and the supabase-js CDN are never intercepted or cached.
-  Cache keys drop the query string and fragment, so a hike's share token
-  (`hike.html?t=...`) is never stored. Bump `CACHE` in `sw.js` when the shell list changes.
-- **Offline:** a page load with no connection shows `offline.html` ("You're offline",
-  Try again, reloads itself when the connection returns) rather than a cached page,
-  because the app can't sign in or load anything without Supabase (and supabase-js comes
-  from a CDN), so a cached page only showed a broken sign-in screen. Scripts, styles and
-  icons still come from the cache. No push notifications or background sync.
+- **Service worker (cached first, refreshed in the background):** same-origin GETs inside
+  `beta/` plus an allow-list of public third-party libraries/fonts (supabase-js on jsDelivr,
+  Google Fonts) are served from the cache immediately and re-fetched in the background
+  (stale-while-revalidate; `CACHE` is `wainwrights-beta-v3`). This was changed from network
+  first on 2026-10-31 because a cold start from the home screen (app closed, not just
+  backgrounded) waited on the network for every file and was very slow on an iPad. With a
+  400 ms-per-request test server a relaunch went from about 880 ms to about 70 ms.
+  **Catch:** after a deploy the first launch still shows the previous version and the next
+  one has the new files (bump `CACHE` when the shell list changes). Supabase API calls,
+  Open-Meteo, postcodes.io and everything else are never intercepted or cached. Same-origin
+  cache keys drop the query string and fragment, so a hike's share token
+  (`hike.html?t=...`) is never stored.
+- **Offline:** because pages now load from the cache, `pwa.js` covers the page with a
+  "You're offline" notice (Try again; reloads itself when the connection returns) when a
+  page loads with `navigator.onLine === false`, so the shell never looks like lost
+  progress. It is not shown if the connection drops mid-session. `offline.html` is the
+  service worker's fallback when a page isn't cached and the network fails. Not covered:
+  "connected but no internet" (the shell loads and Supabase calls fail). No push
+  notifications or background sync.
 - **Install help (all pages, top bar):** a small "Install app" chip next to the wordmark,
   added by `pwa.js` (no per-page markup). It opens a popup (the app's `terms-modal` style;
   Close, Esc, backdrop click, focus kept inside, focus returned to the chip) with
@@ -251,9 +260,10 @@ cannot affect `wainwrights/`.
   (drop "(beta)"); rename the cache prefix in `sw.js` (`wainwrights-beta-`) too.
   The Auth redirect list already covers `/wainwrights/**`.
 - Tested in headless Chromium: worker activates with scope `beta/`, manifest and every
-  icon load, 23 shell entries cached with no query strings or cross-origin URLs, the old
-  v1 cache is deleted, `index`, `planner` and `hike?t=...` show the offline page when
-  offline and reload when back online, a production page is not controlled, and the
+  icon load, 25 entries cached (shell plus supabase-js and Google Fonts CSS) with no query strings
+  or tokens on same-origin keys, old caches deleted, `index` and `hike?t=...` show the
+  offline notice when offline and reload when back online, a deploy is picked up on the
+  second launch, a production page is not controlled, and the
   install chip and popup work on all five pages for iPhone, Android and desktop Chrome
   (simulated install prompt: button calls `prompt()` and closes the popup; Esc, backdrop
   and Close all close it; no chip when standalone or on production). Not tested: the real

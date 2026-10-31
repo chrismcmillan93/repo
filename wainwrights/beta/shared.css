@@ -1499,3 +1499,4 @@
   .install-modal ol{ margin: 10px 0 0 20px; padding: 0; }
   .install-modal li{ margin: 4px 0; }
   .install-modal .install-actions{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .offline-cover{ position: fixed; inset: 0; z-index: 90; background: var(--paper); overflow: auto; }
