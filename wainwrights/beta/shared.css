@@ -383,6 +383,8 @@
 
   .share-row{
     display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     justify-content: center;
     margin: 18px 0 8px;
   }
@@ -1458,3 +1460,7 @@
   .fell-m{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-left: auto; }
   #f-list{ max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 10px; background: var(--paper-card); }
   .hike-form-fells .lock-input{ width: 100%; text-align: left; letter-spacing: normal; text-transform: none; }
+
+  /* hike action buttons: wrap and fit the card on narrow screens */
+  .hike-actions{ display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 8px; }
+  .hike-actions .btn{ flex: 1 1 140px; min-width: 0; text-align: center; }

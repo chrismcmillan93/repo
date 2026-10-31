@@ -348,8 +348,7 @@
         ${detail}
       </article>
       ${body}
-      ${h.is_host && h.status === "open" && !hasStarted() ? `<div class="share-row"><button class="btn" data-action="story-invite">Share invite to Instagram Story</button></div><p class="chart-note" style="text-align:center;">The link is copied when you share — add it to your story as a Link sticker so people can ask for a place.</p>` : ""}
-      ${(h.is_host || h.my_status === "approved") && h.status !== "cancelled" ? `<div class="share-row"><button class="btn" data-action="story">Share to Instagram Story</button></div>` : ""}
+      ${(h.is_host ? (h.status === "completed" || (h.status === "open" && hasStarted())) : h.my_status === "approved" && h.status !== "cancelled") ? `<div class="hike-actions"><button class="btn" data-action="story">Share to Instagram Story</button></div>` : ""}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
@@ -399,8 +398,8 @@
     // share
     html += `<div class="plan-card"><h3 class="hike-sub">Share this hike</h3>
       <p class="hike-link-box" id="hike-link">${esc(hikeLink(token))}</p>
-      <div class="share-row"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? ' <button class="btn" data-action="share">Share…</button>' : ""}</div>
-      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point and your contact.</p></div>`;
+      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}${h.status === "open" && !hasStarted() ? '<button class="btn" data-action="story-invite">Instagram Story</button>' : ""}</div>
+      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point and your contact.${h.status === "open" && !hasStarted() ? " The Instagram Story button copies the link — add it to the story as a Link sticker." : ""}</p></div>`;
     if (h.status === "open") {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
         <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>
