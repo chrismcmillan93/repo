@@ -44,8 +44,21 @@
   // WhatsApp group invite links only (same pattern as set_hike_whatsapp in the database).
   const WA_RE = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9_-]{8,64}(\?[A-Za-z0-9=&_.%-]{0,100})?$/;
   const waOk = v => !v || (v.length <= 200 && WA_RE.test(v));
+  // Instagram handles: same rule as the leaderboard and the database (lowercase letters, numbers, dots, underscores).
+  const IG_RE = /^[a-z0-9._]{1,30}$/;
+  // Accepts "@name", "name" or a pasted instagram.com/name link.
+  const igClean = raw => {
+    let v = String(raw || "").trim();
+    const m = v.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+    if (m) v = m[1];
+    return v.replace(/^@/, "").toLowerCase();
+  };
+  const igLink = h => (h && IG_RE.test(h))
+    ? `<a class="hike-ig" href="https://www.instagram.com/${encodeURIComponent(h)}/" target="_blank" rel="noopener noreferrer">@${esc(h)} ↗</a>`
+    : "";
+  let myIg = "", myIgLoaded = false;   // the signed-in person's own leaderboard handle, used to pre-fill the request form
   const ERRORS = {
-    not_signed_in: "Please sign in again.", bad_whatsapp: "That doesn't look like a WhatsApp invite link. It should start with https://chat.whatsapp.com/", ack_required: "Please tick the box to confirm you've read the safety notes.",
+    not_signed_in: "Please sign in again.", bad_instagram: "That doesn't look like an Instagram username. Use letters, numbers, dots and underscores (up to 30), e.g. @yourname.", bad_whatsapp: "That doesn't look like a WhatsApp invite link. It should start with https://chat.whatsapp.com/", ack_required: "Please tick the box to confirm you've read the safety notes.",
     bad_title: "Give the hike a title (3–80 characters).", bad_area: "Add the area (2–60 characters), e.g. \"Glenridding\".",
     bad_start: "Pick a start time in the future (within 120 days).", bad_spaces: "Spaces must be between 1 and 20.",
     bad_meeting_point: "The meeting point must be in the Lake District.", bad_kit: "Kit list: up to 20 items, each under 60 characters.",
@@ -317,6 +330,13 @@
     hike = await rpc("get_hike_by_token", { p_token: token });
     if (!hike) { root.innerHTML = `<div class="section-heading"><h2>Hike not found</h2><div class="rule"></div></div><p class="chart-note">That link isn't valid any more. Ask the host for a fresh one, or see <a href="hike.html?list=1">your hikes</a>.</p>`; return; }
     weather = null;
+    if (!hike.is_host && !myIgLoaded) {
+      myIgLoaded = true;
+      try {
+        const { data } = await WW.sb.from("leaderboard_opt_in").select("instagram_handle").eq("user_id", user.id).maybeSingle();
+        myIg = (data && data.instagram_handle) || "";
+      } catch (e) { /* no handle to pre-fill: fine */ }
+    }
     renderHike();
     if (hike.status === "open") {
       loadWeather(hike).then(w => { weather = w; const el = $("hike-weather"); if (el) el.innerHTML = weatherHtml(); }).catch(() => {});
@@ -384,7 +404,7 @@
 
   function attendeeNames(){
     const list = hike.attendees || [];
-    return list.length ? `<h3 class="hike-sub">Who's going</h3><p>${list.map(a => esc(a.display_name)).join(", ")}</p>` : "";
+    return list.length ? `<h3 class="hike-sub">Who's going</h3><ul class="hike-going">${list.map(a => `<li>${esc(a.display_name)}${a.instagram_handle ? " " + igLink(a.instagram_handle) : ""}</li>`).join("")}</ul>` : "";
   }
 
   function visitorHtml(left){
@@ -413,6 +433,7 @@
         <h3 class="hike-sub">Ask to join</h3>
         <p class="chart-note">The host approves each person. The exact meeting point, host contact and WhatsApp chat link are shown once you're approved. Your display name is shown to the host.</p>
         <label>Message to the host (optional) — your experience, anything they should know<textarea class="lock-input hike-text" id="r-msg" rows="3" maxlength="300"></textarea></label>
+        <label>Your Instagram (optional) — so the host can see who you are before approving. Shown to the host, and to other walkers once you're approved.<input class="lock-input" id="r-ig" maxlength="80" placeholder="@yourname" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(myIg ? "@" + myIg : "")}"></label>
         <label class="plan-check"><input type="checkbox" id="r-ack"> I've read the safety notes below. I'm responsible for my own safety.</label>
         <div class="share-row"><button class="btn" type="submit" id="r-submit">Ask to join</button></div></form>`;
     }
@@ -430,13 +451,13 @@
       <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point, your contact and the WhatsApp link.</p></div>`;
     if (h.status === "open") {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
-        <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>
+        <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${igLink(a.instagram_handle) ? `<div class="hike-ig-line">${igLink(a.instagram_handle)}</div>` : '<div class="hike-ig-line hike-ig-none">No Instagram given</div>'}${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>
         <div class="hike-person-actions"><button class="btn hike-small" data-action="approve" data-uid="${esc(a.user_id)}">Approve</button>
         <button class="btn hike-small" data-action="decline" data-uid="${esc(a.user_id)}">Decline</button></div></div>`).join("") : '<p class="chart-note">No requests waiting.</p>'}</div>`;
     }
     const canTick = h.status === "open" && hasStarted();
     html += `<div class="plan-card"><h3 class="hike-sub">Going (${approved.length} of ${h.spaces})</h3>${approved.length ? approved.map(a => `
-      <div class="hike-person"><div><strong>${esc(a.display_name)}</strong></div>
+      <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${igLink(a.instagram_handle) ? `<div class="hike-ig-line">${igLink(a.instagram_handle)}</div>` : ""}</div>
       ${h.status === "open" && !hasStarted() ? `<div class="hike-person-actions"><button class="btn hike-small" data-action="remove" data-uid="${esc(a.user_id)}">Remove</button>
       <button class="btn hike-small" data-action="remove-block" data-uid="${esc(a.user_id)}">Remove &amp; block</button></div>` : ""}</div>`).join("") : '<p class="chart-note">Nobody approved yet.</p>'}</div>`;
     if (canTick) {
@@ -557,7 +578,9 @@
     if (e.target.id === "hike-request") {
       e.preventDefault();
       guard($("r-submit"), async () => {
-        await rpc("request_hike_place", { p_token: token, p_message: $("r-msg").value, p_ack: $("r-ack").checked });
+        const ig = igClean($("r-ig").value);
+        if (ig && !IG_RE.test(ig)) { flash(ERRORS.bad_instagram, true); return; }
+        await rpc("request_hike_place", { p_token: token, p_message: $("r-msg").value, p_ack: $("r-ack").checked, p_instagram: ig || null });
         await notify(hike.id); await reload();
       });
     }
