@@ -18,11 +18,32 @@
     not_admin: "You're not an admin.", not_found: "That no longer exists.", already_cancelled: "That hike is already cancelled.",
     cannot_suspend_admin: "You can't suspend an admin.", bad_word: "Use letters only, 2 to 40 long.", bad_mode: "Pick how the word should match."
   };
+  // Admin mode: changes only work after switching it on here, and it switches itself off after 15 minutes
+  // without a change. This is a guard against slips, not security: the database checks admin rights itself.
+  const MODE_KEY = "ww_admin_mode_until", MODE_MS = 15 * 60 * 1000;
+  const modeOn = () => { try { return Number(localStorage.getItem(MODE_KEY)) > Date.now(); } catch (e) { return false; } };
+  function setMode(on){
+    try { if (on) localStorage.setItem(MODE_KEY, String(Date.now() + MODE_MS)); else localStorage.removeItem(MODE_KEY); } catch (e) {}
+    clearTimeout(setMode.t);
+    if (on) setMode.t = setTimeout(() => { if (!modeOn()) paintMode(); }, MODE_MS + 500);
+    if (window.wwAdminLink) window.wwAdminLink();
+  }
+  const NEED_MODE = "Admin mode is off. Switch it on at the top of the page to make changes.";
+  function paintMode(){
+    const on = modeOn(), box = $("admin-mode");
+    root.classList.toggle("admin-locked", !on);
+    if (!box) return;
+    box.className = "hike-note-box " + (on ? "is-bad" : "is-good");
+    box.innerHTML = on
+      ? `<strong>Admin mode is ON.</strong> Changes are live. It switches itself off after 15 minutes without a change. <button type="button" class="btn" data-act="mode" data-on="0">Switch off</button>`
+      : `<strong>Admin mode is off.</strong> You can look around but not change anything. <button type="button" class="btn" data-act="mode" data-on="1">Switch on</button>`;
+  }
   const msg = e => ERR[(e && e.message) || ""] || (e && e.message) || "Something went wrong.";
 
   async function rpc(name, args){
     const { data, error } = await WW.sb.rpc(name, args || {});
     if (error) throw error;
+    if (modeOn() && /^admin_(remove|clear|delete|set|dismiss)/.test(name)) setMode(true);
     return data;
   }
   function flash(text, bad){
@@ -45,7 +66,7 @@
   function shell(inner){
     const o = overview;
     const counts = o ? `<p class="chart-note">${o.users} people · ${o.leaderboard_entries} on the leaderboard · ${o.teams} teams · ${o.hikes_total} hikes (${o.hikes_open} open) · <strong>${o.open_reports} open report${o.open_reports === 1 ? "" : "s"}</strong> · ${o.suspended} suspended</p>` : "";
-    return `<div id="admin-msg" style="display:none;"></div>${counts}
+    return `<div id="admin-mode"></div><div id="admin-msg" style="display:none;"></div>${counts}
       <div class="admin-tabs" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn admin-tab${k === tab ? " is-active" : ""}" data-act="tab" data-tab="${k}">${l}${k === "reports" && o && o.open_reports ? " (" + o.open_reports + ")" : ""}</button>`).join("")}</div>
       <div id="admin-body">${inner}</div>`;
   }
@@ -147,6 +168,7 @@
     const keep = $("admin-msg") ? { text: $("admin-msg").textContent, cls: $("admin-msg").className, show: $("admin-msg").style.display } : null;
     root.innerHTML = shell("");
     if (keep && keep.show !== "none") { const m = $("admin-msg"); m.textContent = keep.text; m.className = keep.cls; m.style.display = "block"; }
+    paintMode();
     await loadTab();
   }
 
@@ -157,12 +179,15 @@
     if (!btn) return;
     const a = btn.dataset.act, id = btn.dataset.id, name = btn.dataset.name || "this person";
     if (a === "tab") { tab = btn.dataset.tab; await refresh(); return; }
+    if (a === "mode") { setMode(btn.dataset.on === "1"); paintMode(); return; }
     if (a === "hike-people") {
       const box = $("people-" + id);
       if (!box) return;
       if (box.dataset.open === "1") { box.innerHTML = ""; box.dataset.open = ""; return; }
       return guard(btn, async () => { box.innerHTML = peopleOfHikeHtml(id, await rpc("admin_hike_people", { p_hike_id: id })); box.dataset.open = "1"; });
     }
+    // everything below changes something
+    if (!modeOn()) { flash(NEED_MODE, true); return; }
     if (a === "cancel-hike") {
       const reason = ask(`Cancel "${btn.dataset.title}"? Everyone going is told. The reason is shown on the hike:`, "Removed by an admin.");
       if (reason === null) return;
@@ -211,6 +236,7 @@
     }
   }
   async function onSubmit(e){
+    if ((e.target.id === "add-blocked" || e.target.id === "add-allowed") && !modeOn()) { e.preventDefault(); flash(NEED_MODE, true); return; }
     if (e.target.id === "add-blocked") {
       e.preventDefault();
       return guard(e.target.querySelector("button"), async () => { await rpc("admin_set_blocked_word", { p_word: $("bw-word").value, p_mode: $("bw-mode").value, p_remove: false }); flash("Word blocked."); await loadTab(); });
@@ -236,6 +262,7 @@
         return;
       }
       try { localStorage.setItem("ww_admin", "1"); } catch (er) {}
+      if (window.wwAdminLink) window.wwAdminLink();
       root.addEventListener("click", onClick);
       root.addEventListener("submit", onSubmit);
       root.addEventListener("input", onInput);

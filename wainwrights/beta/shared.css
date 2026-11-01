@@ -1527,3 +1527,7 @@
   .admin-form{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
   .admin-form .lock-input{ flex: 1 1 160px; margin: 0; width: auto; }
   .admin-log-details{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); word-break: break-word; margin: 4px 0 0; }
+  .admin-locked .hike-actions .btn, .admin-locked .admin-chip-x, .admin-locked .admin-form .btn{ opacity: 0.45; }
+  #admin-mode{ margin: 8px 0; }
+  #admin-mode .btn{ margin-left: 8px; }
+  .topnav-links a.admin-on{ color: #b3261e; font-weight: 700; }
