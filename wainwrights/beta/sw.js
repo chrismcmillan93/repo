@@ -17,9 +17,9 @@
 // - Same-origin cache keys drop the query string and fragment, so a hike's secret
 //   share token (hike.html?t=...) or an auth code is never written to Cache Storage.
 // - A page load with nothing cached and no network shows offline.html.
-const CACHE = "wainwrights-beta-v4";
+const CACHE = "wainwrights-beta-v5";
 const SHELL = [
-  "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html",
+  "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html", "admin.html", "admin.js",
   "shared.css", "shared-auth.js", "pwa.js", "fells-data.js", "story.js", "tracker.js",
   "leaderboard.js", "challenges-data.js", "challenges.js", "planner-walks.js", "planner.js", "hike.js",
   "offline.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"
