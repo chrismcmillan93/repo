@@ -202,6 +202,28 @@ the corrected function — never rewrite an applied migration, add another).
   after them, and a failed save after create just means the host re-adds it under
   "Edit details". Not emailed to anyone. Tested in a rolled-back transaction: host and
   approved attendee see it, stranger gets no `private` block, non-host and anon can't set it.
+- **Instagram on requests (2026-11-01, beta):** the "Ask to join" form has an optional
+  "Your Instagram" field, pre-filled from the person's own `leaderboard_opt_in.instagram_handle`
+  if they have one (they can edit or clear it). It accepts `@name`, `name` or a pasted
+  instagram.com link, is cleaned to lowercase (`^[a-z0-9._]{1,30}$`, the same rule as the
+  leaderboard) and sent as `request_hike_place`'s optional 4th parameter `p_instagram`
+  (`bad_instagram` if invalid). Stored in `hike_attendees.instagram_handle` (migration
+  `20261101100000_wainwrights_hike_request_instagram.sql`, applied; `request_hike_place` was
+  dropped and re-created with the extra defaulted parameter so the production page's
+  3-argument calls still work). **Who sees it:** the host (on each request, before approving,
+  as a link to instagram.com/<handle>, or "No Instagram given"; and in the Going list) and
+  approved walkers ("Who's going"), nobody else: `get_hike_by_token` returns it only inside the
+  host's and approved walkers' attendee lists, and the table's existing RLS policy (own row,
+  host sees all, approved see approved) means pending requests' handles are never readable by
+  other walkers. Not emailed, and **not** used on Story images (those still use leaderboard
+  handles only, so a handle typed on a request never ends up on a public Story). Handles are
+  rendered only if they match the format, as `target=_blank rel="noopener noreferrer"` links.
+  Tested in a rolled-back SQL transaction (host, requester with/without handle, bad handles,
+  approved walker, pending requester, stranger, anon, old 3-argument call) and in the page
+  with mocked Supabase. Production `hike.js` is unchanged until promoted; it keeps working
+  because the database change is backwards compatible.
+  Tooling note: the Supabase connector asks for confirmation before running statements such
+  as `DROP FUNCTION`; if the prompt isn't answered the call times out.
 - **Not built (by choice):** waitlist, public listing, postponing as its own
   status (edit the time instead), a scheduled forecast check.
 
