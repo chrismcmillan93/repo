@@ -3,16 +3,15 @@
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
 
-**As of 2026-11-01, production equals beta except for the items below.** Beta was copied
+**As of 2026-11-01, production equals beta except for the three differences below.** Beta was copied
 into `wainwrights/` in stages (PR #19, then the PWA / launch-speed work, then the Instagram
 change), so the planner, hosted hikes (with the WhatsApp link and Instagram on requests),
 Instagram Story sharing, direct AllTrails links and the installable app are live.
-**Not promoted yet:** the planner's "use Directions on the AllTrails route" note under each
-walk's Maps link and the matching footnote (`planner.js`, `planner.html`; beta PR #31).
+**Nothing is waiting to be promoted** (the planner's AllTrails directions note went up last).
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v4` / prefix `wainwrights-prod-` (beta:
+and `sw.js` uses the cache name `wainwrights-prod-v5` / prefix `wainwrights-prod-` (beta:
 `wainwrights-beta-v6` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
