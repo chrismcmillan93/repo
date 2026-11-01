@@ -330,6 +330,16 @@ applied to walking-up-hills. The database side is live for everyone, **productio
   messages in `hike.js`, the tracker name-prompt message, admin CSS; production `sw.js` is
   `wainwrights-prod-v2` with the admin files in SHELL). Production `hike.js` got only the error-message
   change from beta, not the calendar/share changes, which are still beta-only.
+- **Admin link and admin mode (2026-11-01, beta and production).** `shared-auth.js` asks `am_i_admin()` once
+  per page load after sign-in and sets or clears `localStorage.ww_admin`, so the "Admin" link in the top bar
+  (`pwa.js`, exposed as `window.wwAdminLink`) appears for an admin without a prior visit to `admin.html`, and
+  disappears if someone stops being one. **Admin mode** is a guard against slips: the admin page opens
+  read-only ("Admin mode is off" banner, buttons dimmed) and any change (cancel/delete, remove, clear,
+  suspend, team delete, dismiss, word lists) is refused in the page until "Switch on" is pressed. It is
+  stored as `localStorage.ww_admin_mode_until` (a timestamp), lasts 15 minutes and is extended by each
+  successful change; "Switch off" clears it. While on, the nav link reads "Admin (on)" in red. This is
+  client-side only; the database still allows an admin to call the functions (by design, it is only
+  there to stop accidents). Production `sw.js` is `wainwrights-prod-v3`, beta `wainwrights-beta-v6`.
 - Not built: email or push alerts when a report is filed; an "undo" for permanent deletes (the log keeps
   the details, not the data).
 

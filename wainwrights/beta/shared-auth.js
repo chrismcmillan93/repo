@@ -53,6 +53,18 @@
     if(emailEl) emailEl.textContent = user.email || "";
     if(!hasInitialized){
       hasInitialized = true;
+      // Ask the database whether this person is an admin, so the Admin link appears (or goes) on its own.
+      // The answer only controls a link; every admin function checks for itself.
+      try {
+        Promise.resolve(WW.sb.rpc("am_i_admin")).then(function(r){
+          try {
+            if(r && r.error) return;
+            if(r && r.data === true) localStorage.setItem("ww_admin", "1");
+            else { localStorage.removeItem("ww_admin"); localStorage.removeItem("ww_admin_mode_until"); }
+          } catch(e) {}
+          if(window.wwAdminLink) window.wwAdminLink();
+        }).catch(function(){});
+      } catch(e) {}
       fireReady(user);
     }
   }

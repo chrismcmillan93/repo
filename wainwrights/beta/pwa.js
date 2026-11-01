@@ -268,14 +268,17 @@
   // browser; admin.html asks the database every time, so showing the link to anyone else would do nothing.
   function adminLink(){
     try {
-      if (localStorage.getItem("ww_admin") !== "1") return;
       var links = document.querySelector(".topnav-links");
-      if (!links || links.querySelector('a[href="admin.html"]')) return;
-      var a = el("a", null, "Admin");
-      a.href = "admin.html";
-      links.appendChild(a);
+      if (!links) return;
+      var a = links.querySelector('a[href="admin.html"]');
+      if (localStorage.getItem("ww_admin") !== "1") { if (a) a.remove(); return; }
+      if (!a) { a = el("a", null, "Admin"); a.href = "admin.html"; links.appendChild(a); }
+      var on = Number(localStorage.getItem("ww_admin_mode_until")) > Date.now();
+      a.classList.toggle("admin-on", on);
+      a.textContent = on ? "Admin (on)" : "Admin";
     } catch (e) {}
   }
+  window.wwAdminLink = adminLink;
 
   function init(){
     adminLink();
