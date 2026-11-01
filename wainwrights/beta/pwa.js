@@ -270,12 +270,17 @@
     try {
       var links = document.querySelector(".topnav-links");
       if (!links) return;
-      var a = links.querySelector('a[href="admin.html"]');
-      if (localStorage.getItem("ww_admin") !== "1") { if (a) a.remove(); return; }
-      if (!a) { a = el("a", null, "Admin"); a.href = "admin.html"; links.appendChild(a); }
+      var box = document.querySelector(".admin-bar");
+      if (localStorage.getItem("ww_admin") !== "1") { if (box) box.remove(); return; }
       var on = Number(localStorage.getItem("ww_admin_mode_until")) > Date.now();
-      a.classList.toggle("admin-on", on);
-      a.textContent = on ? "Admin (on)" : "Admin";
+      var here = /admin\.html$/.test(location.pathname);
+      if (!box) {
+        box = el("a", "admin-bar");
+        box.href = "admin.html";
+        links.parentNode.insertBefore(box, links);
+      }
+      box.className = "admin-bar" + (on ? " is-on" : "") + (here ? " is-here" : "");
+      box.textContent = "Admin · mode " + (on ? "ON" : "off") + (here ? "" : " →");
     } catch (e) {}
   }
   window.wwAdminLink = adminLink;
