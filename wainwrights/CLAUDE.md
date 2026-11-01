@@ -11,8 +11,8 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v5` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v6` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
+`wainwrights-beta-v7` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -368,7 +368,7 @@ applied to walking-up-hills. The database side is live for everyone, **productio
   read-only ("Admin mode is off" banner, buttons dimmed) and any change (cancel/delete, remove, clear,
   suspend, team delete, dismiss, word lists) is refused in the page until "Switch on" is pressed. It is
   stored as `localStorage.ww_admin_mode_until` (a timestamp), lasts 15 minutes and is extended by each
-  successful change; "Switch off" clears it. While on, the nav link reads "Admin (on)" in red. This is
+  successful change; "Switch off" clears it. The link is a boxed bar between the wordmark and the menu ("Admin · mode off →", red "mode ON" while on; on the admin page itself it is not a link), built by `adminLink()` in `pwa.js` (`.admin-bar` in `shared.css`); it exists only for admins, because it is created only when `ww_admin` is set by the database check. This is
   client-side only; the database still allows an admin to call the functions (by design, it is only
   there to stop accidents). Production `sw.js` is `wainwrights-prod-v3`, beta `wainwrights-beta-v6`.
 - Not built: email or push alerts when a report is filed; an "undo" for permanent deletes (the log keeps

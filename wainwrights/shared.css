@@ -1530,4 +1530,13 @@
   .admin-locked .hike-actions .btn, .admin-locked .admin-chip-x, .admin-locked .admin-form .btn{ opacity: 0.45; }
   #admin-mode{ margin: 8px 0; }
   #admin-mode .btn{ margin-left: 8px; }
-  .topnav-links a.admin-on{ color: #b3261e; font-weight: 700; }
+  .admin-bar{
+    flex: 1 0 100%; box-sizing: border-box; order: 1;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--green-deep); text-decoration: none;
+    background: var(--paper-card); border: 1px solid var(--line-strong); border-left: 4px solid var(--green-deep);
+    border-radius: 4px; padding: 8px 12px;
+  }
+  .admin-bar.is-on{ color: #b3261e; border-left-color: #b3261e; }
+  .admin-bar.is-here{ pointer-events: none; }
+  .topnav-links{ order: 2; }
