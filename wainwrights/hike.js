@@ -94,6 +94,69 @@
   const mapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&travelmode=driving`;
   const localISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hikeLink = t => location.origin + location.pathname.replace(/[^/]*$/, "") + "hike.html?t=" + encodeURIComponent(t);
+
+  // ---------- calendar file (.ics) ----------
+  // Hikes have no end time, so the entry runs a flat 6 hours (said so in its description).
+  const HIKE_HOURS = 6;
+  const icsEsc = v => String(v == null ? "" : v).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const utf8 = new TextEncoder();
+  // RFC 5545: lines are at most 75 octets; longer ones are folded onto lines that start with a space.
+  function icsFold(line){
+    const out = []; let cur = "", bytes = 0;
+    for (const ch of line) {
+      const b = utf8.encode(ch).length;
+      if (bytes + b > 75) { out.push(cur); cur = " "; bytes = 1; }
+      cur += ch; bytes += b;
+    }
+    out.push(cur);
+    return out.join("\r\n");
+  }
+  function hikeIcs(h){
+    const start = new Date(h.start_at), end = new Date(start.getTime() + HIKE_HOURS * 3600 * 1000);
+    const stamp = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const p = h.private || {}, w = h.walk || {};
+    const hasPoint = p.meet_lat != null && p.meet_lng != null;
+    const lat = hasPoint ? Number(p.meet_lat).toFixed(5) : "", lng = hasPoint ? Number(p.meet_lng).toFixed(5) : "";
+    const desc = [
+      w.label ? "Walk: " + w.label : "",
+      (w.fells || []).length ? "Fells: " + w.fells.join(", ") : "",
+      [w.miles != null ? w.miles + " mi" : "", w.ascent != null ? w.ascent + " m ascent" : ""].filter(Boolean).join(" · "),
+      "Hosted by " + h.host_name,
+      h.turnaround_time ? "Turn back at " + h.turnaround_time : "",
+      hasPoint ? "Meeting point: https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng : "",
+      p.meet_note ? "Where exactly: " + p.meet_note : "",
+      p.host_contact ? "Host contact: " + p.host_contact : "",
+      p.whatsapp_url ? "WhatsApp chat: " + p.whatsapp_url : "",
+      "Hike page: " + hikeLink(token),
+      "The end time is an estimate. Check the forecast and the Mountain Weather Information Service before you go."
+    ].filter(Boolean).join("\n");
+    const lines = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//The Wainwrights//Hikes//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VEVENT",
+      "UID:" + h.id + "@wainwrights",
+      "DTSTAMP:" + stamp(new Date()), "DTSTART:" + stamp(start), "DTEND:" + stamp(end),
+      "SUMMARY:" + icsEsc(h.title),
+      "LOCATION:" + icsEsc([h.area, p.meet_note].filter(Boolean).join(" — ")),
+      hasPoint ? "GEO:" + lat + ";" + lng : "",
+      "DESCRIPTION:" + icsEsc(desc),
+      "URL:" + hikeLink(token),
+      "STATUS:CONFIRMED",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc("Hike tomorrow: " + h.title), "TRIGGER:-P1D", "END:VALARM",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc("Hike today: " + h.title), "TRIGGER:-PT2H", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR"
+    ].filter(Boolean);
+    return lines.map(icsFold).join("\r\n") + "\r\n";
+  }
+  function downloadHikeIcs(h){
+    const day = new Date(h.start_at).toISOString().slice(0, 10);
+    const slug = String(h.title || "hike").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "hike";
+    const blob = new Blob([hikeIcs(h)], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "hike-" + slug + "-" + day + ".ics";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
   const hasStarted = () => hike && new Date(hike.start_at) <= new Date();
   function flash(msg, bad){
     const el = $("hike-msg"); if (!el) return;
@@ -425,7 +488,7 @@
     if (h.status !== "open") return html;
     if (hasStarted()) return html + '<p class="chart-note">This hike has already started.</p>';
     if (s === "approved") {
-      html += `<div class="hike-note-box is-good"><strong>You're in.</strong> The meeting point, host contact and WhatsApp chat (if the host added one) are above. <button class="btn hike-small" data-action="withdraw">Pull out</button></div>` + attendeeNames();
+      html += `<div class="hike-note-box is-good"><strong>You're in.</strong> The meeting point, host contact and WhatsApp chat (if the host added one) are above. <button class="btn hike-small" data-action="ics">Add to calendar</button> <button class="btn hike-small" data-action="withdraw">Pull out</button></div>` + attendeeNames();
     } else if (s === "requested") {
       html += `<div class="hike-note-box"><strong>Request sent.</strong> The host will approve or decline it, and you'll get an email. <button class="btn hike-small" data-action="withdraw">Withdraw request</button></div>`;
     } else if (s === "declined" || s === "removed") {
@@ -451,7 +514,7 @@
     // share
     html += `<div class="plan-card"><h3 class="hike-sub">Share this hike</h3>
       <p class="hike-link-box" id="hike-link">${esc(hikeLink(token))}</p>
-      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}</div>
+      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}${h.status === "open" ? '<button class="btn" data-action="ics">Add to calendar</button>' : ""}</div>
       <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point, your contact and the WhatsApp link.</p></div>`;
     if (h.status === "open") {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
@@ -531,7 +594,8 @@
         });
       }, "wainwrights-hike.jpg", hike.title);
     }
-    if (a === "share") { try { await navigator.share({ title: hike.title, text: "Join me on a hike: " + hike.title, url: hikeLink(token) }); } catch (er) {} return; }
+    if (a === "ics") { downloadHikeIcs(hike); flash("Calendar entry downloaded. Open it to add it to your calendar."); return; }
+    if (a === "share") { try { await navigator.share({ title: hike.title, text: "Join me on a hike: " + hike.title + " — " + fmtWhen(hike.start_at) + " · " + hike.area, url: hikeLink(token) }); } catch (er) {} return; }
     if (a === "unblock") return guard(btn, async () => { await rpc("unblock_hiker", { p_user_id: uid }); await showList(); });
     if (a === "send-report") return guard(btn, async () => { await rpc("report_hike", { p_token: token, p_reason: $("rep-reason").value }); $("hike-report").innerHTML = ""; flash("Thanks — your report has been sent."); });
 

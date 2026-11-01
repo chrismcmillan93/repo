@@ -12,8 +12,8 @@ walk's Maps link and the matching footnote (`planner.js`, `planner.html`; beta P
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v1` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v4` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+and `sw.js` uses the cache name `wainwrights-prod-v4` / prefix `wainwrights-prod-` (beta:
+`wainwrights-beta-v6` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -227,7 +227,7 @@ the corrected function — never rewrite an applied migration, add another).
   copied up); the database change is backwards compatible, so the order didn't matter.
   Tooling note: the Supabase connector asks for confirmation before running statements such
   as `DROP FUNCTION`; if the prompt isn't answered the call times out.
-- **Share text and calendar entry (2026-11-01, beta):** the host's "Share…" button now sends
+- **Share text and calendar entry (2026-11-01, beta and production):** the host's "Share…" button now sends
   "Join me on a hike: <title> — Wed 4 Nov, 08:30 · <area>" with the link (the share sheet is
   what shows as the preview). "Copy link" is still just the link. "Add to calendar" (host's
   share card while the hike is open; approved walkers' "You're in" note) downloads an `.ics`
@@ -360,8 +360,8 @@ applied to walking-up-hills. The database side is live for everyone, **productio
   names and titles.
 - Promoted to production (`wainwrights/admin.html`, `admin.js`, the Admin link in `pwa.js`, the readable
   messages in `hike.js`, the tracker name-prompt message, admin CSS; production `sw.js` is
-  `wainwrights-prod-v2` with the admin files in SHELL). Production `hike.js` got only the error-message
-  change from beta, not the calendar/share changes, which are still beta-only.
+  `wainwrights-prod-v2` with the admin files in SHELL). Production `hike.js` first got only the error-message
+  change from beta; the calendar/share changes followed the same day (see Hosted hikes).
 - **Admin link and admin mode (2026-11-01, beta and production).** `shared-auth.js` asks `am_i_admin()` once
   per page load after sign-in and sets or clears `localStorage.ww_admin`, so the "Admin" link in the top bar
   (`pwa.js`, exposed as `window.wwAdminLink`) appears for an admin without a prior visit to `admin.html`, and
