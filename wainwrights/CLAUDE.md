@@ -261,6 +261,62 @@ top/bottom ~250px that Instagram covers; footer is the app name only.
   it can be added as a Link sticker in the empty middle of the image. The link is
   the access token, so it is never printed on the image; no meeting point appears.
 
+## Word filter and admin (2026-11-01; database live, page changes beta)
+
+Added after the app opened up to more sign-ups: stop people filling names, handles and hike text
+with rubbish, and give the owner a way to remove things that are wrong or malicious. Migrations
+`20261101120000_wainwrights_word_filter.sql` and `20261101130000_wainwrights_admin.sql`, both
+applied to walking-up-hills. The database side is live for everyone, **production pages included**.
+
+**Word filter (enforced by database triggers, so it can't be bypassed from the browser)**
+- Covers display names (`leaderboard_opt_in`, `profiles`), Instagram handles (`leaderboard_opt_in`,
+  `hike_attendees`), team names, and hike title, area, status note, meeting-point note and the
+  message to the host. Not covered: hike contact details, report reasons, the walk itself.
+- Only values being inserted or *changed* are checked, so a row already holding a bad value can still
+  be updated for other reasons. At the time it went live nothing existing was flagged.
+- The lists live in `private.blocked_words` (mode `word` = whole token only, `substring` = also inside
+  longer words, for the strongest words only) and `private.allowed_words` (real names and places that
+  contain a blocked string: Scunthorpe, Cockermouth, Twatt, "Great Cockup" passes because only whole
+  tokens are matched for `cock`, therapist...). Matching lower-cases, maps look-alikes (0 o, 1 i, 3 e,
+  4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | l), and tolerates stretched spellings (`fuuuck`). Names, handles
+  and team names are also checked with separators removed ("f.u.c.k"); free text is not (a spaced
+  "f u c k" in a message gets through). 53 examples (blocked and allowed) were tested locally and
+  against the live schema in a rolled-back transaction. No filter is perfect: add words / allow-list
+  entries from the Admin page when something is wrongly blocked or slips through.
+- The refusal message is readable on purpose ("That contains a word that isn't allowed here. Please
+  change it."), so older pages that print the database's error text show it as it is. The tracker's
+  name prompt used to ignore errors; it now stays open and shows the message.
+
+**Admin**
+- An admin is a row in `public.app_admins`, added **by hand with SQL only** (no function or page can add
+  one): `insert into public.app_admins (user_id) select id from auth.users where lower(email) = '...';`.
+  The owner's account was added that way on 2026-11-01. The email is deliberately not in this public repo.
+  Remove with `delete from public.app_admins where user_id = ...`.
+- Every `admin_*` function starts with `private.require_admin()` (raises `not_admin`) and writes to
+  `public.admin_log` (who, what, and the values it replaced). `app_admins`, `admin_log` and
+  `suspended_users` have RLS on and no client access.
+- Powers: cancel a hike with a reason (soft: everyone going is told) or delete it permanently (the log
+  keeps a snapshot); remove a person from a hike (can't ask again); clear a person's name ("Walker"),
+  Instagram handle, or remove their leaderboard entry; delete a team; read and dismiss hike reports
+  (`hike_reports.dismissed_at`); suspend / unsuspend a user; edit the blocked and allowed word lists.
+- **Suspended** users are hidden from the leaderboard (`wainwright_leaderboard()` has one extra
+  condition) and cannot create hikes, ask to join (or auto-join) hikes, or create teams. They can still
+  sign in and use their own tracker. A host approving an *earlier* request from someone since suspended
+  is not blocked. Admins can't be suspended.
+- **Admin page:** `beta/admin.html` + `beta/admin.js` (tabs: Hikes, People, Teams, Reports, Word filter,
+  Log). It asks `am_i_admin()` every time and shows "This page is for admins." otherwise; all the real
+  checks are in the database. After a successful check it sets `localStorage.ww_admin`, which makes
+  `pwa.js` add an "Admin" link to the top bar; that flag is only a convenience (anyone can set it, and it
+  then does nothing). Everything from the database is escaped as text; Instagram handles only become
+  links if they match the handle format. Tested with mocked data (34 checks) including hostile
+  names and titles.
+- Not promoted to production yet (beta only): the admin page, the Admin link, the readable messages on
+  the hike page, and the tracker name-prompt message. Until then production pages show the filter's
+  message in their own error styles (the leaderboard, team form and join form already print it; the
+  hike page prefixes "Something went wrong:"; the tracker name prompt closes silently).
+- Not built: email or push alerts when a report is filed; an "undo" for permanent deletes (the log keeps
+  the details, not the data).
+
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 
 "Sort by" under the planner controls: Best match (the default scored ranking),
