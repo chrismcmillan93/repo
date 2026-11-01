@@ -326,10 +326,10 @@ applied to walking-up-hills. The database side is live for everyone, **productio
   then does nothing). Everything from the database is escaped as text; Instagram handles only become
   links if they match the handle format. Tested with mocked data (34 checks) including hostile
   names and titles.
-- Not promoted to production yet (beta only): the admin page, the Admin link, the readable messages on
-  the hike page, and the tracker name-prompt message. Until then production pages show the filter's
-  message in their own error styles (the leaderboard, team form and join form already print it; the
-  hike page prefixes "Something went wrong:"; the tracker name prompt closes silently).
+- Promoted to production (`wainwrights/admin.html`, `admin.js`, the Admin link in `pwa.js`, the readable
+  messages in `hike.js`, the tracker name-prompt message, admin CSS; production `sw.js` is
+  `wainwrights-prod-v2` with the admin files in SHELL). Production `hike.js` got only the error-message
+  change from beta, not the calendar/share changes, which are still beta-only.
 - Not built: email or push alerts when a report is filed; an "undo" for permanent deletes (the log keeps
   the details, not the data).
 

@@ -264,7 +264,21 @@
   });
   window.addEventListener("load", function(){ mark("load"); setTimeout(saveLaunch, 4000); });
 
+  // The Admin link is only a convenience for people the admin page has already confirmed as admins in this
+  // browser; admin.html asks the database every time, so showing the link to anyone else would do nothing.
+  function adminLink(){
+    try {
+      if (localStorage.getItem("ww_admin") !== "1") return;
+      var links = document.querySelector(".topnav-links");
+      if (!links || links.querySelector('a[href="admin.html"]')) return;
+      var a = el("a", null, "Admin");
+      a.href = "admin.html";
+      links.appendChild(a);
+    } catch (e) {}
+  }
+
   function init(){
+    adminLink();
     watchApp();
     if (navigator.onLine === false) showOffline();
     if (standalone) return;

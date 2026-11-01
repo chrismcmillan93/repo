@@ -74,7 +74,11 @@
     already_completed: "Fells have already been ticked for this hike.", not_attendee: "That person isn't an approved attendee.",
     not_found: "Hike not found.", bad_reason: "Please say a little more (5–500 characters)."
   };
-  const errMsg = e => ERRORS[(e && e.message) || ""] || ("Something went wrong: " + ((e && e.message) || "unknown error"));
+  const READABLE = /isn't allowed here|account has been suspended/;
+  const errMsg = e => {
+    const m = (e && e.message) || "";
+    return ERRORS[m] || (READABLE.test(m) ? m : "Something went wrong: " + (m || "unknown error"));
+  };
 
   // ---------- helpers ----------
   async function rpc(name, args){

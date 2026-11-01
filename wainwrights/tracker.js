@@ -1062,10 +1062,18 @@
       e.preventDefault();
       const name = input.value.trim();
       if(!name) return;
+      const errEl = document.getElementById("name-prompt-error");
+      if(errEl) errEl.style.display = "none";
       try{
-        await WW.sb.from("profiles").upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+        const { error } = await WW.sb.from("profiles").upsert({ user_id: user.id, display_name: name }, { onConflict: "user_id" });
+        if(error) throw error;
       }catch(err){
         console.error("Saving display name failed", err);
+        if(errEl){
+          errEl.textContent = (err && err.message) || "Couldn't save that name. Try again, or skip for now.";
+          errEl.style.display = "block";
+          return;
+        }
       }
       modal.style.display = "none";
     };
