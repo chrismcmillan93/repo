@@ -3,9 +3,12 @@
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
 
-**As of the end of 2026-10-31, production equals beta.** Every file in `beta/` was copied
-into `wainwrights/` (PR #19, then the PWA / launch-speed work), so the planner, hosted
-hikes, Instagram Story sharing, direct AllTrails links and the installable app are live.
+**As of 2026-11-01, production equals beta except for the items below.** Beta was copied
+into `wainwrights/` in stages (PR #19, then the PWA / launch-speed work, then the Instagram
+change), so the planner, hosted hikes (with the WhatsApp link and Instagram on requests),
+Instagram Story sharing, direct AllTrails links and the installable app are live.
+**Not promoted yet:** the planner's "use Directions on the AllTrails route" note under each
+walk's Maps link and the matching footnote (`planner.js`, `planner.html`; beta PR #31).
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
@@ -202,7 +205,7 @@ the corrected function — never rewrite an applied migration, add another).
   after them, and a failed save after create just means the host re-adds it under
   "Edit details". Not emailed to anyone. Tested in a rolled-back transaction: host and
   approved attendee see it, stranger gets no `private` block, non-host and anon can't set it.
-- **Instagram on requests (2026-11-01, beta):** the "Ask to join" form has an optional
+- **Instagram on requests (2026-11-01, beta and production):** the "Ask to join" form has an optional
   "Your Instagram" field, pre-filled from the person's own `leaderboard_opt_in.instagram_handle`
   if they have one (they can edit or clear it). It accepts `@name`, `name` or a pasted
   instagram.com link, is cleaned to lowercase (`^[a-z0-9._]{1,30}$`, the same rule as the
@@ -220,8 +223,8 @@ the corrected function — never rewrite an applied migration, add another).
   rendered only if they match the format, as `target=_blank rel="noopener noreferrer"` links.
   Tested in a rolled-back SQL transaction (host, requester with/without handle, bad handles,
   approved walker, pending requester, stranger, anon, old 3-argument call) and in the page
-  with mocked Supabase. Production `hike.js` is unchanged until promoted; it keeps working
-  because the database change is backwards compatible.
+  with mocked Supabase. Promoted to production the same day (`hike.js` and `shared.css`
+  copied up); the database change is backwards compatible, so the order didn't matter.
   Tooling note: the Supabase connector asks for confirmation before running statements such
   as `DROP FUNCTION`; if the prompt isn't answered the call times out.
 - **Not built (by choice):** waitlist, public listing, postponing as its own
