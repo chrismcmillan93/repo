@@ -227,6 +227,22 @@ the corrected function — never rewrite an applied migration, add another).
   copied up); the database change is backwards compatible, so the order didn't matter.
   Tooling note: the Supabase connector asks for confirmation before running statements such
   as `DROP FUNCTION`; if the prompt isn't answered the call times out.
+- **Share text and calendar entry (2026-11-01, beta):** the host's "Share…" button now sends
+  "Join me on a hike: <title> — Wed 4 Nov, 08:30 · <area>" with the link (the share sheet is
+  what shows as the preview). "Copy link" is still just the link. "Add to calendar" (host's
+  share card while the hike is open; approved walkers' "You're in" note) downloads an `.ics`
+  built in the page (`hikeIcs` in `beta/hike.js`): title, start time in UTC, a flat 6 hour
+  length (hikes have no end time; the description says it's an estimate), area plus meeting
+  note as the location, GEO from the meeting point, and a description with the walk, fells,
+  host, turn-back time, a Google Maps link to the meeting point, the host contact, the
+  WhatsApp chat link and the hike page. Two alerts (a day and two hours before). The UID is
+  `<hike id>@wainwrights`, so downloading again updates rather than duplicates. Only people
+  who can already see the private details (host, approved walkers) get the button, because the
+  file contains them. Lines are folded to 75 bytes and text escaped per RFC 5545; checked with
+  an independent parser (ical.js). Not tested on a real phone (iOS home-screen apps in
+  particular may handle downloads differently). A rich link-preview card (the picture
+  WhatsApp draws when a link is pasted) is not built: it would need a small public preview
+  function and would show the title and date to anyone holding the link.
 - **Not built (by choice):** waitlist, public listing, postponing as its own
   status (edit the time instead), a scheduled forecast check.
 
