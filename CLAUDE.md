@@ -388,6 +388,19 @@ under its "Flights" heading; it wasn't touched to add icons or re-labelled, sinc
 only the on-screen header card was asked for — revisit if the PDF should distinguish
 them too.
 
+**Outbound flight retimed (2026-11-02).** Pure data, no schema change — migration
+`thailand_update_outbound_flight_times`. The MAN → BKK `flight_legs` row (ref `ZV6HXX`,
+`sort_order` 0) now reads QR0028 MAN 14:20 → DOH 00:10 (13 Nov), then QR0836 DOH 03:30
+→ BKK 14:10 (13 Nov); it was 14:05 departure / 13:05 arrival. `airline` is now
+"Qatar Airways QR0028 + QR0836" and `when_label` "Thu 12 Nov · 14:20 dep". The old
+"13h 20m" total was dropped from `detail` rather than recomputed, since the layover
+length wasn't confirmed — add it back from the booking if wanted. The 13 Nov
+`itinerary_entries` row "Arrive BKK …" was updated to 14:10 in the same migration (its
+description now says there's only ~50 minutes before the 15:00 Airbnb check-in), since a
+flight time lives in both `flight_legs` and that itinerary text — **change both when a
+flight is retimed**. Phones pick the change up on their next online load (the offline
+snapshot refreshes then); no code deploy or `sw.js` version bump is involved.
+
 **Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
 Screen and shows all its trip data with no signal. Two independent layers — the code
 shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that
