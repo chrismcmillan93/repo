@@ -12,7 +12,7 @@
 //     plan_version + date + session). plan_days rows whose (date, session) no
 //     longer appear in the JSON are removed first, so a corrected session name
 //     replaces the old row instead of sitting beside it.
-//   - lift_template_exercises: replaced wholesale per template.
+//   - lift_template_exercises: upsert on (template, order).
 //   - races: upsert only, NEVER deleted -- race_results (the user's logged
 //     finish times) hang off them and cascade.
 // Nothing here touches logged data.
@@ -121,9 +121,9 @@ on conflict (plan_version, mode) do update set description = excluded.descriptio
   out.push(`insert into fitness.lift_templates (plan_version, name, when_label, sort_order) values
 ${templates.map(([name, t], i) => `  ('v2', ${q(name)}, ${q(t.when)}, ${i + 1})`).join(',\n')}
 on conflict (plan_version, name) do update set when_label = excluded.when_label, sort_order = excluded.sort_order;`);
-  out.push(`delete from fitness.lift_template_exercises where template_id in (select id from fitness.lift_templates where plan_version = 'v2');`);
   const exRows = templates.flatMap(([name, t]) => t.exercises.map((e, i) => `  ((select id from fitness.lift_templates where plan_version = 'v2' and name = ${q(name)}), ${i + 1}, ${q(e.name)}, ${q(e.sets)}, ${q(e.note || '')})`));
-  out.push(`insert into fitness.lift_template_exercises (template_id, order_num, name, sets, note) values\n${exRows.join(',\n')};`);
+  out.push(`insert into fitness.lift_template_exercises (template_id, order_num, name, sets, note) values\n${exRows.join(',\n')}
+on conflict (template_id, order_num) do update set name = excluded.name, sets = excluded.sets, note = excluded.note;`);
   out.push(`insert into fitness.races (plan_version, race_date, start_time, name, role, status, sort_order) values
 ${races.map((r) => `  ('v2', ${q(r.race_date)}, ${q(r.start_time)}, ${q(r.name)}, ${q(r.role)}, ${q(r.status)}, ${r.sort_order})`).join(',\n')}
 on conflict (plan_version, race_date, name) do update set start_time = excluded.start_time, role = excluded.role,
