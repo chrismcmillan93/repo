@@ -8,10 +8,11 @@
 // safe -- it is never destroyed and recreated while someone might be
 // mid-sentence in it. The one exception is the training section, which is
 // re-rendered on its own when a Weights / Cardio / Both pick changes.
-import { qs, qsa, escapeHtml, formatDateFull, statusLabel,
+import { qs, qsa, escapeHtml, formatDateFull, statusLabel, startOfWeek, endOfWeek, dateRange, formatDayLabel,
   addDays, toast, friendlyError, debounce, round1, renderStatusPill, sessionTypeLabel } from '../utils.js';
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { planChipsHtml, planLinesHtml, planModeHelpHtml, planWeekHtml } from '../planDay.js';
+import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import * as offlineQueue from '../offlineQueue.js';
@@ -248,6 +249,71 @@ function pickerHtml(picks, hasPlannedDay){
     ${group}</section>`;
 }
 
+// ---- swapping with another day this week ----------------------------------
+// Context for the swap control: this week's dates, planned days and swaps.
+// Loaded alongside the day bundle; null when the date is outside the plan.
+let swapCtx = null;
+
+async function loadSwapContext(bundle){
+  swapCtx = null;
+  if (!bundle.plan || !state.plan) return;
+  const weekStart = startOfWeek(state.currentDate);
+  const weekEnd = endOfWeek(state.currentDate);
+  try {
+    const [planDays, swaps] = await Promise.all([
+      db.planDays.listRange(state.plan.plan_version, weekStart, weekEnd),
+      db.daySwaps.listRange(userId(), weekStart, weekEnd)
+    ]);
+    swapCtx = { dates: dateRange(weekStart, weekEnd), planByDate: Object.fromEntries(planDays.map((p) => [p.date, p])), swaps };
+  } catch (e) { /* swapping is optional; the rest of Today still works */ }
+}
+
+function swapTodayHtml(bundle){
+  if (!swapCtx || !swapCtx.dates.includes(state.currentDate)) return '';
+  const sources = sourcesFor(swapCtx.dates, swapCtx.swaps);
+  const swappedFrom = sources[state.currentDate] !== state.currentDate ? sources[state.currentDate] : null;
+  const opts = dayOptionsHtml(swapCtx.dates, sources, swapCtx.planByDate, { exclude: state.currentDate });
+  return `<section class="panel panel-swap"><details class="pick-more" ${swappedFrom ? 'open' : ''}>
+    <summary>Swap with another day this week${swappedFrom ? ' (swapped)' : ''}</summary>
+    ${swappedFrom ? `<p class="panel-summary">Showing ${escapeHtml(formatDayLabel(swappedFrom))}'s planned session.</p>` : '<p class="panel-summary">Trade today\'s planned session with another day, e.g. do your lift today and the run later. Only this week changes.</p>'}
+    <div class="swap-row">
+      <label class="swap-field"><span>Swap with</span><select id="todaySwapWith">${opts}</select></label>
+    </div>
+    <div class="swap-actions">
+      <button type="button" class="btn btn-primary" id="todaySwapGo">Swap</button>
+      ${swapCtx.swaps.length ? '<button type="button" class="btn btn-quiet" id="todaySwapReset">Reset this week</button>' : ''}
+      <span class="save-status" id="todaySwapStatus" aria-live="polite"></span>
+    </div>
+  </details></section>`;
+}
+
+function wireTodaySwap(main, bundle){
+  const go = qs('#todaySwapGo', main);
+  if (!go) return;
+  const statusEl = qs('#todaySwapStatus', main);
+  async function run(fn){
+    renderStatusPill(statusEl, 'saving');
+    try {
+      await fn();
+      const fresh = await db.getDayBundle(state.currentDate);
+      Object.assign(bundle, { sessions: fresh.sessions, plan: fresh.plan, picks: fresh.picks });
+      await loadSwapContext(bundle);
+      renderHeader(main, bundle);
+      renderMealsAndTraining(main, bundle);
+      computeTotals(main, bundle);
+    } catch (err) {
+      renderStatusPill(statusEl, 'queued', () => run(fn));
+      toast(`Couldn't swap — ${friendlyError(err)}.`);
+    }
+  }
+  go.addEventListener('click', () => {
+    const other = qs('#todaySwapWith', main).value;
+    run(() => swapDays(userId(), swapCtx.dates, swapCtx.swaps, state.currentDate, other));
+  });
+  const reset = qs('#todaySwapReset', main);
+  if (reset) reset.addEventListener('click', () => run(() => resetWeek(userId(), swapCtx.dates)));
+}
+
 function sessionPanelHtml(session, checks){
   const st = session.session_type;
   const checked = !!checks[`session:${st}`];
@@ -274,7 +340,8 @@ function renderMealsAndTraining(main, bundle){
   const hasPlannedDay = !!(bundle.plan && bundle.plan.has_day);
   const trainingHtml = weekPanelHtml(bundle)
     + sessions.map((s) => sessionPanelHtml(s, checks)).join('')
-    + pickerHtml(picks, hasPlannedDay);
+    + pickerHtml(picks, hasPlannedDay)
+    + swapTodayHtml(bundle);
 
   qs('#mealsAndTraining', main).innerHTML = trainingHtml + mealsHtml;
 
@@ -292,6 +359,7 @@ function renderMealsAndTraining(main, bundle){
   });
 
   wirePicker(main, bundle);
+  wireTodaySwap(main, bundle);
 
   // Expand/collapse a meal's foods list -- separate from the tick-box above,
   // and independent of the checked state (opening a meal to look at it
@@ -431,6 +499,8 @@ export async function render(main){
   // Nutrition only exists inside Block 2. Outside it, hide the fuel panel
   // rather than showing empty bars.
   if (!bundle.day_type) qs('#fuelSection', main).hidden = true;
+
+  await loadSwapContext(bundle);
 
   renderHeader(main, bundle);
   renderMealsAndTraining(main, bundle);

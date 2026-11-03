@@ -10,6 +10,30 @@ yesterday actually happen. Lives entirely under `fitness/`, served at
 **Branch:** all work for this app lives on `beta` until Chris says otherwise. Nothing
 here merges to `main` on its own.
 
+## Swapping days, adding races, week calendar (2026-11-03)
+
+**Swap two days (same week).** `fitness.day_swaps` (own rows, RLS `user_id =
+auth.uid()`): a row means "on `log_date`, do the planned session that belongs to
+`source_date`". Swapping Tue and Wed stores Tue<-Wed and Wed<-Tue. Swaps apply to what
+each day *currently shows*, so swapping an already-swapped day just permutes the
+week again (every session still appears exactly once); a day showing its own session
+has no row. The plan is never edited, and ticks, picks, weight and notes stay on the
+calendar date. `get_day_bundle()` reads the swap (`plan.swapped_from`,
+`plan_day.source_date`); `js/daySwap.js` has the logic. UI: a "Swap two days" panel on
+Week (two selects plus "Reset this week") and a "Swap with another day this week"
+control on Today. Picks (Weights / Cardio / Both) still override whatever a day shows.
+
+**Your own races.** `races` gained `user_id` and `distance_label`. Plan races
+(`user_id` null) are readable by everyone and writable by no one; a race you add is
+visible and editable only by you (the old read-everything policy was narrowed because
+this project also hosts other people's accounts). The Races page has an "Add a race"
+form (name, date, optional time and distance, planned/entered), and your own races
+can change status or be deleted (deleting one also removes its saved finish time).
+
+**Week calendar.** The calendar button on Week's header opens an inline month grid
+(`js/calendar.js`): tap any day to jump to that week. Days outside Block 2 and the
+plan are greyed out and plan days are tinted.
+
 ## Installable web app (PWA)
 
 `/fitness/` installs to a phone's Home Screen or a desktop as "Fitness log"

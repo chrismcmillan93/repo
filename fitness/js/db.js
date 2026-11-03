@@ -251,6 +251,7 @@ export const db = {
   },
 
   races: {
+    // Plan races (user_id null) plus this user's own; RLS hides everyone else's.
     async list(planVersion){
       const { data, error } = await supabase
         .from('races')
@@ -259,6 +260,65 @@ export const db = {
         .order('race_date');
       checkError(error);
       return data || [];
+    },
+    async create(userId, race){
+      const { data, error } = await supabase
+        .from('races')
+        .insert({ ...race, user_id: userId })
+        .select()
+        .single();
+      checkError(error);
+      return data;
+    },
+    async setStatus(userId, raceId, status){
+      const { data, error } = await supabase
+        .from('races')
+        .update({ status })
+        .eq('id', raceId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      checkError(error);
+      return data;
+    },
+    async remove(userId, raceId){
+      const { error } = await supabase
+        .from('races')
+        .delete()
+        .eq('id', raceId)
+        .eq('user_id', userId);
+      checkError(error);
+    }
+  },
+
+  // Day swaps: "on log_date, do source_date's planned session". Only
+  // non-identity entries are stored; see daySwap.js.
+  daySwaps: {
+    async listRange(userId, fromDate, toDate){
+      const { data, error } = await supabase
+        .from('day_swaps')
+        .select('log_date, source_date')
+        .eq('user_id', userId)
+        .gte('log_date', fromDate)
+        .lte('log_date', toDate);
+      checkError(error);
+      return data || [];
+    },
+    async upsertMany(userId, rows){
+      if (!rows.length) return;
+      const { error } = await supabase
+        .from('day_swaps')
+        .upsert(rows.map((r) => ({ user_id: userId, log_date: r.log_date, source_date: r.source_date })), { onConflict: 'user_id,log_date' });
+      checkError(error);
+    },
+    async removeMany(userId, dates){
+      if (!dates.length) return;
+      const { error } = await supabase
+        .from('day_swaps')
+        .delete()
+        .eq('user_id', userId)
+        .in('log_date', dates);
+      checkError(error);
     }
   },
 
