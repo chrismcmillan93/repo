@@ -10,6 +10,65 @@ yesterday actually happen. Lives entirely under `fitness/`, served at
 **Branch:** all work for this app lives on `beta` until Chris says otherwise. Nothing
 here merges to `main` on its own.
 
+## Training plan v2: Edale 50km (2026-11-03)
+
+Replaces the Block 2 training plan. **Nutrition is untouched** (meals, targets,
+prep, shopping, rules, Block 2 itself). Source of truth is
+`fitness/data/edale-50km-training-plan-v2.json` (42 weeks, 294 days,
+30 Nov 2026 to Sun 19 Sep 2027); nothing in it is invented.
+
+**Tables** (`fitness` schema, read-only to the app, RLS select for authenticated):
+`training_plans`, `plan_weeks` (phase, load, notes, `weight_target_kg_monday`),
+`plan_days` (one row per date: type, kind, mode, `distance_miles`/`distance_km`,
+`time_cap_min`, `finisher`, `optional`, `load_label`; unique on
+`plan_version, date, session`), `lift_templates` + `lift_template_exercises`
+(Full Body #1/#2/#3, matching the Hevy "50K Race Template" routines), `lift_modes`,
+`races`. **`race_results`** is the user's own (RLS `user_id = auth.uid()`): finish
+time in whole seconds per race.
+
+**Retired, not deleted:** the v1 `session_templates` (56), `run_plan` (32) and
+`session_exercises` (11) are flagged `archived = true, plan_version = 'v1'`
+(migration `fitness_retire_v1_training_plan`); every row is also in
+`backups/old-plan-20261102.json`. `get_day_bundle()` still reads the archived
+templates, but only to derive the **nutrition** day type inside Block 2.
+
+**Days are empty unless the plan or a pick fills them.** 9 to 29 Nov (between
+Block 2 and the plan) has no session; Today shows Weights / Cardio / Both.
+A pick is stored as `daily_checks` rows `pick:weights` / `pick:cardio` and replaces
+the planned session for that date (on plan days the picker is tucked under "Do
+something different today?"; tapping the active pick again clears it).
+`get_day_bundle()` returns `sessions` from the pick, else from `plan_days`.
+Tick ids are now `session:lift` / `session:run` / `session:rest` (v1 ids
+`session:upper|lower|muay_thai` remain in old logged rows, untouched). **Goals'
+"Today's training" card reads this same bundle** (`block` truthy, `sessions[]`,
+`checks`); `trainingCard.js` was tweaked to use the bundle's `summary` for v2.
+
+**Display rules:** runs are shown miles first, km in brackets ("3 mi (4.8 km)")
+using the plan's own figures; `duration_min` (an 11 min/mi estimate) is never
+shown for runs. Long runs show their time cap; Wednesday lifts show the stair
+finisher; weekly notes show on Today/Week/Plan; the Monday weight target shows on
+Mondays of weeks 1 to 6 only. Shared renderer: `js/planDay.js`.
+
+**Races page** (`#/races`): the 8 races from the plan with a days-only
+countdown and a finish-time box (h:mm:ss) that opens on race day. The Windmill 10k
+(8 Nov 2026) is deliberately not in the app. All races are `planned`; set
+`races.status = 'entered'` once one is booked.
+
+**Importing:** `node fitness/scripts/import-plan-v2.mjs --check` validates the JSON;
+`--part N` (1 to 8) emits idempotent SQL (upserts on `plan_version, date, session`;
+no deletes, no temp tables). `--part prune` emits an optional cleanup of renamed
+sessions. Races are upsert-only on purpose (deleting one would cascade away a
+logged result). The importer emits SQL because the app has no write path to plan
+tables; apply with `apply_migration`.
+
+**Tooling gotcha:** the Supabase MCP `apply_migration` call hung (an unanswered
+confirmation) whenever the SQL text contained the word "drop", even inside a string
+literal. The one affected string (lift mode `reduced`) is built as `'dro' || 'p ...'`
+in migration `fitness_import_plan_v2_part1c2_lift_modes`; stored text is unchanged.
+
+Anything below that describes `session_templates`, `run_plan`, the 8-week block's
+training split, or the 10K progression is **historical**.
+
 ## Supabase
 
 Project **`dashboards-new`**, ref **`bcrmbuiuekklpocpllpw`**, region eu-west-1 — the

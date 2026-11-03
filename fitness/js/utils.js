@@ -101,18 +101,56 @@ export function round1(n){
   return Math.round(n * 10) / 10;
 }
 
-// Training log is authored in km (run_plan.distance_km, plus the race
-// itself is a "10K") but shown in miles first -- both units shown together
-// rather than picking one, since converting on the fly loses the plan's
-// own authored figures. detail/effort free text (interval reps in metres,
-// "10K pace" as a race-pace reference) is left alone -- only the
-// structured distance column gets converted.
-export function formatDistance(km){
-  const miles = round1(km * 0.621371);
-  return `${miles}mi (${round1(km)}km)`;
+// Run targets are prescribed in miles and shown miles-first with km in
+// brackets: "3 mi (4.8 km)". Both figures come straight from the plan (the
+// plan authors distance_miles and distance_km), nothing is converted here.
+export function formatMiles(miles, km){
+  if (miles === null || miles === undefined) return '';
+  const m = Number(miles);
+  const k = km === null || km === undefined ? null : Number(km);
+  return k === null ? `${m} mi` : `${m} mi (${k.toFixed(1)} km)`;
 }
 
-// A day can have more than one session_templates row now (e.g. Monday's AM
+// Race finish times are stored as whole seconds; shown and typed as h:mm:ss.
+export function formatFinishTime(totalSeconds){
+  const s = Math.round(Number(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+// Accepts "h:mm:ss", "hh:mm:ss" or "mm:ss". Returns whole seconds, or null
+// if it is not a valid time.
+export function parseFinishTime(text){
+  const parts = String(text || '').trim().split(':');
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d{1,2}$/.test(p))) return null;
+  const nums = parts.map(Number);
+  const [h, m, s] = parts.length === 3 ? nums : [0, nums[0], nums[1]];
+  if (m > 59 || s > 59) return null;
+  const total = h * 3600 + m * 60 + s;
+  return total > 0 ? total : null;
+}
+
+export function countdownLabel(days){
+  if (days > 1) return `${days} days to go`;
+  if (days === 1) return '1 day to go';
+  if (days === 0) return 'Race day';
+  return days === -1 ? '1 day ago' : `${Math.abs(days)} days ago`;
+}
+
+// Session types a plan day or a pick maps to for ticking: plan lift -> lift,
+// rest -> rest, everything else (run, race, walk, hike_or_run, travel) -> run.
+// Tick ids are session:lift / session:run / session:rest, the shape the Goals
+// training card also reads and writes.
+export function sessionTypeLabel(sessionType){
+  return sessionType === 'lift' ? 'Weights' : sessionType === 'run' ? 'Cardio' : sessionType === 'rest' ? 'Rest' : sessionType;
+}
+
+// NUTRITION ONLY: Block 2's (archived v1) session_templates still decide
+// whether a date is a lift, run or rest day for meal targets. Training
+// sessions themselves come from plan_days / picks.
+// A day can have more than one session_templates row (e.g. Monday's AM
 // upper lift + PM intervals, Tuesday/Thursday's AM Muay Thai + PM run).
 // Resolution is all-or-nothing per day, not per session_type: if any
 // week-specific row exists for this (day_of_week, week_number), every
