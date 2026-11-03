@@ -10,6 +10,32 @@ yesterday actually happen. Lives entirely under `fitness/`, served at
 **Branch:** all work for this app lives on `beta` until Chris says otherwise. Nothing
 here merges to `main` on its own.
 
+## Installable web app (PWA)
+
+`/fitness/` installs to a phone's Home Screen or a desktop as "Fitness log"
+(standalone, dark `#11151c` theme). Files: `manifest.webmanifest`, `icons/` (192 and
+512 `any`, 512 `maskable`, 180 apple-touch; PNGs rendered from `icons/icon.svg` and
+`icons/icon-maskable.svg` by screenshotting the SVG in Chromium, no tooling in the
+repo), `sw.js`, `js/pwa.js`. Every path is relative.
+
+- **Install button:** `#installBar` is the first element in `<body>` (so it shows on
+  the sign-in screen too). `initInstallButton()` holds Chrome/Edge/Android's
+  `beforeinstallprompt` and shows "Install app", which opens the real install
+  dialog. iOS Safari has no such API, so there the bar shows and the button reveals
+  the "Share, then Add to Home Screen" steps. Hidden when already installed
+  (standalone) or after the x is tapped (`localStorage` `fit-install-dismissed`).
+- **Service worker (`sw.js`, scope `/fitness/`):** network-first for the app's own
+  files and the one CDN script the shell needs (supabase-js), falling back to the last
+  copy offline. Because it is network-first, a deploy is never hidden behind a stale
+  cache and there is no update prompt. It is **not** an offline data layer: with no
+  signal the shell opens, but Today/Week/Races say they couldn't load. Supabase API
+  calls and fonts are never intercepted. Bump `VERSION` to clear all old caches.
+- **Testing it:** Chrome's own `Page.getInstallabilityErrors` returns none. A
+  Playwright `page.route` mock does not see service-worker requests; use
+  `context.route` with `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (or the
+  service worker's own CDN fetch fails and the app reports "Supabase JS library not
+  loaded").
+
 ## Training plan v2: Edale 50km (2026-11-03)
 
 Replaces the Block 2 training plan. **Nutrition is untouched** (meals, targets,

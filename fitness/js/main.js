@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { state } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import * as offlineQueue from './offlineQueue.js';
+import { registerServiceWorker, initInstallButton } from './pwa.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -111,6 +112,8 @@ async function handleSession(session){
 }
 
 async function boot(){
+  registerServiceWorker();
+  initInstallButton();
   wireAuthForms();
   wireSignOut();
 
