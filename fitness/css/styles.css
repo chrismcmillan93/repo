@@ -910,11 +910,6 @@ a { color: inherit; }
 .race-name { font-size: 1rem; font-weight: 600; margin: 0 0 4px; }
 .race-date { color: var(--paper); font-size: 0.88rem; }
 .race-role { color: var(--slate); font-size: 0.82rem; margin: 4px 0; }
-.race-status {
-  display: inline-block; margin-top: 4px; padding: 1px 9px; border-radius: 999px;
-  font-size: 0.74rem; font-weight: 600; border: 1px solid var(--line); color: var(--slate);
-}
-.race-status-entered { border-color: var(--sage); color: var(--sage); }
 .race-countdown-box { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; }
 .race-days-num { font-family: 'Big Shoulders Display', sans-serif; font-size: 2.4rem; font-weight: 800; line-height: 1; color: var(--dawn); }
 .race-days-today { font-size: 1.6rem; }
@@ -974,6 +969,7 @@ a { color: inherit; }
 .race-add-summary { cursor: pointer; font-weight: 600; color: var(--dawn); }
 .race-add-form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .race-mine { display: inline-block; margin-top: 4px; font-size: 0.74rem; color: var(--slate); }
-.race-status-edit { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.78rem; color: var(--slate); }
-.race-status-select { background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 0.82rem; }
 .race-delete { margin-top: 10px; color: var(--rust); border-color: var(--rust); }
+
+.race-booked { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.92rem; cursor: pointer; }
+.race-booked input { width: 22px; height: 22px; accent-color: var(--sage); cursor: pointer; }

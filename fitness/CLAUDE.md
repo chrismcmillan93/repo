@@ -27,8 +27,14 @@ control on Today. Picks (Weights / Cardio / Both) still override whatever a day 
 (`user_id` null) are readable by everyone and writable by no one; a race you add is
 visible and editable only by you (the old read-everything policy was narrowed because
 this project also hosts other people's accounts). The Races page has an "Add a race"
-form (name, date, optional time and distance, planned/entered), and your own races
-can change status or be deleted (deleting one also removes its saved finish time).
+form (name, date, optional time and distance, Booked tick), and your own races can be
+deleted (which also removes their saved finish time).
+
+**Booked tick (every race).** `race_booked` (own rows) stores the user's tick per
+race. Effective booked = that row if present, else `races.status = 'entered'`. Only
+the Edale 50km is `entered` in the plan data, so it starts ticked and every other race
+starts unticked; ticking or unticking saves per user and updates the "N booked"
+summary in place. A race added with Booked ticked is stored as `status = 'entered'`.
 
 **Week calendar.** The calendar button on Week's header opens an inline month grid
 (`js/calendar.js`): tap any day to jump to that week. Days outside Block 2 and the
