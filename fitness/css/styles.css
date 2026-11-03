@@ -936,3 +936,44 @@ a { color: inherit; }
 .install-btn { background: var(--dawn); color: #241505; border: none; border-radius: 8px; padding: 8px 16px; font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .install-hint { color: var(--slate); font-size: 0.78rem; }
 .install-close { background: transparent; border: none; color: var(--slate); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 4px 8px; }
+
+
+/* ---------------- Calendar, swaps, adding races ---------------- */
+
+.cal { margin: 10px 0 12px; padding: 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+.cal[hidden] { display: none; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.cal-title { font-weight: 600; }
+.cal-nav { min-width: 40px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-weekdays span { text-align: center; color: var(--slate); font-size: 0.72rem; padding-bottom: 2px; }
+.cal-day {
+  background: var(--panel); border: 1px solid transparent; border-radius: 6px; color: var(--paper);
+  padding: 9px 0; font: inherit; font-size: 0.9rem; cursor: pointer;
+}
+.cal-day.is-out { opacity: 0.45; }
+.cal-day.in-plan { background: #1f2a33; border-color: #2b3a46; }
+.cal-day.is-sel-week { border-color: var(--dawn); }
+.cal-day.is-today { color: var(--dawn); font-weight: 700; }
+.cal-day:disabled { opacity: 0.2; cursor: default; }
+.cal-legend { color: var(--slate); font-size: 0.74rem; margin: 8px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cal-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid transparent; }
+.cal-key.in-plan { background: #1f2a33; border-color: #2b3a46; }
+.cal-key.is-sel-week { border-color: var(--dawn); margin-left: 8px; }
+#weekCalBtn { min-width: 44px; }
+
+.swap-row { display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.swap-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--slate); }
+.swap-field select, .swap-field input {
+  background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px; font: inherit; font-size: 0.92rem; width: 100%;
+}
+.swap-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.week-day-swapnote { padding: 2px 4px 4px; color: var(--dawn); font-size: 0.8rem; }
+
+.race-add-summary { cursor: pointer; font-weight: 600; color: var(--dawn); }
+.race-add-form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.race-mine { display: inline-block; margin-top: 4px; font-size: 0.74rem; color: var(--slate); }
+.race-status-edit { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.78rem; color: var(--slate); }
+.race-status-select { background: var(--ink); color: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 0.82rem; }
+.race-delete { margin-top: 10px; color: var(--rust); border-color: var(--rust); }

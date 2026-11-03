@@ -7,6 +7,8 @@ import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, format
   formatDateShort, statusLabel, todayStr, toast, friendlyError, renderStatusPill,
   resolveSessionsForDay } from '../utils.js';
 import { planChipsHtml, planLinesHtml, planWeekHtml } from '../planDay.js';
+import { mountCalendar } from '../calendar.js';
+import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { dateBounds } from './today.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
@@ -205,6 +207,49 @@ function wireShoppingList(main, weekStartDate){
   });
 }
 
+function swapPanelHtml(days, sources, planByDate, hasSwaps){
+  const opts = (selected) => dayOptionsHtml(days, sources, planByDate, { selected });
+  return `
+    <section class="panel panel-swap" id="swapPanel">
+      <h2 class="panel-title">Swap two days</h2>
+      <p class="panel-summary">Trade the planned sessions of two days this week, e.g. a run and a lift. Only this week changes; the plan itself is untouched.</p>
+      <div class="swap-row">
+        <label class="swap-field"><span>Day</span><select id="swapA">${opts(days[0])}</select></label>
+        <label class="swap-field"><span>with</span><select id="swapB">${opts(days[1])}</select></label>
+      </div>
+      <div class="swap-actions">
+        <button type="button" class="btn btn-primary" id="swapGo">Swap</button>
+        ${hasSwaps ? '<button type="button" class="btn btn-quiet" id="swapReset">Reset this week</button>' : ''}
+        <span class="save-status" id="swapStatus" aria-live="polite"></span>
+      </div>
+    </section>`;
+}
+
+function wireSwapPanel(main, days, sources, planByDate, swaps){
+  const go = qs('#swapGo', main);
+  if (!go) return;
+  const status = qs('#swapStatus', main);
+  const uid = state.session.user.id;
+  async function run(fn){
+    renderStatusPill(status, 'saving');
+    try {
+      await fn();
+      render(main);
+    } catch (err) {
+      renderStatusPill(status, 'queued', () => run(fn));
+      toast(`Couldn't swap — ${friendlyError(err)}.`);
+    }
+  }
+  go.addEventListener('click', () => {
+    const a = qs('#swapA', main).value;
+    const b = qs('#swapB', main).value;
+    if (a === b) { toast('Pick two different days.'); return; }
+    run(() => swapDays(uid, days, swaps, a, b));
+  });
+  const reset = qs('#swapReset', main);
+  if (reset) reset.addEventListener('click', () => run(() => resetWeek(uid, days)));
+}
+
 export async function render(main){
   const weekStart = startOfWeek(state.currentDate);
   const weekEnd = endOfWeek(state.currentDate);
@@ -222,7 +267,7 @@ export async function render(main){
   if (!state.currentBlock) state.currentBlock = block;
   if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
   const planVersion = state.plan ? state.plan.plan_version : null;
-  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
+  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, swaps, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
     // Block 2's archived session templates: nutrition day type only.
     block ? db.sessionTemplates.list(block.id) : Promise.resolve([]),
     block ? db.weekTargets.list(block.id) : Promise.resolve([]),
@@ -232,6 +277,7 @@ export async function render(main){
     planVersion ? db.planDays.listRange(planVersion, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     planVersion ? db.planWeeks.list(planVersion).catch(() => []) : Promise.resolve([]),
     state.session ? db.dayPicks.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
+    state.session ? db.daySwaps.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     // Caught individually, not left to reject the whole Promise.all -- the
     // day list and adherence above are the core of this screen; "This
     // week"'s prep/shopping data failing to load shouldn't take those down
@@ -251,6 +297,10 @@ export async function render(main){
     return weekNumber ? targets.find((t) => t.week_number === weekNumber && t.day_type === dayType) : null;
   }
 
+  // Day swaps: a day may show another day's planned session (same week only).
+  const planByDate = Object.fromEntries(planDays.map((p) => [p.date, p]));
+  const sources = sourcesFor(days, swaps);
+
   const rows = days.map((d, i) => {
     const dow = i + 1;
     const sessionsForDay = inBlock(d) ? resolveSessionsForDay(dow, weekNumber, sessions) : [];
@@ -258,7 +308,8 @@ export async function render(main){
     const target = dayType ? targetFor(dayType) : null;
     const log = logByDate[d];
     const isToday = d === today;
-    const planDay = planDays.find((p) => p.date === d) || null;
+    const planDay = effectiveDay(d, sources, planByDate);
+    const swappedFrom = sources[d] !== d ? sources[d] : null;
     const dayPicks = {
       weights: picks.some((p) => p.log_date === d && p.item_id === 'pick:weights' && p.is_checked),
       cardio: picks.some((p) => p.log_date === d && p.item_id === 'pick:cardio' && p.is_checked)
@@ -278,6 +329,7 @@ export async function render(main){
             ${statusDotHtml(log ? log.training_status : null)}
           </span>
         </button>
+        ${swappedFrom ? `<div class="week-day-swapnote">⇄ Swapped: showing ${escapeHtml(formatDayLabel(swappedFrom))}'s session</div>` : ''}
         ${training.detail ? `<div class="week-day-plan">${training.detail}</div>` : ''}
         ${mealsListHtml(meals)}
       </li>`;
@@ -304,11 +356,14 @@ export async function render(main){
           <div class="date-nav-day">${planWeek ? `Week ${planWeek.week_number} of ${planWeeks.length} · ${escapeHtml(planWeek.phase)}` : weekRow ? `Nutrition week ${weekRow.week_number} of 8` : 'No plan this week'}</div>
           <div class="date-nav-sub">${escapeHtml(formatDateShort(weekStart))} – ${escapeHtml(formatDateShort(weekEnd))}${planWeek ? ` · ${escapeHtml(planWeek.load)}` : ''}</div>
         </div>
+        <button type="button" class="date-nav-btn" id="weekCalBtn" aria-expanded="false" aria-label="Choose a week from a calendar">📅</button>
         <button type="button" class="date-nav-btn" id="nextWeek" ${canForward ? '' : 'disabled'} aria-label="Next week">›</button>
       </div>
+      <div id="weekCalendar" class="cal" hidden></div>
       ${planWeek ? `<div class="week-plan-note">${planWeekHtml(planWeek)}</div>` : ''}
       <ul class="week-day-list">${rows}</ul>
     </section>
+    ${planWeek ? swapPanelHtml(days, sources, planByDate, swaps.length > 0) : ''}
     ${isThisWeek ? `<div id="prepTasksSection">${prepTasksSectionHtml(prepTasks, prepCheckByTask)}</div>` : ''}
     ${isThisWeek ? `<div id="shoppingListSection">${shoppingListSectionHtml(groupShoppingByCategory(shoppingItems), shoppingCheckByItem)}</div>` : ''}
     <section class="panel">
@@ -326,6 +381,24 @@ export async function render(main){
     state.currentDate = addDays(weekStart, -7);
     render(main);
   });
+  // Jump to any week from a calendar instead of paging.
+  const calBtn = qs('#weekCalBtn', main);
+  const calBox = qs('#weekCalendar', main);
+  calBtn.addEventListener('click', () => {
+    const open = calBox.hidden;
+    calBox.hidden = !open;
+    calBtn.setAttribute('aria-expanded', String(open));
+    if (open) {
+      mountCalendar(calBox, {
+        selectedDate: weekStart, minDate: bounds.min, maxDate: bounds.max,
+        planStart: state.plan ? state.plan.start_date : null, planEnd: state.plan ? state.plan.end_date : null,
+        onPick: (date) => { state.currentDate = date; render(main); }
+      });
+    }
+  });
+
+  wireSwapPanel(main, days, sources, planByDate, swaps);
+
   qs('#nextWeek', main).addEventListener('click', () => {
     if (!canForward) return;
     state.currentDate = addDays(weekStart, 7);
