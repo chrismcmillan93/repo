@@ -155,11 +155,14 @@ export const db = {
     }
   },
 
+  // v1 (archived) session templates. Only read to work out the nutrition day
+  // type (lift/run/rest) for dates inside Block 2 -- training sessions come
+  // from planDays/picks now.
   sessionTemplates: {
     async list(blockId){
       const { data, error } = await supabase
         .from('session_templates')
-        .select('*, session_exercises(*)')
+        .select('*')
         .eq('block_id', blockId)
         .order('day_of_week');
       checkError(error);
@@ -167,16 +170,126 @@ export const db = {
     }
   },
 
-  runPlan: {
-    async list(blockId){
+  // The v2 training plan (Edale 50km). Read-only to the app; every list is
+  // scoped by plan_version, same belt-and-suspenders rule as the block tables.
+  trainingPlans: {
+    async get(planVersion){
       const { data, error } = await supabase
-        .from('run_plan')
+        .from('training_plans')
         .select('*')
-        .eq('block_id', blockId)
-        .order('week_number')
-        .order('day_of_week');
+        .eq('plan_version', planVersion)
+        .maybeSingle();
+      checkError(error);
+      return data;
+    }
+  },
+
+  planWeeks: {
+    async list(planVersion){
+      const { data, error } = await supabase
+        .from('plan_weeks')
+        .select('*')
+        .eq('plan_version', planVersion)
+        .order('week_number');
       checkError(error);
       return data || [];
+    }
+  },
+
+  planDays: {
+    async listRange(planVersion, fromDate, toDate){
+      const { data, error } = await supabase
+        .from('plan_days')
+        .select('*')
+        .eq('plan_version', planVersion)
+        .gte('date', fromDate)
+        .lte('date', toDate)
+        .order('date');
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  liftTemplates: {
+    async list(planVersion){
+      const { data, error } = await supabase
+        .from('lift_templates')
+        .select('*, exercises:lift_template_exercises(*)')
+        .eq('plan_version', planVersion)
+        .order('sort_order')
+        .order('order_num', { foreignTable: 'lift_template_exercises' });
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  liftModes: {
+    async list(planVersion){
+      const { data, error } = await supabase
+        .from('lift_modes')
+        .select('*')
+        .eq('plan_version', planVersion);
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  // Weights / Cardio picks are stored as daily_checks rows (pick:weights,
+  // pick:cardio) so they ride the same offline queue as every other tick.
+  dayPicks: {
+    async listRange(userId, fromDate, toDate){
+      const { data, error } = await supabase
+        .from('daily_checks')
+        .select('log_date, item_id, is_checked')
+        .eq('user_id', userId)
+        .in('item_id', ['pick:weights', 'pick:cardio'])
+        .gte('log_date', fromDate)
+        .lte('log_date', toDate);
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  races: {
+    async list(planVersion){
+      const { data, error } = await supabase
+        .from('races')
+        .select('*')
+        .eq('plan_version', planVersion)
+        .order('race_date');
+      checkError(error);
+      return data || [];
+    }
+  },
+
+  raceResults: {
+    async list(userId){
+      const { data, error } = await supabase
+        .from('race_results')
+        .select('*')
+        .eq('user_id', userId);
+      checkError(error);
+      return data || [];
+    },
+    async upsert(userId, raceId, finishSeconds, notes){
+      const { data, error } = await supabase
+        .from('race_results')
+        .upsert(
+          { user_id: userId, race_id: raceId, finish_time_seconds: finishSeconds, notes: notes || null, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,race_id' }
+        )
+        .select()
+        .single();
+      checkError(error);
+      return data;
+    },
+    async remove(userId, raceId){
+      const { error } = await supabase
+        .from('race_results')
+        .delete()
+        .eq('user_id', userId)
+        .eq('race_id', raceId);
+      checkError(error);
     }
   },
 

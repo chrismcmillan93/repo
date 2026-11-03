@@ -5,7 +5,9 @@
 // rather than daily.
 import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, formatDayLabel,
   formatDateShort, statusLabel, todayStr, toast, friendlyError, renderStatusPill,
-  formatDistance, resolveSessionsForDay } from '../utils.js';
+  resolveSessionsForDay } from '../utils.js';
+import { planChipsHtml, planLinesHtml, planWeekHtml } from '../planDay.js';
+import { dateBounds } from './today.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import { renderRoute } from '../router.js';
@@ -27,20 +29,17 @@ function statusDotHtml(status){
   return `<span class="status-dot status-dot-${status}" title="${escapeHtml(statusLabel(status))}"></span>`;
 }
 
-// The training line: every session's title for the day, joined -- plus the
-// run session's actual distance (the title alone, "Run -- easy", doesn't
-// say how far). Week is a compact glance-only reference (no ticks here),
-// so a two-session day still reads as one line rather than getting its own
-// full separation the way Today's tickable rows do.
-function trainingLine(sessionsForDay, run){
-  if (!sessionsForDay.length) return null;
-  return sessionsForDay.map((session) => {
-    if (session.session_type === 'run' && run) {
-      const detail = run.detail ? `${formatDistance(run.distance_km)}, ${run.detail}` : `${formatDistance(run.distance_km)} ${run.effort}`;
-      return `${session.title} — ${detail}`;
-    }
-    return session.title;
-  }).join(' + ');
+// The training for a day, from the v2 plan (or a Weights / Cardio pick, which
+// replaces the planned session). Returns { title, detail } -- detail is the
+// chips (mode, time cap, optional) and finisher/effort lines from planDay.js,
+// so Week can never disagree with Today about what a day contains.
+function trainingFor(planDay, picks){
+  if (picks && (picks.weights || picks.cardio)) {
+    const label = picks.weights && picks.cardio ? 'Weights + cardio (your pick)' : picks.weights ? 'Weights (your pick)' : 'Cardio (your pick)';
+    return { title: label, detail: '' };
+  }
+  if (!planDay) return null;
+  return { title: planDay.session, detail: `${planChipsHtml(planDay)}${planLinesHtml(planDay)}` };
 }
 
 // One row per slot_order for this day type. Same "a week-specific row wins
@@ -220,13 +219,19 @@ export async function render(main){
   // block regardless of which week is currently being paged to, including
   // weeks entirely before or after it (see the inBlock() guard below).
   const block = await db.blocks.getLatest().catch(() => null);
-  const [sessions, targets, runPlan, weeks, mealTemplates, logs, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
+  if (!state.currentBlock) state.currentBlock = block;
+  if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
+  const planVersion = state.plan ? state.plan.plan_version : null;
+  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
+    // Block 2's archived session templates: nutrition day type only.
     block ? db.sessionTemplates.list(block.id) : Promise.resolve([]),
     block ? db.weekTargets.list(block.id) : Promise.resolve([]),
-    block ? db.runPlan.list(block.id) : Promise.resolve([]),
     block ? db.blockWeeks.list(block.id) : Promise.resolve([]),
     block ? db.mealTemplates.list(block.id) : Promise.resolve([]),
     state.session ? db.dailyLogs.listRange(state.session.user.id, weekStart, weekEnd) : Promise.resolve([]),
+    planVersion ? db.planDays.listRange(planVersion, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
+    planVersion ? db.planWeeks.list(planVersion).catch(() => []) : Promise.resolve([]),
+    state.session ? db.dayPicks.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     // Caught individually, not left to reject the whole Promise.all -- the
     // day list and adherence above are the core of this screen; "This
     // week"'s prep/shopping data failing to load shouldn't take those down
@@ -245,19 +250,20 @@ export async function render(main){
   function targetFor(dayType){
     return weekNumber ? targets.find((t) => t.week_number === weekNumber && t.day_type === dayType) : null;
   }
-  function runFor(dow){
-    return weekNumber ? runPlan.find((r) => r.week_number === weekNumber && r.day_of_week === dow) : null;
-  }
 
   const rows = days.map((d, i) => {
     const dow = i + 1;
     const sessionsForDay = inBlock(d) ? resolveSessionsForDay(dow, weekNumber, sessions) : [];
     const dayType = dayTypeFromSessions(sessionsForDay);
     const target = dayType ? targetFor(dayType) : null;
-    const run = sessionsForDay.some((s) => s.session_type === 'run') ? runFor(dow) : null;
     const log = logByDate[d];
     const isToday = d === today;
-    const training = sessionsForDay.length ? trainingLine(sessionsForDay, run) : (block ? '—' : 'Outside block');
+    const planDay = planDays.find((p) => p.date === d) || null;
+    const dayPicks = {
+      weights: picks.some((p) => p.log_date === d && p.item_id === 'pick:weights' && p.is_checked),
+      cardio: picks.some((p) => p.log_date === d && p.item_id === 'pick:cardio' && p.is_checked)
+    };
+    const training = trainingFor(planDay, dayPicks) || { title: 'Pick a session', detail: '' };
     const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
     const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `
@@ -265,13 +271,14 @@ export async function render(main){
         <button type="button" class="week-day-btn">
           <span class="week-day-name">${escapeHtml(formatDayLabel(d))}</span>
           <span class="week-day-date">${escapeHtml(formatDateShort(d))}</span>
-          <span class="week-day-training">${escapeHtml(training)}</span>
+          <span class="week-day-training">${escapeHtml(training.title)}</span>
           <span class="week-day-food">${escapeHtml(food)}</span>
           <span class="week-day-dots">
             ${statusDotHtml(log ? log.nutrition_status : null)}
             ${statusDotHtml(log ? log.training_status : null)}
           </span>
         </button>
+        ${training.detail ? `<div class="week-day-plan">${training.detail}</div>` : ''}
         ${mealsListHtml(meals)}
       </li>`;
   }).join('');
@@ -279,13 +286,12 @@ export async function render(main){
   const daysLogged = days.filter((d) => logByDate[d] && (logByDate[d].nutrition_status || logByDate[d].training_status)).length;
   const count = (key, val) => days.filter((d) => logByDate[d] && logByDate[d][key] === val).length;
 
-  // Bounded to the block's own range -- there's nothing useful to page to
-  // beyond it -- but otherwise open in both directions, same "scroll
-  // through previous and upcoming" rule as Today's date nav.
-  const blockFirstWeekStart = block ? startOfWeek(block.start_date) : null;
-  const blockLastWeekStart = block ? startOfWeek(block.end_date) : null;
-  const canBack = !blockFirstWeekStart || weekStart > blockFirstWeekStart;
-  const canForward = !blockLastWeekStart || weekStart < blockLastWeekStart;
+  // Bounded to everything that has content (Block 2 and the Edale plan) but
+  // otherwise open in both directions.
+  const bounds = dateBounds();
+  const canBack = !bounds.min || weekStart > startOfWeek(bounds.min);
+  const canForward = !bounds.max || weekStart < startOfWeek(bounds.max);
+  const planWeek = planWeeks.find((w) => weekStart >= w.start_date && weekStart <= w.end_date) || null;
 
   const prepCheckByTask = Object.fromEntries(prepChecks.map((c) => [c.task_id, c.is_checked]));
   const shoppingCheckByItem = Object.fromEntries(shoppingChecks.map((c) => [c.item_id, c.is_checked]));
@@ -295,11 +301,12 @@ export async function render(main){
       <div class="date-nav">
         <button type="button" class="date-nav-btn" id="prevWeek" ${canBack ? '' : 'disabled'} aria-label="Previous week">‹</button>
         <div class="date-nav-label">
-          <div class="date-nav-day">${weekRow ? `Week ${weekRow.week_number} of 8` : 'Outside the block'}</div>
-          <div class="date-nav-sub">${escapeHtml(formatDateShort(weekStart))} – ${escapeHtml(formatDateShort(weekEnd))}</div>
+          <div class="date-nav-day">${planWeek ? `Week ${planWeek.week_number} of ${planWeeks.length} · ${escapeHtml(planWeek.phase)}` : weekRow ? `Nutrition week ${weekRow.week_number} of 8` : 'No plan this week'}</div>
+          <div class="date-nav-sub">${escapeHtml(formatDateShort(weekStart))} – ${escapeHtml(formatDateShort(weekEnd))}${planWeek ? ` · ${escapeHtml(planWeek.load)}` : ''}</div>
         </div>
         <button type="button" class="date-nav-btn" id="nextWeek" ${canForward ? '' : 'disabled'} aria-label="Next week">›</button>
       </div>
+      ${planWeek ? `<div class="week-plan-note">${planWeekHtml(planWeek)}</div>` : ''}
       <ul class="week-day-list">${rows}</ul>
     </section>
     ${isThisWeek ? `<div id="prepTasksSection">${prepTasksSectionHtml(prepTasks, prepCheckByTask)}</div>` : ''}

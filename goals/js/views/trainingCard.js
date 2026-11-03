@@ -6,7 +6,7 @@ import * as db from '../db.js';
 import { escapeHtml, todayISO } from '../utils.js';
 
 // Same display order as fitness/js/utils.js resolveSessionsForDay().
-const SESSION_TYPE_ORDER = { upper: 0, lower: 0, run: 1, rest: 2, muay_thai: 3 };
+const SESSION_TYPE_ORDER = { upper: 0, lower: 0, lift: 0, run: 1, rest: 2, muay_thai: 3 };
 
 /** Fetches today's bundle; resolves to null on any failure so the dashboard still renders. */
 export function loadTrainingDay() {
@@ -23,6 +23,9 @@ function formatDistance(km) {
 }
 
 function sessionDetail(s) {
+  // v2 plan days (and Weights / Cardio picks) carry a ready-made summary; the
+  // title already states the miles, so don't restate distance from run.
+  if (s.plan_day || s.source === 'pick') return s.summary || '';
   if (s.session_type === 'run' && s.run) {
     const dist = formatDistance(Number(s.run.distance_km));
     return s.run.detail ? `${dist} — ${s.run.detail}` : `${dist}, ${s.run.effort}`;

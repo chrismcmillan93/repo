@@ -8,7 +8,8 @@ export const state = {
   // and persists across route changes within the page's lifetime.
   currentDate: todayStr(),
   dayBundle: null,
-  currentBlock: null // fetched once, used for the Today nav's date bounds
+  currentBlock: null, // fetched once, used for the Today nav's date bounds
+  plan: null // the active training_plans row (v2), also used for date bounds
 };
 
 export function notifyDayChanged(){
