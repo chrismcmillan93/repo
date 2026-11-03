@@ -270,17 +270,6 @@ export const db = {
       checkError(error);
       return data;
     },
-    async setStatus(userId, raceId, status){
-      const { data, error } = await supabase
-        .from('races')
-        .update({ status })
-        .eq('id', raceId)
-        .eq('user_id', userId)
-        .select()
-        .single();
-      checkError(error);
-      return data;
-    },
     async remove(userId, raceId){
       const { error } = await supabase
         .from('races')
@@ -318,6 +307,25 @@ export const db = {
         .delete()
         .eq('user_id', userId)
         .in('log_date', dates);
+      checkError(error);
+    }
+  },
+
+  // "Booked" ticks. Effective booked = this row if present, else the race's own
+  // status === 'entered' (so only the Edale 50km starts ticked).
+  raceBooked: {
+    async list(userId){
+      const { data, error } = await supabase
+        .from('race_booked')
+        .select('race_id, booked')
+        .eq('user_id', userId);
+      checkError(error);
+      return data || [];
+    },
+    async set(userId, raceId, booked){
+      const { error } = await supabase
+        .from('race_booked')
+        .upsert({ user_id: userId, race_id: raceId, booked, updated_at: new Date().toISOString() }, { onConflict: 'user_id,race_id' });
       checkError(error);
     }
   },

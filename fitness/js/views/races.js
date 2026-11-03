@@ -1,16 +1,14 @@
 // Every race in the Edale 50km plan, plus any you add yourself, with a
 // days-only countdown and a place to record the finish time once the race has
 // happened. Plan races are read-only; races you add are yours (only you can see
-// them) and can be marked entered or deleted. Finish times are your own
+// them) and can be deleted. Every race has a Booked tick. Finish times are your own
 // (race_results).
 import { qs, qsa, escapeHtml, formatDateFull, daysUntil, countdownLabel,
   formatFinishTime, parseFinishTime, toast, friendlyError, renderStatusPill } from '../utils.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 
-const STATUS_LABEL = { planned: 'Planned', entered: 'Entered' };
-
-function raceCardHtml(race, result){
+function raceCardHtml(race, result, booked){
   const days = daysUntil(race.race_date);
   const canRecord = days <= 0;
   const year = race.race_date.slice(0, 4);
@@ -26,13 +24,8 @@ function raceCardHtml(race, result){
           <h3 class="race-name">${escapeHtml(race.name)}</h3>
           <div class="race-date">${escapeHtml(formatDateFull(race.race_date))} ${escapeHtml(year)}${race.start_time ? ` · ${escapeHtml(race.start_time)}` : ''}</div>
           ${detail ? `<div class="race-role">${escapeHtml(detail)}</div>` : ''}
-          ${mine
-            ? `<label class="race-status-edit">Status
-                <select class="race-status-select" aria-label="Race status">
-                  ${Object.entries(STATUS_LABEL).map(([k, v]) => `<option value="${k}" ${race.status === k ? 'selected' : ''}>${v}</option>`).join('')}
-                </select></label>
-               <span class="race-mine">Added by you</span>`
-            : `<span class="race-status race-status-${escapeHtml(race.status)}">${escapeHtml(STATUS_LABEL[race.status] || race.status)}</span>`}
+          <label class="race-booked"><input type="checkbox" class="race-booked-box" ${booked ? 'checked' : ''}><span>Booked</span></label>
+          ${mine ? '<span class="race-mine">Added by you</span>' : ''}
         </div>
         <div class="race-countdown-box" aria-label="${escapeHtml(countdownLabel(days))}">${big}</div>
       </div>
@@ -60,9 +53,7 @@ function addFormHtml(){
           <label class="swap-field"><span>Date</span><input type="date" id="raceDate" required></label>
           <label class="swap-field"><span>Start time (optional)</span><input type="time" id="raceTime"></label>
           <label class="swap-field"><span>Distance (optional)</span><input type="text" id="raceDistance" maxlength="40" placeholder="e.g. 10K, half, 50 mi"></label>
-          <label class="swap-field"><span>Status</span>
-            <select id="raceStatus"><option value="planned">Planned</option><option value="entered">Entered</option></select>
-          </label>
+          <label class="race-booked"><input type="checkbox" id="raceBooked"><span>Booked</span></label>
           <div class="swap-actions">
             <button type="submit" class="btn btn-primary" id="raceAddSave">Add race</button>
             <span class="save-status" id="raceAddStatus" aria-live="polite"></span>
@@ -79,19 +70,26 @@ export async function render(main){
     main.innerHTML = '<div class="empty-state"><strong>No races yet.</strong><p>The training plan has not been loaded.</p></div>';
     return;
   }
-  const [races, results] = await Promise.all([
+  const [races, results, bookedRows] = await Promise.all([
     db.races.list(plan.plan_version),
-    db.raceResults.list(state.session.user.id).catch(() => [])
+    db.raceResults.list(state.session.user.id).catch(() => []),
+    db.raceBooked.list(state.session.user.id).catch(() => [])
   ]);
   const resultByRace = Object.fromEntries(results.map((r) => [r.race_id, r]));
-  const entered = races.filter((r) => r.status === 'entered').length;
+  // Your tick wins; with no tick, a race counts as booked only if it is marked entered (the Edale 50km).
+  const bookedOverride = Object.fromEntries(bookedRows.map((r) => [r.race_id, r.booked]));
+  const isBooked = (race) => (race.id in bookedOverride ? bookedOverride[race.id] : race.status === 'entered');
+  const summaryText = () => {
+    const n = races.filter(isBooked).length;
+    return `${races.length} races. ${n ? `${n} booked, the rest not booked yet.` : 'None booked yet.'}`;
+  };
 
   main.innerHTML = `
     ${addFormHtml()}
     <section class="panel">
       <h2 class="panel-title">Races</h2>
-      <p class="panel-summary">${races.length} races. ${entered ? `${entered} entered, the rest planned.` : 'All planned, none booked yet.'}</p>
-      <ul class="race-list">${races.map((r) => raceCardHtml(r, resultByRace[r.id])).join('')}</ul>
+      <p class="panel-summary" id="raceSummary">${summaryText()}</p>
+      <ul class="race-list">${races.map((r) => raceCardHtml(r, resultByRace[r.id], isBooked(r))).join('')}</ul>
     </section>`;
 
   wireAddForm(main);
@@ -147,16 +145,21 @@ export async function render(main){
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
     if (clearBtn) clearBtn.addEventListener('click', clear);
 
-    // Your own races: change status, delete.
-    const statusSel = qs('.race-status-select', card);
-    if (statusSel) {
-      statusSel.addEventListener('change', async () => {
-        try {
-          await db.races.setStatus(state.session.user.id, raceId, statusSel.value);
-          render(main);
-        } catch (err) { toast(`Couldn't update — ${friendlyError(err)}.`); }
-      });
-    }
+    // Booked tick: saved per user, applied in place (no page reload).
+    const box = qs('.race-booked-box', card);
+    box.addEventListener('change', async () => {
+      const want = box.checked;
+      try {
+        await db.raceBooked.set(state.session.user.id, raceId, want);
+        bookedOverride[raceId] = want;
+        qs('#raceSummary', main).textContent = summaryText();
+      } catch (err) {
+        box.checked = !want;
+        toast(`Couldn't save — ${friendlyError(err)}.`);
+      }
+    });
+
+    // Your own races can also be deleted.
     const del = qs('.race-delete', card);
     if (del) {
       del.addEventListener('click', async () => {
@@ -185,7 +188,7 @@ function wireAddForm(main){
       start_time: qs('#raceTime', main).value || null,
       name,
       distance_label: qs('#raceDistance', main).value.trim() || null,
-      status: qs('#raceStatus', main).value,
+      status: qs('#raceBooked', main).checked ? 'entered' : 'planned',
       sort_order: 100
     };
     renderStatusPill(statusEl, 'saving');
