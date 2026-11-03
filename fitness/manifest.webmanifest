@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Fitness log",
+  "short_name": "Fitness",
+  "description": "Daily training, nutrition and race log for the Edale 50km build.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en-GB",
+  "categories": ["health", "fitness"],
+  "theme_color": "#11151c",
+  "background_color": "#11151c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

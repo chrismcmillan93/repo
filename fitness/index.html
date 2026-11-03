@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fitness log</title>
 <meta name="color-scheme" content="dark">
+<!-- PWA: installable. All paths are relative so this works on any domain. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#11151c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fitness">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
@@ -12,6 +21,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<!-- Install bar: always the very first thing on the page (sign-in screen included). Hidden unless installable. -->
+<div id="installBar" class="install-bar" hidden>
+  <button type="button" id="installBtn" class="install-btn">⬇ Install app</button>
+  <span id="installHint" class="install-hint" hidden>Use your browser menu → Install app / Add to Home Screen.</span>
+  <button type="button" id="installClose" class="install-close" aria-label="Dismiss">×</button>
+</div>
 
 <!-- Sign-in screen. Shown until a session exists. -->
 <div id="authScreen" class="auth-screen">
