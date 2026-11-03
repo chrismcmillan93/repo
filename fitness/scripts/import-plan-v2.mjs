@@ -153,30 +153,38 @@ function emitDays(part){
   });
   const usedTokens = new Set(JSON.stringify(dayJson).match(/"~\d+"/g)?.map((t) => t.slice(1, -1)) || []);
   const dictSql = dictAll.map((str, i) => [`~${i}`, str]).filter(([k]) => usedTokens.has(k)).map(([k, str]) => `(${q(k)}, ${q(str)})`).join(',\n    ');
-  const x = (c) => (DICT_COLS.includes(c) ? `coalesce((select v from _dict where k = x.${SHORT[c]}), x.${SHORT[c]})` : `x.${SHORT[c]}`);
+  const x = (c) => (DICT_COLS.includes(c) ? `coalesce((select v from dict where k = x.${SHORT[c]}), x.${SHORT[c]})` : `x.${SHORT[c]}`);
   const recordset = DAY_COLS.map((c) => `${SHORT[c]} ${SQLTYPE[c] || 'text'}`).join(', ');
+  const dictCte = dictSql ? `dict(k, v) as (values\n    ${dictSql}\n  )` : `dict(k, v) as (select null::text, null::text where false)`;
+  // One upsert statement per part: no temp tables and no removals, so routine
+  // imports never carry a destructive statement. See emitPrune() for cleanup.
   return `${HEADER}-- plan_days for weeks ${firstWeek}-${lastWeek}.
-drop table if exists pg_temp._dict, pg_temp._incoming;
-create temp table _dict (k text primary key, v text not null);
-${dictSql ? `insert into _dict values\n    ${dictSql};` : ''}
-create temp table _incoming as
-select ${DAY_COLS.map((c) => `${x(c)} as ${c}`).join(',\n  ')}
-from jsonb_to_recordset($j$${JSON.stringify(dayJson)}$j$::jsonb) as x(${recordset});
-delete from fitness.plan_days p where p.plan_version = 'v2' and p.week_number between ${firstWeek} and ${lastWeek}
-  and not exists (select 1 from _incoming i where i.date = p.date and i.session = p.session);
+with ${dictCte},
+incoming as (
+  select ${DAY_COLS.map((c) => `${x(c)} as ${c}`).join(',\n    ')}
+  from jsonb_to_recordset($j$${JSON.stringify(dayJson)}$j$::jsonb) as x(${recordset})
+)
 insert into fitness.plan_days (plan_version, ${DAY_COLS.join(', ')})
 select 'v2', week_number, day_id, date, dow, type, session, legacy_session, kind, mode, effort, distance_miles, distance_km,
-  duration_min, time_cap_min, finisher, venue_hint, coalesce(optional, false), load_label from _incoming
+  duration_min, time_cap_min, finisher, venue_hint, coalesce(optional, false), load_label from incoming
 on conflict (plan_version, date, session) do update set week_number = excluded.week_number, day_id = excluded.day_id,
   dow = excluded.dow, type = excluded.type, legacy_session = excluded.legacy_session, kind = excluded.kind, mode = excluded.mode,
   effort = excluded.effort, distance_miles = excluded.distance_miles, distance_km = excluded.distance_km,
   duration_min = excluded.duration_min, time_cap_min = excluded.time_cap_min, finisher = excluded.finisher,
   venue_hint = excluded.venue_hint, optional = excluded.optional, load_label = excluded.load_label;
-drop table pg_temp._dict, pg_temp._incoming;
 `;
 }
 
+// Optional manual cleanup (node ... --part prune): remove v2 plan_days whose
+// (date, session) are no longer in the JSON, e.g. after a session was renamed.
+// Deliberately not part of the routine import parts.
+function emitPrune(){
+  const keys = days.map((d) => `('${d.date}', ${q(d.session)})`).join(',\n  ');
+  return `${HEADER}delete from fitness.plan_days where plan_version = 'v2' and (date, session) not in (\n  ${keys}\n);\n`;
+}
+
 function emit(part){
+  if (part === 'prune') return emitPrune();
   if (part === 1) return emitMeta();
   if (part >= 2 && part <= TOTAL_PARTS) return emitDays(part);
   throw new Error(`--part must be 1..${TOTAL_PARTS}`);
@@ -194,5 +202,5 @@ if (process.argv.includes('--check')) {
   if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
   const pi = process.argv.indexOf('--part');
   if (pi === -1) { for (let i = 1; i <= TOTAL_PARTS; i++) process.stdout.write(emit(i) + '\n'); }
-  else process.stdout.write(emit(Number(process.argv[pi + 1])));
+  else process.stdout.write(emit(process.argv[pi + 1] === 'prune' ? 'prune' : Number(process.argv[pi + 1])));
 }
