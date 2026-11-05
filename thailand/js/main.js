@@ -3,6 +3,7 @@ import { state, loadCore } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import { initOfflineUi } from './offline.js';
 import { registerServiceWorker, initInstallButton } from './pwa.js';
+import { initCurrencyConverter } from './currency.js';
 
 let routerStarted = false;
 let countdownTimer = null;
@@ -75,4 +76,5 @@ async function enterApp() {
 // thailand/index.html. See CLAUDE.md.
 registerServiceWorker();
 initInstallButton();
+initCurrencyConverter();
 enterApp();

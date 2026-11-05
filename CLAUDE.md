@@ -406,6 +406,20 @@ changed) — it drives the time column and ordering, so **when a flight is retim
 `itinerary_entries.time_label` too**. `sw.js` `VERSION` bumped to `v3` so installed
 phones get the new `print.js` straight away.
 
+**Currency converter (2026-11-05).** A `£ ⇄ ฿` button at the top right of the header
+(`#fxBtn`, `js/currency.js`) opens a popover with two boxes: type pounds *or* baht and the
+other fills in (both directions). It's display-only — it never writes to the DB and is
+separate from `trip.thb_rate`, the saved budget rate the Costs screen uses. Live rate
+from the same two free keyless CORS sources as `usa/js/fxRate.js` (`api.frankfurter.app`
+first, `open.er-api.com` fallback), 6 s timeout, refetched at most every 10 minutes and on
+the `online` event; a failed fetch clears the in-flight promise so the next call really
+retries. The last good rate is kept in `localStorage` (`th-fx-gbp-thb`) so it still works
+with no signal, **and the status line always says where the rate came from**: "live,
+updated …", "offline — last saved rate from …", or "trip budget rate (not live)" when
+nothing was ever cached (it falls back to `trip.thb_rate`, else "No rate available yet").
+The service worker doesn't touch these cross-origin API calls. Not a write control, so
+it stays usable offline. `sw.js` `VERSION` bumped to `v4` (new file in the shell).
+
 **Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
 Screen and shows all its trip data with no signal. Two independent layers — the code
 shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that

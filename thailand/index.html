@@ -29,6 +29,16 @@
   </div>
   <header class="app-header">
     <div class="app-header-inner">
+      <button type="button" id="fxBtn" class="fx-btn" aria-haspopup="true" aria-expanded="false" aria-controls="fxPanel" title="Currency converter">£ ⇄ ฿</button>
+      <div id="fxPanel" class="fx-panel" role="dialog" aria-label="Currency converter" hidden>
+        <label class="fx-row"><span class="fx-cur">£ GBP</span>
+          <input id="fxGbp" class="fx-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Pounds sterling"></label>
+        <div class="fx-arrow" aria-hidden="true">⇅</div>
+        <label class="fx-row"><span class="fx-cur">฿ THB</span>
+          <input id="fxThb" class="fx-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Thai baht"></label>
+        <div class="fx-foot"><span id="fxStatus" class="fx-status" aria-live="polite"></span>
+          <button type="button" id="fxRefresh" class="fx-refresh">Refresh</button></div>
+      </div>
       <p class="eyebrow">Thailand · Nov 2026</p>
       <p class="brand-title">&#9992; Wheels up in</p>
       <div class="board">
