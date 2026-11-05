@@ -204,6 +204,42 @@ column at all), so both scopes use the same date-matching logic — the trip-wid
 export just passes a wider date range than the per-leg one, which avoids a booking
 on a leg-boundary date (e.g. a flight day) being duplicated across two leg sections.
 
+## Install as an app (PWA)
+
+Installable on Android/Chrome (a real native install prompt) and iOS/Safari (manual
+"Add to Home Screen" — iOS has no install API at all, never has). Built from scratch
+for this app specifically: despite what it might look like from the outside, **no
+other app in this repo has a web app manifest, service worker, or any PWA setup at
+all** — `/thailand` included, checked directly before starting this. Don't assume
+another app's install button exists to copy; this is the first one.
+
+- `usa/manifest.webmanifest` — name, icons, `display: "standalone"`, `start_url`/
+  `scope` both `"./"`-relative to the manifest's own URL (not the page that links
+  it), so this resolves correctly regardless of custom-domain quirks and the PWA's
+  scope never bleeds into `/goals`, `/thailand`, etc. on the same domain.
+- `usa/icons/` — hand-generated PNGs (192, 512, a maskable 512 with the flag kept
+  inside the ~80% safe-zone circle so Android's adaptive-icon masks never clip it,
+  and a 180×180 apple-touch-icon), reusing the same hand-drawn flag as `#usflag` in
+  `index.html` minus the pole, on a navy background. Generated via a one-off
+  Playwright screenshot script (no image-editing tool was available) — not checked
+  in, regenerate the same way if the icon ever needs to change.
+- `usa/sw.js` — a minimal service worker, registered with no explicit scope so it
+  defaults to `usa/` and can never intercept another app's requests. Only job:
+  satisfy Chrome's installability requirement (a service worker with a fetch
+  handler) and cache this app's own static shell for a faster repeat load.
+  **Deliberately never caches or intercepts cross-origin requests** (Supabase, the
+  supabase-js CDN script, fonts) — trip data must always come from the network,
+  live, never served stale from a cache.
+- `usa/js/install.js` — the `#installBtn` in the utility bar (every screen, next to
+  Export/Sign out). Captures `beforeinstallprompt` where the browser supports it
+  (Android/Chrome/Edge, desktop Chrome/Edge) and triggers that native prompt
+  directly on click. Where it doesn't (iOS Safari, and as a fallback for anything
+  else), click instead toggles a step-by-step instructions panel, switched between
+  iOS- and Android/generic-worded steps by a simple `userAgent` sniff — iOS genuinely
+  has no programmatic signal to detect otherwise. Hidden entirely once already
+  running standalone (`display-mode: standalone` / `navigator.standalone`), and
+  hidden again on the `appinstalled` event.
+
 ## Thailand tracker (`/thailand`)
 
 Group trip tracker for Chris, Andrew, Craig and Dalz — Nov 2026. Current architecture

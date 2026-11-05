@@ -6,6 +6,7 @@ import { renderMasthead } from './views/overview.js';
 import { initStopsPanel, refreshStopsPanel } from './legsPanel.js';
 import { getLiveRate } from './fxRate.js';
 import { exportTripPdf } from './print.js';
+import { initInstall } from './install.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -323,6 +324,7 @@ async function boot(){
   wireCreateTripForm();
   wireSignOutButtons();
   wireExportButton();
+  initInstall();
   renderCurrencyToggle();
 
   const urlError = readAuthErrorFromUrl();
