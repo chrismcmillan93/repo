@@ -227,6 +227,19 @@ Total flights: £1,125. The Austin→Las Vegas leg is still a separate one-way S
 booking, not part of the BA multi-city fare — correct, since BA doesn't serve that
 domestic hop.
 
+## Installable as an app, PWA built from scratch (2026-11-05)
+Asked to "copy the Thailand app" for this, since "that works perfectly" — checked
+first, and it doesn't have any install/PWA setup either, nor does anything else in
+the repo (no manifest, no service worker, no icons, anywhere). Said so rather than
+silently building something different from what was asked for, then built it fresh:
+a web app manifest, a minimal same-origin-only service worker, hand-generated icons
+(reusing the app's own hand-drawn flag), and an "Install app" button in the utility
+bar that triggers the native Android/Chrome install prompt directly, or shows
+manual "Add to Home Screen" steps on iOS where no such prompt exists at all. See
+`CLAUDE.md` for the implementation. If a from-scratch install setup is ever wanted
+for another app in this repo (Thailand included), this is the pattern to copy *to*,
+not from.
+
 ## Open questions
 - **LA vs Santa Barbara night split (3/2).** Still open — tracked as a checklist item.
   Whichever way this moves, check whether it also shifts the Comedy Store date

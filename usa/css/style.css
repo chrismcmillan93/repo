@@ -129,6 +129,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap; flex-shrink:0;
 }
 .export-btn:hover{ border-color: var(--gold); background: rgba(232,169,58,0.12); }
+.install-btn{
+  background:transparent; border:1px solid rgba(79,122,91,0.6); color: var(--sage);
+  font-family: var(--font-label); font-size: var(--fs-tiny); font-weight:600; letter-spacing:0.03em;
+  text-transform:uppercase; padding:5px 12px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+}
+.install-btn:hover{ border-color: var(--sage); background: rgba(79,122,91,0.18); }
+
+.install-instructions{
+  background: var(--navy-deep); padding: var(--sp-3) var(--sp-4); position:relative;
+  border-top:1px solid rgba(247,239,221,0.12);
+}
+.install-instructions-inner{ max-width:480px; margin:0 auto; color: rgba(247,239,221,0.9); }
+.install-instructions-inner p.eyebrow{ margin:0 0 8px; }
+.install-instructions-inner ol{ margin:0; padding-left:20px; font-size: var(--fs-small); line-height:1.6; }
+.install-instructions-inner li{ margin-bottom:4px; }
+.install-instructions-inner li:last-child{ margin-bottom:0; }
+.install-instructions-close{
+  position:absolute; top:10px; right:14px; background:transparent; border:none;
+  color: rgba(247,239,221,0.5); font-size:1.3rem; line-height:1; cursor:pointer; padding:4px;
+}
+.install-instructions-close:hover{ color: var(--paper); }
 
 .currency-toggle{ display:flex; align-items:center; gap: var(--sp-2); flex-shrink:0; }
 .currency-toggle .fx-note{ font-family: var(--font-label); font-size: var(--fs-tiny); color: rgba(247,239,221,0.55); white-space:nowrap; }

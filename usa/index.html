@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trip planner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#101B32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="USA Trip">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bevan&family=Oswald:wght@400;500;600;700&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
@@ -89,8 +96,30 @@
 <div id="appShell" hidden>
   <div class="utility-bar">
     <span class="signed-in-as" id="signedInAs"></span>
+    <button type="button" class="install-btn" id="installBtn" hidden>Install app</button>
     <button type="button" class="export-btn" id="exportTripBtn">Export full trip (PDF)</button>
     <button type="button" class="signout-btn" id="signOutBtn">Sign out</button>
+  </div>
+  <div class="install-instructions" id="installInstructions" hidden>
+    <div class="install-instructions-inner">
+      <button type="button" class="install-instructions-close" id="installInstructionsClose" aria-label="Close">&times;</button>
+      <div id="installStepsIOS" hidden>
+        <p class="eyebrow">Install on iPhone / iPad</p>
+        <ol>
+          <li>Tap the <strong>Share</strong> icon (the square with an arrow pointing up) in Safari's toolbar.</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong> in the top right.</li>
+        </ol>
+      </div>
+      <div id="installStepsAndroid" hidden>
+        <p class="eyebrow">Install on Android / this browser</p>
+        <ol>
+          <li>Open the browser menu (usually three dots, top right).</li>
+          <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+          <li>Confirm — it'll appear on your home screen like any other app.</li>
+        </ol>
+      </div>
+    </div>
   </div>
   <header class="app-header">
     <div class="app-header-top">
