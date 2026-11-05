@@ -388,6 +388,24 @@ under its "Flights" heading; it wasn't touched to add icons or re-labelled, sinc
 only the on-screen header card was asked for — revisit if the PDF should distinguish
 them too.
 
+**PDF export now covers everything booked (2026-11-05).** The export used to list
+only flights/ferries (headed "Flights"), the *first* stay per leg with just name/address/
+dates, and the itinerary days — so booking refs, cancellation terms, who's paid and the
+bookings checklist never reached the PDF. `print.js` now prints: **Booked travel —
+flights & ferries** at the top (✈️/⛴️ from `flight_legs.mode`, with `Ref …` badges and
+the detail line); **every** stay on each leg (`legAccommodationHtml` no longer stops at
+the first) with host, total, per-person paid ticks and the `accommodations.note` (where
+booking refs/cancellation terms live); the day-by-day itinerary as before; and a
+**Bookings checklist** at the end (still to do first, then booked/done). It still only
+reads loaded `state`, so it works offline. Booked transport is deliberately *not*
+re-merged into each day's timeline — the itinerary entries already name the ferries and
+flights on their days, and merging would duplicate them; revisit if that's wanted.
+Same day, migration `thailand_fix_bkk_arrival_time_label`: the 13 Nov "Arrive BKK" row's
+`time_label` was still `13:05` after the retime above (only its text/description had
+changed) — it drives the time column and ordering, so **when a flight is retimed, update
+`itinerary_entries.time_label` too**. `sw.js` `VERSION` bumped to `v3` so installed
+phones get the new `print.js` straight away.
+
 **Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
 Screen and shows all its trip data with no signal. Two independent layers — the code
 shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that
