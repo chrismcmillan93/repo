@@ -218,7 +218,7 @@
 
     el.innerHTML =
       '<article class="chal-card live-card">' +
-        '<div class="live-head"><h3 class="hike-sub">Live hike map</h3><button class="btn" data-live="where" type="button">&#128205; Where am I?</button></div>' +
+        '<div class="live-head"><h3 class="hike-sub">Live hike map</h3><span class="live-links"><button class="btn" data-live="where" type="button">&#128205; Where am I?</button> <a class="btn" href="emergency.html">Emergency card</a></span></div>' +
         '<p class="live-lede">Optional. Share where you are with the host and the people going, and see who else is sharing. ' +
           'Only this hike\'s host and approved walkers can see it, only your latest position is kept, and it\'s deleted when you stop, leave, or the hike ends. ' +
           'Your phone can only share while this page is open and the screen is on, so it\'s not a safety tracker: don\'t rely on it, and keep your own map, compass and a charged phone.</p>' +

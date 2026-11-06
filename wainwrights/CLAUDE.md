@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v9` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v10` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -525,9 +525,7 @@ not retried for 60 s.
 - **To switch it on:** add OS Maps API + OS Names API to an OS Data Hub project, `supabase secrets set OS_API_KEY=... OS_API_SECRET=...`
   on walking-up-hills, deploy `os-token` with verify_jwt false, apply the migration. Then check the key's usage limits in the Data Hub
   (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
-- **Later (asked for, not built):** a leaderboard heat map of where the community has climbed, and an offline emergency card
-  (needs offline tiles/grid-ref helper in the service worker). `sw.js` is now `wainwrights-beta-v9` (new files in SHELL, Leaflet
-  precached); tiles and `api.os.uk` are never cached or intercepted.
+- **Built afterwards (see the next two sections):** the community heat map and the offline emergency card. `sw.js` is `wainwrights-beta-v10`; Leaflet is precached; tiles and `api.os.uk` are never cached or intercepted.
 
 ## Difficulty ratings: Effort and Technical (beta only) — 2026-11-06
 
@@ -564,3 +562,52 @@ page changes.
   named walk; headless Chromium against the mocked backend: chips on all 214 rows, legend and focus return, OS map colour modes
   (ramp colours, thick ring on the climbed fell, restore to Climbed), planner sort both ways, hike card incl. a custom hike with
   no distance. Not validated against anyone's real route knowledge: expect to correct some grades.
+
+## Community heat map (beta only) — 2026-11-06
+
+"Where everyone's been" on the leaderboard page (Global tab): every fell shaded by how many people have ticked it. Built in `beta/`,
+**not promoted; migration `20261106110000_wainwrights_fell_heatmap.sql` not applied yet.** Files: `beta/heat.js` (called from
+`leaderboard.js`: `WWHeat.init(user)` once and `WWHeat.refresh()` after joining/leaving the leaderboard, because `WW.onAuthReady`
+only holds one callback), card in `leaderboard.html`.
+
+- **Consent is separate from the leaderboard.** The leaderboard terms promise "the specific fells you've climbed are not shared",
+  so joining the leaderboard does **not** add anyone. `leaderboard_opt_in.heatmap_ok` (new column, default false) is set only by the
+  "Include my ticked fells in this map, anonymously" checkbox (`set_heatmap_sharing(boolean)`, own row only; `not_on_leaderboard`
+  if they haven't joined). The terms text on the page now mentions this optional exception. Leaving the leaderboard deletes the row,
+  which ends the contribution.
+- **What leaves the database:** only `{name, count}` per fell from `wainwright_fell_heat()` (SECURITY DEFINER, authenticated only).
+  Returns nothing until **5** people have opted in, and omits any fell with fewer than **3** opted-in ticks, so a count can't point
+  at one or two people. Suspended users, other dashboards, unticked rows and names not in `fell_heights` are excluded. Any signed-in
+  user can view the map; only contributors' ticks are counted. `my_heatmap_sharing()` returns null if not on the leaderboard.
+- **Page:** a Sketch view (circles at each fell's `x`/`y`, always works) and an OS map view (same token path as the tracker, falls
+  back to the sketch with a note). Teal ramp, deliberately not the amber/red difficulty ramp; blank fells are hollow; legend, top 5
+  most-climbed, and a count of fells left blank. Names from the data are only ever inserted as text.
+- **Tested:** migration on scratch Postgres 16 with stand-in tables (18 checks: default off, thresholds at 4/5 people and 2/3 ticks,
+  non-contributors and suspended users excluded, opting out and leaving drop you straight out, no user ids in the output, anon
+  refused); the page in headless Chromium (below-threshold message, 214 circles with 100 shaded, OS view and its fallback, opt-in
+  toggle calls and error revert, hostile names, terms text). Not tested with real accounts.
+
+## Emergency card (beta only) — 2026-11-06
+
+`beta/emergency.html` + `beta/emergency.js`: a page for when something has gone wrong. Reachable from the tracker map card, the
+Where am I? sheet and the live hike card. **Not promoted.**
+
+- **Works with no signal and no login, on purpose.** No `shared-auth.js` (sign-in checks can fail offline), no `pwa.js` (it covers the
+  page with a "You're offline" notice) and no network calls: the grid reference, bearings and nearest summits come from `osmap.js` +
+  `fells-data.js`, and the page is in `sw.js` `SHELL` (cache `wainwrights-beta-v10`) so it is precached. The page also registers
+  `sw.js` itself so it is saved even if opened directly. GPS needs no mobile signal. Verified in Chromium: after going offline, the
+  position still updates and the page makes zero requests of its own.
+- **Shows:** live 10-figure grid ref (and 6-figure, E/N, lat/lng, accuracy, GPS fix age ticking every second), the three nearest summits
+  ("you're on it" under 30 m), five plain steps (stay put, 999/112 and Police then Mountain Rescue, read the message, texting, battery),
+  a ready-made message to read out, copy, share or text to the saved emergency contact (`sms:` link, `&body` on iOS, `?body`
+  elsewhere), the six-blasts distress signal, and a details form.
+- **Privacy:** name, phone, people with me, medical notes and emergency contact are saved in `localStorage` (`ww_emergency_details`) only
+  and never uploaded. "What's happened" is held in memory and **never** saved. The last GPS fix is kept in `localStorage`
+  (`ww_last_fix`, every 10 s) so something can still be read out if GPS drops: it is shown with a "where you were N minutes ago"
+  warning and the message words it as "that was my position at HH:MM and I may have moved". With no fix and no history the message says
+  it has no position rather than inventing one.
+- **emergencySMS:** the page says you can text 999 only if registered beforehand (text REGISTER to 999), because it won't work otherwise.
+- **Not done:** offline map tiles (OS tiles are never cached; that needs a deliberate look at OS's terms first), a compass bearing from
+  the phone's sensors, nearest place name (needs OS Names, so online only), and testing on a real phone or on real hill ground.
+- **Tested:** `emergency.html` in headless Chromium: grid ref, accuracy and fix age, message contents, offline operation with no requests,
+  saving and restoring details, "what's happened" not stored, sms link, old-fix warning and wording, and the no-position case.

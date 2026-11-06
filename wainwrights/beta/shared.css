@@ -1609,3 +1609,45 @@
 .map-colour .map-mode + .map-mode{ margin-left:-1px; }
 .map-ramp{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:0 2px 8px; }
 .map-ramp-step{ display:inline-block; min-width:22px; text-align:center; padding:3px 0; border:1px solid rgba(38,43,32,.28); font-weight:700; }
+
+/* ---------- community heat map and emergency card (beta) ---------- */
+.map-actions{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+.map-sos{ border-color:var(--rust); color:var(--rust); text-decoration:none; display:inline-block; }
+.live-links{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+.live-links a.btn{ text-decoration:none; display:inline-block; }
+.where-actions a.btn{ text-decoration:none; display:inline-block; }
+
+.heat-svg{ width:100%; height:auto; display:block; }
+.heat-card-map{ padding:8px; }
+.heat-legend{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:8px 2px; }
+.heat-swatch{ display:inline-block; width:22px; height:12px; border:1px solid rgba(38,43,32,.28); }
+.heat-none{ background:#fff; border-style:dashed; margin-left:8px; }
+.heat-top ol{ margin:0; padding-left:20px; }
+.heat-top li{ margin-bottom:4px; }
+.heat-n{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
+.heat-optin{ margin-top:12px; }
+
+.em-wrap{ max-width:640px; }
+.em-conn{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; }
+.em-conn.is-offline{ color:var(--green-deep); font-weight:600; }
+.em-card{ margin-bottom:14px; }
+.em-h{ font-family:var(--font-display); font-size:16px; color:var(--green-deep); margin:0 0 10px; }
+.em-pos{ border:2px solid var(--green-deep); }
+.em-ref{ font-family:var(--font-mono); font-size:clamp(26px,8vw,40px); font-weight:700; color:var(--green-deep); letter-spacing:0.04em; line-height:1.15; word-break:break-word; }
+.em-sub{ font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); margin:6px 0; }
+.em-warn{ background:var(--paper-deep); border-left:4px solid var(--rust); padding:8px 10px; font-size:13px; margin:8px 0; color:var(--ink); }
+.em-near{ list-style:none; padding:0; margin:8px 0 0; font-size:14px; }
+.em-near li{ padding:4px 0; border-top:1px solid var(--line); }
+.em-steps{ margin:0; padding-left:20px; font-size:14.5px; line-height:1.5; }
+.em-steps li{ margin-bottom:9px; }
+.em-text{ font-size:13.5px; line-height:1.5; color:var(--ink-soft); margin:0 0 10px; }
+.em-field{ display:block; margin-bottom:10px; }
+.em-label{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:4px; }
+.em-input{ width:100%; font-size:16px; text-align:left; letter-spacing:normal; text-transform:none; }
+.em-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+@media (max-width:480px){ .em-grid{ grid-template-columns:1fr; } }
+.em-message{ width:100%; font-family:var(--font-mono); font-size:13px; line-height:1.5; text-align:left; letter-spacing:normal; text-transform:none; resize:vertical; }
+.em-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.em-btn{ padding:12px 16px; font-size:13px; text-decoration:none; display:inline-block; }
+.em-fine{ font-size:12px; color:var(--ink-faint); line-height:1.5; }
+.em-wrap [hidden]{ display:none !important; }   /* .em-btn sets display, which would otherwise beat the hidden attribute */

@@ -310,7 +310,7 @@
           '<h4 class="where-h">Nearest summits</h4><ul class="where-fells">' +
             near.map(x => '<li><strong>' + esc(x.fell.name) + '</strong> ' + x.fell.m + ' m &mdash; ' + (x.m < 30 ? 'you\'re on it' : fmtDist(x.m) + ' ' + compass(x.bearing)) + '</li>').join("") +
           '</ul>' +
-          (outside ? '' : '<p class="where-actions"><button type="button" class="btn" id="where-copy-ref">Copy grid ref</button> <button type="button" class="btn" id="where-copy-msg">Copy full message</button></p>') +
+          (outside ? '' : '<p class="where-actions"><button type="button" class="btn" id="where-copy-ref">Copy grid ref</button> <button type="button" class="btn" id="where-copy-msg">Copy full message</button> <a class="btn" href="emergency.html">Emergency card</a></p>') +
           '<p class="where-sos">In an emergency call <strong>999</strong>, ask for <strong>Police</strong>, then <strong>Mountain Rescue</strong>, and read out the grid reference above. Don\'t rely on this page &mdash; carry a paper map and compass.</p>' +
           '<p class="where-fine">Updates while this is open. Your position isn\'t sent anywhere except to look up the nearest place name.</p>';
         const r = sheet.querySelector("#where-copy-ref"), m = sheet.querySelector("#where-copy-msg");
