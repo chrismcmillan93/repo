@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v7` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v10` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -473,3 +473,141 @@ the three differences listed at the top of this file.
   (simulated install prompt: button calls `prompt()` and closes the popup; Esc, backdrop
   and Close all close it; no chip when standalone or on production). Not tested: the real
   install flow on a phone.
+
+## OS map, "Where am I?" and the live hike map (beta only) — 2026-11-06
+
+Built in `beta/`, **not promoted**. Three features on Ordnance Survey (OS Data Hub) APIs. Docs: https://docs.os.uk/os-apis.
+
+**Credentials never reach the browser.** Edge Function `os-token` (`supabase/functions/os-token/index.ts`,
+verify_jwt false, authenticates the caller itself like `drive-times`) trades the project's `OS_API_KEY` +
+`OS_API_SECRET` secrets for a ~5-minute OAuth2 token and returns it to **signed-in users only** (OS's own rule:
+don't hand tokens to anonymous visitors). It caches the token in memory until it has under a minute left. The browser
+then calls `api.os.uk` directly with `Authorization: Bearer <token>` (OS's CORS preflight allows that header).
+**Not deployed yet and the two secrets aren't set** (needs the OS Data Hub project with OS Maps API and OS Names API added).
+Until then everything degrades quietly: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
+Where am I? still gives a grid ref and nearest summit, and the hike page shows the list without a map. A failed token call is
+not retried for 60 s.
+
+- **`beta/osmap.js`** (shared; needs Leaflet 1.9.4 from jsDelivr with SRI, loaded by `index.html` and `hike.html`):
+  `OSMap.createMap(el)` (OS **Outdoor_3857** raster tiles via a small `L.TileLayer` subclass that fetches each tile with the
+  bearer header and hands it to the `<img>` as a blob, retrying once on 401; tiles are OS OpenData up to zoom 16, so
+  `maxNativeZoom` is 16 and 17+ just scales up rather than touching Premium data), `OSMap.gridRef(lat, lng, digits)` (WGS84 to
+  OSGB36 Helmert + transverse Mercator, no library; checked against all 214 `gr` values in `fells-data.js`: 211 identical to
+  6 figures, 3 within 100 m, plus Ben Nevis), `OSMap.nearestFells`, and `OSMap.whereAmI()`.
+- **Attribution:** the map shows "Contains OS data © Crown copyright and database right <year>" plus a Terms link. **OS's branding
+  rules also want the OS API logo bottom-left and an error-reporting link; neither is in yet** (the logo zip is on
+  osdatahub.os.uk, which this environment couldn't reach). Add both before this goes to production.
+- **Tracker (`index.html`, `tracker.js`):** a Sketch / OS map toggle on the map card. The sketch `<svg id="fell-map">` stays in
+  the page (hidden) because the Story share image is drawn from it. Fell markers on the OS map are circles sized by height,
+  filled when ticked (`updateOsMarkers()` runs from `renderAll`), tap to jump to that fell in the list. The choice is remembered
+  in `localStorage.ww_map_mode`; OS tiles are only requested once someone chooses it.
+- **Where am I?** (button on the map card and on a live hike): 10-figure grid ref + 6-figure, E/N, lat/lng, accuracy, the 3
+  nearest summits with distance and compass point, nearest named place from OS Names (`/search/names/v1/nearest`, 1 km radius,
+  looked up again only after ~100 m of movement), "Copy grid ref" / "Copy full message" for reading to Mountain Rescue, and a 999
+  line. Position is never sent anywhere except the grid coordinate to OS Names. Grid ref and nearest summit work with no OS access at all.
+- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, not applied yet):**
+  on a hosted hike, the host and approved walkers get a "Live hike map" card from 3 h before the start to 18 h after. Strictly
+  opt-in per person per hike ("Share my location"); positions upload at most every 15 s (or 25 m of movement); everyone polls
+  every 20 s. A web page can only read GPS while open with the screen on, and the card says so (it's not a safety tracker). The
+  opt-in is remembered in `localStorage` (`ww_live_<hike id>`) for 24 h so reopening the page resumes. Table
+  `hike_live_positions` (one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
+  grants revoked) is reached only through `share_hike_position`, `stop_sharing_hike_position` and `get_hike_positions` (SECURITY
+  DEFINER, `authenticated` only). Reads are limited to the host and approved walkers and only show people who are still the host
+  or approved, updated in the last 3 h. Triggers clear rows when a hike stops being `open` (cancelled/completed) and when someone
+  stops being approved (withdrawn/removed). Names and pin labels are inserted as text, never HTML.
+- **Tested:** grid maths in Node; tracker and hike pages in headless Chromium against a mocked Supabase, OS tiles and OS Names
+  (token-only auth on every tile, 214 markers, fallback when the token call fails, location sheet, share/stop/resume, who must
+  not see the card, hostile names); the migration on a scratch Postgres 16 with stand-ins for `auth.users`, `hikes` and
+  `hike_attendees` (24 checks: stranger/pending/removed refused, host and approved walker allowed, window enforced, 5-decimal
+  rounding, stale and no-longer-approved rows hidden, direct table access and anon refused, stop/withdraw/cancel clear rows).
+  **Not tested:** the real OS token endpoint and live tiles (no key available), `os-token` itself (no Deno here), a real phone's
+  GPS, or two real accounts on the live database. Do the last with two accounts before telling anyone.
+- **To switch it on:** add OS Maps API + OS Names API to an OS Data Hub project, `supabase secrets set OS_API_KEY=... OS_API_SECRET=...`
+  on walking-up-hills, deploy `os-token` with verify_jwt false, apply the migration. Then check the key's usage limits in the Data Hub
+  (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
+- **Built afterwards (see the next two sections):** the community heat map and the offline emergency card. `sw.js` is `wainwrights-beta-v10`; Leaflet is precached; tiles and `api.os.uk` are never cached or intercepted.
+
+## Difficulty ratings: Effort and Technical (beta only) — 2026-11-06
+
+Built in `beta/`, **not promoted**. Two separate 1-5 grades for every peak and every walk (`beta/difficulty.js`, pure data +
+functions, no DOM at load). It is a **formula plus hand-tagged exceptions, not measured terrain data**; the technical grades are
+estimates from general knowledge of the routes, and the legend says so. Correct a grade by editing `TECH`, `EDGE` or `WALK_TECH`
+at the top of the file. When OS Terrain 50 slope stats exist per summit, they replace the height default in `techFor()` and no
+page changes.
+
+- **Effort** = Naismith time (3 mph + 1 h per 600 m), banded: under 2 h Gentle (1), 2-3.5 Moderate (2), 3.5-5 Strenuous (3),
+  5-6.5 Hard (4), over 6.5 Very hard (5). For a **walk**, its own miles and ascent. For a **peak**, the simplest sensible walk:
+  out and back from the nearest car park in `PLANNER_BASES` (honouring `PLANNER_BASE_OVERRIDES`), path = straight line x 1.5
+  (`PEAK_PATH_FACTOR`), ascent = summit minus the base's `elev`. So peaks only span Effort 1-3 (96 / 105 / 13 across the 214),
+  because no single peak from its nearest car park is a Hard day; walks span 2-5. A custom hike with no distance/ascent shows
+  "Effort: not rated".
+- **Technical** = ground and exposure: 1 easy paths, 2 steep or stony, 3 rough/loose/pathless, 4 Grade 1 scrambling, 5 exposed
+  scrambling. A **peak** shows its EASIEST normal way up (default 1 below 700 m, 2 at 700 m+, overridden by name in `TECH`:
+  15 fells at 3, a dozen low fells bumped to 2, remote or plain-walking high fells held at 1/2). Where a famous harder way
+  exists it is `EDGE` and shown as a range, e.g. Helvellyn **T2-4** (Striding Edge), Blencathra T3-5 (Sharp Edge), Pavey Ark
+  T3-4 (Jack's Rake), Scafell, Crinkle Crags (Bad Step), Bowfell (Climbers' Traverse), Catstycam, Helm Crag, Wetherlam. A
+  **walk** shows the hardest section of its standard route: `WALK_TECH` for 8 of the 17 named rounds, otherwise the hardest of
+  its summits' easiest-route grades (generated walks never use the edges). The hike page finds a named round's override by
+  matching `walk.label` against `PLANNER_WALKS`, because the hike snapshot carries no route id (no migration was needed).
+- **Where it shows:** tracker fell rows (compact "E2 T2-4" chip, with `aria-label`/`title` spelling it out) plus a key line above
+  the regions; planner walk cards (labelled badges, "?" opens the key) and two new sort options, Effort grade (orders by hours so
+  walks in one grade still sort sensibly) and Technical grade (grade first, effort breaks ties); the hike page card; and the OS
+  map, where a "Colour by Climbed / Effort / Technical" control recolours the markers from the same 5-step ramp (climbed becomes a
+  thick dark-green ring; a ramp legend appears; tooltips carry the grades). The ramp is also printed as numbers, so colour is
+  never the only signal on cards and chips (map markers rely on colour plus the tooltip). `Difficulty.showLegend()` is the key
+  popup (Esc, backdrop, focus returned).
+- **Not changed:** the planner's Best match score does not use difficulty (that would silently reorder everyone's results; add
+  it deliberately if wanted). Nothing is stored in the database.
+- **Tested:** all tag names checked against `fells-data.js` and `planner-walks.js` (none unknown); Node run of every fell and
+  named walk; headless Chromium against the mocked backend: chips on all 214 rows, legend and focus return, OS map colour modes
+  (ramp colours, thick ring on the climbed fell, restore to Climbed), planner sort both ways, hike card incl. a custom hike with
+  no distance. Not validated against anyone's real route knowledge: expect to correct some grades.
+
+## Community heat map (beta only) — 2026-11-06
+
+"Where everyone's been" on the leaderboard page (Global tab): every fell shaded by how many people have ticked it. Built in `beta/`,
+**not promoted; migration `20261106110000_wainwrights_fell_heatmap.sql` not applied yet.** Files: `beta/heat.js` (called from
+`leaderboard.js`: `WWHeat.init(user)` once and `WWHeat.refresh()` after joining/leaving the leaderboard, because `WW.onAuthReady`
+only holds one callback), card in `leaderboard.html`.
+
+- **Consent is separate from the leaderboard.** The leaderboard terms promise "the specific fells you've climbed are not shared",
+  so joining the leaderboard does **not** add anyone. `leaderboard_opt_in.heatmap_ok` (new column, default false) is set only by the
+  "Include my ticked fells in this map, anonymously" checkbox (`set_heatmap_sharing(boolean)`, own row only; `not_on_leaderboard`
+  if they haven't joined). The terms text on the page now mentions this optional exception. Leaving the leaderboard deletes the row,
+  which ends the contribution.
+- **What leaves the database:** only `{name, count}` per fell from `wainwright_fell_heat()` (SECURITY DEFINER, authenticated only).
+  Returns nothing until **5** people have opted in, and omits any fell with fewer than **3** opted-in ticks, so a count can't point
+  at one or two people. Suspended users, other dashboards, unticked rows and names not in `fell_heights` are excluded. Any signed-in
+  user can view the map; only contributors' ticks are counted. `my_heatmap_sharing()` returns null if not on the leaderboard.
+- **Page:** a Sketch view (circles at each fell's `x`/`y`, always works) and an OS map view (same token path as the tracker, falls
+  back to the sketch with a note). Teal ramp, deliberately not the amber/red difficulty ramp; blank fells are hollow; legend, top 5
+  most-climbed, and a count of fells left blank. Names from the data are only ever inserted as text.
+- **Tested:** migration on scratch Postgres 16 with stand-in tables (18 checks: default off, thresholds at 4/5 people and 2/3 ticks,
+  non-contributors and suspended users excluded, opting out and leaving drop you straight out, no user ids in the output, anon
+  refused); the page in headless Chromium (below-threshold message, 214 circles with 100 shaded, OS view and its fallback, opt-in
+  toggle calls and error revert, hostile names, terms text). Not tested with real accounts.
+
+## Emergency card (beta only) — 2026-11-06
+
+`beta/emergency.html` + `beta/emergency.js`: a page for when something has gone wrong. Reachable from the tracker map card, the
+Where am I? sheet and the live hike card. **Not promoted.**
+
+- **Works with no signal and no login, on purpose.** No `shared-auth.js` (sign-in checks can fail offline), no `pwa.js` (it covers the
+  page with a "You're offline" notice) and no network calls: the grid reference, bearings and nearest summits come from `osmap.js` +
+  `fells-data.js`, and the page is in `sw.js` `SHELL` (cache `wainwrights-beta-v10`) so it is precached. The page also registers
+  `sw.js` itself so it is saved even if opened directly. GPS needs no mobile signal. Verified in Chromium: after going offline, the
+  position still updates and the page makes zero requests of its own.
+- **Shows:** live 10-figure grid ref (and 6-figure, E/N, lat/lng, accuracy, GPS fix age ticking every second), the three nearest summits
+  ("you're on it" under 30 m), five plain steps (stay put, 999/112 and Police then Mountain Rescue, read the message, texting, battery),
+  a ready-made message to read out, copy, share or text to the saved emergency contact (`sms:` link, `&body` on iOS, `?body`
+  elsewhere), the six-blasts distress signal, and a details form.
+- **Privacy:** name, phone, people with me, medical notes and emergency contact are saved in `localStorage` (`ww_emergency_details`) only
+  and never uploaded. "What's happened" is held in memory and **never** saved. The last GPS fix is kept in `localStorage`
+  (`ww_last_fix`, every 10 s) so something can still be read out if GPS drops: it is shown with a "where you were N minutes ago"
+  warning and the message words it as "that was my position at HH:MM and I may have moved". With no fix and no history the message says
+  it has no position rather than inventing one.
+- **emergencySMS:** the page says you can text 999 only if registered beforehand (text REGISTER to 999), because it won't work otherwise.
+- **Not done:** offline map tiles (OS tiles are never cached; that needs a deliberate look at OS's terms first), a compass bearing from
+  the phone's sensors, nearest place name (needs OS Names, so online only), and testing on a real phone or on real hill ground.
+- **Tested:** `emergency.html` in headless Chromium: grid ref, accuracy and fix age, message contents, offline operation with no requests,
+  saving and restoring details, "what's happened" not stored, sms link, old-fix warning and wording, and the no-position case.

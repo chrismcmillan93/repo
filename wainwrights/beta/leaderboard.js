@@ -129,6 +129,7 @@
         optinCard.style.display = "none";
         panelCard.style.display = "block";
         await refreshLeaderboard(user.id);
+        if(window.WWHeat) WWHeat.refresh();
       }catch(err){
         errorEl.textContent = err.message || "Couldn't join the leaderboard.";
         errorEl.style.display = "block";
@@ -149,6 +150,7 @@
       termsCheck.checked = false;
       joinBtn.disabled = true;
       editForm.style.display = "none";
+      if(window.WWHeat) WWHeat.refresh();
     };
 
     editToggle.onclick = async ()=>{
@@ -675,5 +677,6 @@
     const profile = await loadProfile(user.id);
     await setupLeaderboard(user, profile);
     setupTeams(user);
+    if(window.WWHeat) WWHeat.init(user);
   });
 })();
