@@ -1540,3 +1540,114 @@
   .admin-bar.is-on{ color: #b3261e; border-left-color: #b3261e; }
   .admin-bar.is-here{ pointer-events: none; }
   .topnav-links{ order: 2; }
+
+/* ---------- OS map, Where am I?, live hike map (beta) ---------- */
+.map-tools{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:0 2px 8px; }
+.map-modes{ display:inline-flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden; }
+.map-mode{
+  font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:8px 14px;
+  background:var(--paper-card); color:var(--ink); border:0; cursor:pointer;
+}
+.map-mode + .map-mode{ border-left:1px solid var(--line-strong); }
+.map-mode.is-on{ background:var(--green-deep); color:var(--paper-card); }
+.map-mode:disabled{ opacity:.6; cursor:default; }
+.map-where{ padding:8px 12px; }
+.os-map, .live-map{ isolation:isolate; }   /* keep Leaflet's high z-index panes below modals and the top bar */
+.os-map{ width:100%; height:min(70vh,520px); min-height:320px; border:1px solid var(--line-strong); border-radius:var(--radius); background:var(--paper-deep); touch-action:none; }
+.map-note{ font-family:var(--font-mono); font-size:11px; color:var(--rust); margin:8px 2px 0; }
+.os-map .leaflet-tooltip{ font-family:var(--font-mono); font-size:11px; }
+.os-map .leaflet-control-attribution, .live-map .leaflet-control-attribution{ font-size:10px; }
+
+.where-ref{ font-family:var(--font-mono); font-size:26px; font-weight:700; color:var(--green-deep); letter-spacing:0.04em; margin:2px 0 4px; word-break:break-word; }
+.where-sub{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin:0 0 6px; }
+.where-status{ margin:4px 0; }
+.where-warn{ color:var(--rust); font-size:12.5px; margin:6px 0; }
+.where-place{ margin:10px 0 4px; }
+.where-h{ font-family:var(--font-display); font-size:14px; color:var(--green-deep); margin:14px 0 4px; }
+.where-fells{ margin:0; padding-left:18px; }
+.where-fells li{ margin-bottom:4px; }
+.where-actions{ display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 6px; }
+.where-sos{ font-size:12.5px; border-left:3px solid var(--rust); padding-left:10px; margin:12px 0 6px; color:var(--ink); }
+.where-fine{ font-size:11.5px; color:var(--ink-faint); margin:6px 0 14px; }
+
+.live-card{ margin-top:14px; }
+.live-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.live-lede{ font-size:13px; color:var(--ink-soft); line-height:1.5; margin:6px 0 10px; }
+.live-actions{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+.live-map{ width:100%; height:min(60vh,420px); min-height:280px; border:1px solid var(--line-strong); border-radius:var(--radius); margin-top:10px; touch-action:none; }
+.live-list{ list-style:none; padding:0; margin:10px 0 0; font-size:13px; }
+.live-list li{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid var(--line); }
+.live-list .is-stale{ opacity:.55; }
+.live-when{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); white-space:nowrap; }
+.live-state{ font-family:var(--font-mono); font-size:11.5px; margin:6px 0 0; }
+.live-state.is-on{ color:var(--green-deep); font-weight:600; }
+.live-state.is-bad{ color:var(--rust); }
+.live-dot{ width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.live-pin{ font:600 11px/1 var(--font-mono); white-space:nowrap; }
+
+/* ---------- difficulty: Effort and Technical grades (beta) ---------- */
+.diff-pill{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; font-weight:700; letter-spacing:0.02em; line-height:1; padding:3px 6px; border-radius:3px; border:1px solid rgba(38,43,32,.28); white-space:nowrap; }
+.diff-compact{ display:inline-flex; gap:3px; margin-left:8px; vertical-align:middle; }
+.diff-full{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin:8px 0; }
+.diff-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); }
+.diff-badge .diff-pill{ font-size:11.5px; padding:4px 8px; }
+.diff-name{ color:var(--ink); }
+.diff-none{ color:var(--ink-faint); font-style:italic; }
+.diff-note{ flex:0 0 100%; margin:0; font-size:12px; color:var(--ink-faint); line-height:1.45; }
+.diff-help{ font-family:var(--font-mono); font-size:11px; font-weight:700; width:20px; height:20px; padding:0; border-radius:50%; border:1px solid var(--line-strong); background:var(--paper-card); color:var(--ink-soft); cursor:pointer; }
+.diff-keyline .diff-help{ width:auto; height:auto; border-radius:var(--radius); padding:3px 8px; font-weight:600; }
+.diff-keyline .diff-compact{ margin:0 6px 0 0; }
+.diff-key{ list-style:none; padding:0; margin:6px 0 12px; }
+.diff-key li{ margin-bottom:7px; }
+.diff-key .diff-pill{ min-width:28px; text-align:center; margin-right:4px; }
+.diff-fine{ font-size:12px; color:var(--ink-faint); }
+.cell-name .diff-compact{ margin-left:6px; }
+
+.map-colour{ display:flex; align-items:center; flex-wrap:wrap; gap:0; margin:0 2px 8px; }
+.map-colour-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-right:8px; }
+.map-colour .map-mode{ border:1px solid var(--line-strong); }
+.map-colour .map-mode + .map-mode{ margin-left:-1px; }
+.map-ramp{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:0 2px 8px; }
+.map-ramp-step{ display:inline-block; min-width:22px; text-align:center; padding:3px 0; border:1px solid rgba(38,43,32,.28); font-weight:700; }
+
+/* ---------- community heat map and emergency card (beta) ---------- */
+.map-actions{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+.map-sos{ border-color:var(--rust); color:var(--rust); text-decoration:none; display:inline-block; }
+.live-links{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+.live-links a.btn{ text-decoration:none; display:inline-block; }
+.where-actions a.btn{ text-decoration:none; display:inline-block; }
+
+.heat-svg{ width:100%; height:auto; display:block; }
+.heat-card-map{ padding:8px; }
+.heat-legend{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:8px 2px; }
+.heat-swatch{ display:inline-block; width:22px; height:12px; border:1px solid rgba(38,43,32,.28); }
+.heat-none{ background:#fff; border-style:dashed; margin-left:8px; }
+.heat-top ol{ margin:0; padding-left:20px; }
+.heat-top li{ margin-bottom:4px; }
+.heat-n{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
+.heat-optin{ margin-top:12px; }
+
+.em-wrap{ max-width:640px; }
+.em-conn{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; }
+.em-conn.is-offline{ color:var(--green-deep); font-weight:600; }
+.em-card{ margin-bottom:14px; }
+.em-h{ font-family:var(--font-display); font-size:16px; color:var(--green-deep); margin:0 0 10px; }
+.em-pos{ border:2px solid var(--green-deep); }
+.em-ref{ font-family:var(--font-mono); font-size:clamp(26px,8vw,40px); font-weight:700; color:var(--green-deep); letter-spacing:0.04em; line-height:1.15; word-break:break-word; }
+.em-sub{ font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); margin:6px 0; }
+.em-warn{ background:var(--paper-deep); border-left:4px solid var(--rust); padding:8px 10px; font-size:13px; margin:8px 0; color:var(--ink); }
+.em-near{ list-style:none; padding:0; margin:8px 0 0; font-size:14px; }
+.em-near li{ padding:4px 0; border-top:1px solid var(--line); }
+.em-steps{ margin:0; padding-left:20px; font-size:14.5px; line-height:1.5; }
+.em-steps li{ margin-bottom:9px; }
+.em-text{ font-size:13.5px; line-height:1.5; color:var(--ink-soft); margin:0 0 10px; }
+.em-field{ display:block; margin-bottom:10px; }
+.em-label{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:4px; }
+.em-input{ width:100%; font-size:16px; text-align:left; letter-spacing:normal; text-transform:none; }
+.em-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+@media (max-width:480px){ .em-grid{ grid-template-columns:1fr; } }
+.em-message{ width:100%; font-family:var(--font-mono); font-size:13px; line-height:1.5; text-align:left; letter-spacing:normal; text-transform:none; resize:vertical; }
+.em-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.em-btn{ padding:12px 16px; font-size:13px; text-decoration:none; display:inline-block; }
+.em-fine{ font-size:12px; color:var(--ink-faint); line-height:1.5; }
+.em-wrap [hidden]{ display:none !important; }   /* .em-btn sets display, which would otherwise beat the hidden attribute */

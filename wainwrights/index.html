@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#24392a">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -91,6 +92,22 @@
 
   <div class="section-heading"><h2>The map</h2><div class="rule"></div></div>
   <div class="map-card">
+    <div class="map-tools">
+      <div class="map-modes" role="group" aria-label="Map style">
+        <button type="button" class="map-mode is-on" id="map-mode-sketch" aria-pressed="true">Sketch</button>
+        <button type="button" class="map-mode" id="map-mode-os" aria-pressed="false">OS map</button>
+      </div>
+      <span class="map-actions"><button type="button" class="btn map-where" id="where-btn">&#128205; Where am I?</button> <a class="btn map-where map-sos" href="emergency.html">Emergency card</a></span>
+    </div>
+    <div class="map-colour" id="map-colour" style="display:none;" role="group" aria-label="Colour the fells by">
+      <span class="map-colour-label">Colour by</span>
+      <button type="button" class="map-mode is-on" data-colour="climbed" aria-pressed="true">Climbed</button>
+      <button type="button" class="map-mode" data-colour="effort" aria-pressed="false">Effort</button>
+      <button type="button" class="map-mode" data-colour="tech" aria-pressed="false">Technical</button>
+    </div>
+    <div class="map-ramp" id="map-ramp" style="display:none;" aria-hidden="true"></div>
+    <div id="os-map" class="os-map" style="display:none;" role="application" aria-label="Ordnance Survey map of the Wainwright fells"></div>
+    <p class="map-note" id="os-map-note" style="display:none;"></p>
     <svg id="fell-map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the 214 Wainwright fells"></svg>
     <p class="map-caption">Every summit at its true position. Ticked fells are inked in — tap one to jump to it in the list.</p>
     <div class="touch-label" id="map-touch-label"><span class="touch-label-name"></span><span class="touch-label-status"></span></div>
@@ -141,6 +158,7 @@
     <input type="text" class="search-input" id="search" placeholder="Search a fell by name…">
   </div>
   <p class="chart-note" id="mountain-legend"><span class="mtn-badge"><svg viewBox="0 0 14 11" aria-hidden="true"><path d="M1 10 L4 4 L6 6.5 L9 2 L11 5 L13 10 Z"></path></svg></span> marks a summit of 2,000ft (610m) or higher — the conventional line between a hill and a mountain in England. <span class="route-badge" style="pointer-events:none;"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 9.5 Q7 7 9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.3"></path><circle cx="3" cy="11" r="1.8"></circle><circle cx="11" cy="3" r="1.8"></circle></svg></span> marks a fell that's often climbed together with others on a known route — tap it for details.</p>
+  <p class="chart-note diff-keyline"><span class="diff diff-compact"><span class="diff-pill e2" style="background:#f1e8b4;color:#4f420c">E</span><span class="diff-pill t2" style="background:#f1e8b4;color:#4f420c">T</span></span> Every fell has an <strong>Effort</strong> grade (how tiring, 1&ndash;5) and a <strong>Technical</strong> grade (ground and exposure, 1&ndash;5). A range like T2&ndash;4 means a famous harder way up exists. <button type="button" class="diff-help" data-diff-legend>How are these rated?</button></p>
   <div class="areas" id="areas"></div>
 
   <div class="footer">
@@ -160,7 +178,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared-auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script src="fells-data.js"></script>
+<script src="planner-walks.js"></script>
+<script src="difficulty.js"></script>
+<script src="osmap.js"></script>
 <script src="story.js"></script>
 <script src="tracker.js"></script>
 </body>

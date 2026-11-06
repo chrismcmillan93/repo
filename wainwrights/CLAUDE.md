@@ -3,15 +3,15 @@
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
 
-**As of 2026-11-01, production equals beta except for the three differences below.** Beta was copied
+**As of 2026-11-06, production equals beta except for the three differences below.** Beta was copied
 into `wainwrights/` in stages (PR #19, then the PWA / launch-speed work, then the Instagram
 change), so the planner, hosted hikes (with the WhatsApp link and Instagram on requests),
 Instagram Story sharing, direct AllTrails links and the installable app are live.
-**Nothing is waiting to be promoted** (the planner's AllTrails directions note went up last).
+**Nothing is waiting to be promoted** (the OS map, Where am I?, live hike pins, difficulty grades, community heat map and emergency card went up last, 2026-11-06; see the sections at the end for what still needs switching on).
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
+and `sw.js` uses the cache name `wainwrights-prod-v7` / prefix `wainwrights-prod-` (beta:
 `wainwrights-beta-v10` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
@@ -474,9 +474,9 @@ the three differences listed at the top of this file.
   and Close all close it; no chip when standalone or on production). Not tested: the real
   install flow on a phone.
 
-## OS map, "Where am I?" and the live hike map (beta only) — 2026-11-06
+## OS map, "Where am I?" and the live hike map (beta and production) — 2026-11-06
 
-Built in `beta/`, **not promoted**. Three features on Ordnance Survey (OS Data Hub) APIs. Docs: https://docs.os.uk/os-apis.
+Built in `beta/` and promoted to production the same day. Three features on Ordnance Survey (OS Data Hub) APIs. Docs: https://docs.os.uk/os-apis.
 
 **Credentials never reach the browser.** Edge Function `os-token` (`supabase/functions/os-token/index.ts`,
 verify_jwt false, authenticates the caller itself like `drive-times`) trades the project's `OS_API_KEY` +
@@ -484,7 +484,7 @@ verify_jwt false, authenticates the caller itself like `drive-times`) trades the
 don't hand tokens to anonymous visitors). It caches the token in memory until it has under a minute left. The browser
 then calls `api.os.uk` directly with `Authorization: Bearer <token>` (OS's CORS preflight allows that header).
 **Not deployed yet and the two secrets aren't set** (needs the OS Data Hub project with OS Maps API and OS Names API added).
-Until then everything degrades quietly: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
+Until then everything degrades quietly, in production too: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
 Where am I? still gives a grid ref and nearest summit, and the hike page shows the list without a map. A failed token call is
 not retried for 60 s.
 
@@ -505,12 +505,12 @@ not retried for 60 s.
   nearest summits with distance and compass point, nearest named place from OS Names (`/search/names/v1/nearest`, 1 km radius,
   looked up again only after ~100 m of movement), "Copy grid ref" / "Copy full message" for reading to Mountain Rescue, and a 999
   line. Position is never sent anywhere except the grid coordinate to OS Names. Grid ref and nearest summit work with no OS access at all.
-- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, not applied yet):**
+- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, NOT applied to the database yet: the Supabase connector asks for confirmation on it because the functions contain `delete from`, and that prompt timed out four times; paste the file into the Supabase SQL editor and run it, or approve the prompt):**
   on a hosted hike, the host and approved walkers get a "Live hike map" card from 3 h before the start to 18 h after. Strictly
   opt-in per person per hike ("Share my location"); positions upload at most every 15 s (or 25 m of movement); everyone polls
   every 20 s. A web page can only read GPS while open with the screen on, and the card says so (it's not a safety tracker). The
   opt-in is remembered in `localStorage` (`ww_live_<hike id>`) for 24 h so reopening the page resumes. Table
-  `hike_live_positions` (one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
+  `hike_live_positions` (once applied: one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
   grants revoked) is reached only through `share_hike_position`, `stop_sharing_hike_position` and `get_hike_positions` (SECURITY
   DEFINER, `authenticated` only). Reads are limited to the host and approved walkers and only show people who are still the host
   or approved, updated in the last 3 h. Triggers clear rows when a hike stops being `open` (cancelled/completed) and when someone
@@ -523,13 +523,14 @@ not retried for 60 s.
   **Not tested:** the real OS token endpoint and live tiles (no key available), `os-token` itself (no Deno here), a real phone's
   GPS, or two real accounts on the live database. Do the last with two accounts before telling anyone.
 - **To switch it on:** add OS Maps API + OS Names API to an OS Data Hub project, `supabase secrets set OS_API_KEY=... OS_API_SECRET=...`
-  on walking-up-hills, deploy `os-token` with verify_jwt false, apply the migration. Then check the key's usage limits in the Data Hub
+  on walking-up-hills, deploy `os-token` with verify_jwt false, and apply the live-pins migration (see above). Until the pins migration is applied the live card's
+  buttons would report "Couldn't send", but the card only appears from 3 h before a hike's start, so nothing shows until the 13 Dec hike. Then check the key's usage limits in the Data Hub
   (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
 - **Built afterwards (see the next two sections):** the community heat map and the offline emergency card. `sw.js` is `wainwrights-beta-v10`; Leaflet is precached; tiles and `api.os.uk` are never cached or intercepted.
 
-## Difficulty ratings: Effort and Technical (beta only) — 2026-11-06
+## Difficulty ratings: Effort and Technical (beta and production) — 2026-11-06
 
-Built in `beta/`, **not promoted**. Two separate 1-5 grades for every peak and every walk (`beta/difficulty.js`, pure data +
+Built in `beta/` and promoted to production the same day. Two separate 1-5 grades for every peak and every walk (`beta/difficulty.js`, pure data +
 functions, no DOM at load). It is a **formula plus hand-tagged exceptions, not measured terrain data**; the technical grades are
 estimates from general knowledge of the routes, and the legend says so. Correct a grade by editing `TECH`, `EDGE` or `WALK_TECH`
 at the top of the file. When OS Terrain 50 slope stats exist per summit, they replace the height default in `techFor()` and no
@@ -563,10 +564,10 @@ page changes.
   (ramp colours, thick ring on the climbed fell, restore to Climbed), planner sort both ways, hike card incl. a custom hike with
   no distance. Not validated against anyone's real route knowledge: expect to correct some grades.
 
-## Community heat map (beta only) — 2026-11-06
+## Community heat map (beta and production) — 2026-11-06
 
-"Where everyone's been" on the leaderboard page (Global tab): every fell shaded by how many people have ticked it. Built in `beta/`,
-**not promoted; migration `20261106110000_wainwrights_fell_heatmap.sql` not applied yet.** Files: `beta/heat.js` (called from
+"Where everyone's been" on the leaderboard page (Global tab): every fell shaded by how many people have ticked it. Built in `beta/` and promoted to
+production the same day; migration `20261106110000_wainwrights_fell_heatmap.sql` **is applied** to walking-up-hills (nobody is opted in yet). Files: `beta/heat.js` (called from
 `leaderboard.js`: `WWHeat.init(user)` once and `WWHeat.refresh()` after joining/leaving the leaderboard, because `WW.onAuthReady`
 only holds one callback), card in `leaderboard.html`.
 
@@ -587,10 +588,10 @@ only holds one callback), card in `leaderboard.html`.
   refused); the page in headless Chromium (below-threshold message, 214 circles with 100 shaded, OS view and its fallback, opt-in
   toggle calls and error revert, hostile names, terms text). Not tested with real accounts.
 
-## Emergency card (beta only) — 2026-11-06
+## Emergency card (beta and production) — 2026-11-06
 
 `beta/emergency.html` + `beta/emergency.js`: a page for when something has gone wrong. Reachable from the tracker map card, the
-Where am I? sheet and the live hike card. **Not promoted.**
+Where am I? sheet and the live hike card. Promoted to production 2026-11-06.
 
 - **Works with no signal and no login, on purpose.** No `shared-auth.js` (sign-in checks can fail offline), no `pwa.js` (it covers the
   page with a "You're offline" notice) and no network calls: the grid reference, bearings and nearest summits come from `osmap.js` +
