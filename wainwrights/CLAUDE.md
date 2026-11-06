@@ -526,7 +526,7 @@ not retried for 60 s.
   on walking-up-hills, deploy `os-token` with verify_jwt false, apply the migration. Then check the key's usage limits in the Data Hub
   (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
 - **Later (asked for, not built):** a leaderboard heat map of where the community has climbed, and an offline emergency card
-  (needs offline tiles/grid-ref helper in the service worker). `sw.js` is `wainwrights-beta-v8` (new files in SHELL, Leaflet
+  (needs offline tiles/grid-ref helper in the service worker). `sw.js` is now `wainwrights-beta-v9` (new files in SHELL, Leaflet
   precached); tiles and `api.os.uk` are never cached or intercepted.
 
 ## Difficulty ratings: Effort and Technical (beta only) — 2026-11-06
