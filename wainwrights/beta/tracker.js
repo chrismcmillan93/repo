@@ -1149,7 +1149,7 @@
     if(error) throw error;
     const byName = {};
     FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ byName[f.name] = f; }));
-    return (data || []).filter(r=> byName[r.item_id] && state[r.item_id]).map(r=> byName[r.item_id]);
+    return (data || []).filter(r=> byName[r.item_id] && state[r.item_id]).map(r=> Object.assign({}, byName[r.item_id], { ticked_at: r.ticked_at }));
   }
 
   async function refreshTodayButton(){
@@ -1169,7 +1169,7 @@
       const c = computeCounts();
       return WWStory.dayCard({
         dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
-        fells: fells.map(f=> ({ name: f.name, m: f.m })),
+        fells: fells.map(f=> ({ name: f.name, m: f.m, ticked_at: f.ticked_at })),
         climbed: c.climbed, total: TOTAL, percent: c.percent,
         gain: fells.reduce((n, f)=> n + f.m, 0)
       });

@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v7` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v10` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v11` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -612,3 +612,38 @@ Where am I? sheet and the live hike card. Promoted to production 2026-11-06.
   the phone's sensors, nearest place name (needs OS Names, so online only), and testing on a real phone or on real hill ground.
 - **Tested:** `emergency.html` in headless Chromium: grid ref, accuracy and fix age, message contents, offline operation with no requests,
   saving and restoring details, "what's happened" not stored, sms link, old-fix warning and wording, and the no-position case.
+
+## Car park finder and Story route maps (beta only, not promoted) — 2026-11-06
+
+Two more features built in `beta/` only. `sw.js` is `wainwrights-beta-v11` (`carparks.js` added to SHELL). Production is still
+`wainwrights-prod-v7` and has neither.
+
+**Car park finder (planner walk cards).** A "Find car parks near the start" button on every walk card (`beta/carparks.js`, UI in `planner.js`).
+Tapping it asks OS for **public car parks** around the walk's start pin: OS NGD API - Features, collection `lus-fts-site-2` (falls back to
+`lus-fts-site-1` on a 404), `filter=description = 'Public Car Park'`, a `bbox` of 1.5 km each way (widened once to 4 km if empty), `limit=100`,
+sent with the OS bearer token from `os-token` (never a key in the URL). Each Site is a polygon, so its area-weighted centre is used. The nearest 4
+within range are listed with distance and compass direction from the start pin, an 8-figure grid ref, a Google Maps directions link and a
+**"Host from here"** button that starts a hosted hike with that car park as the meeting point (via the same `ww_host_walk` hand-off as "Host this
+walk"). Nothing is looked up on page load: one or two OS transactions per walk, only when tapped. Results are kept in this device's
+`localStorage` (`ww_carparks_v1:`, 30 days) and never on our server; "Try again" skips that saved copy. Names come from OS and are shown as text.
+The card says OS lists surveyed public car parks only (lay-bys, field parking and some small car parks may be missing, and it gives no price or
+opening times). Messages cover: OS service not set up, 401/403 (the OS project may not include NGD Features), 404, 429, other failures.
+**Unverified:** the OS plan/quota for NGD Features isn't documented in the pages I could read (only the rate limits: 600/min live, 50/min
+development), so check the Data Hub API catalogue; and the field names (`name1_text`, `description`, geometry as GeoJSON polygons) come from the
+docs and a docs-assistant answer, not from a real response (no key available). Re-check against a real response when `os-token` is live.
+
+**Story route maps (`beta/story.js`).** A map panel on the Story images, drawn on the canvas in the app's own style (no map tiles, so no OS
+licence question about putting it in a shared image): the fells in the story as peaks or numbered dots, the other fells nearby as quiet circles, a
+north arrow, a scale bar (km) and a caption. On the **today's ticks** card it replaces nothing (list shrinks to fit) and the dots are **numbered in
+tick order, but only when the ticks are at least 10 minutes apart** (a hike ticked for everyone has one timestamp on every fell, so there the line is
+dashed and captioned "Summits joined in a likely order, not the exact path" rather than inventing an order). On the **hosted hike** and **invite**
+cards it replaces the fells-as-text paragraph (and falls back to it if no fell can be placed). The order of summits for hikes is nearest-neighbour
+from the walk's start point (looked up by matching `label` against `PLANNER_WALKS`; used only to order, never drawn) or from the western end of the
+walk, then 2-opt to remove crossings. The panel height follows the shape of the walk (a long north-south ridge gets a tall panel). **Privacy:** only
+fells (public data) are drawn; a hike's meeting point and start coordinates are never put on the image (the invite card has always avoided the
+meeting point). `tracker.js` now attaches `ticked_at` to each of today's fells; `hike.js` passes `label`.
+
+**Tested:** `cp.test.js`-style Playwright run against a mocked OS NGD API (request shape and token-only auth, nearest-first ordering with a car park
+outside range dropped, a hostile name, grid refs, re-render, Host from here, saved-copy reuse, widening to 4 km, site-1 fallback, 403/429/500/404 and
+no-OS-access messages) and a canvas render of every card type, viewed by eye, plus unit checks of the route ordering and tick-order rule. All the
+earlier suites still pass. Not tested against real OS responses or on a phone's share sheet.
