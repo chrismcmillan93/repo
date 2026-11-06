@@ -452,6 +452,7 @@
         <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         ${startNoteHtml(w)}
+        <div class="plan-cp" data-cp-for="${esc(w.id)}">${carParksHtml(w)}</div>
         <div class="chal-fell-list">${fellChips}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
         <div><button type="button" class="btn plan-host" data-host-walk="${esc(w.id)}">Host this walk</button></div>
@@ -497,20 +498,86 @@
     if (btn) btn.addEventListener("click", () => { expanded = true; renderResults(); });
   }
 
-  // "Host this walk": hand the walk to hike.html (hosted hikes) via sessionStorage.
-  document.getElementById("planner-results").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-host-walk]");
-    if (!b) return;
-    const w = walks.find(x => x.id === b.dataset.hostWalk);
-    if (!w) return;
+  // ---------- car park finder (OS data, on request) ----------
+  // Tapping "Find car parks near the start" asks OS for the public car parks around the walk's
+  // start pin (carparks.js). Results are remembered per walk for this visit so re-sorting the
+  // list doesn't lose them.
+  const cpState = {};   // walk id -> { status: "loading" | "ready" | "error", parks, radiusM, code }
+  const CP_ERRORS = {
+    unavailable: "Car park lookup needs the OS map service, which isn't switched on yet.",
+    not_allowed: "OS didn't allow the car park lookup (the OS project may not include the OS NGD Features API).",
+    not_found: "OS didn't return car park data for this area.",
+    busy: "OS is busy right now. Try again in a minute.",
+    failed: "Couldn't reach OS just now. Try again."
+  };
+
+  function carParksHtml(w){
+    const s = cpState[w.id];
+    if (!s) return `<button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Find car parks near the start</button>`;
+    if (s.status === "loading") return `<p class="plan-est">Looking up car parks near the start pin…</p>`;
+    if (s.status === "error") return `<p class="plan-est plan-cp-err">${esc(CP_ERRORS[s.code] || CP_ERRORS.failed)}</p><button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Try again</button>`;
+    if (!s.parks.length) return `<p class="plan-est">OS lists no public car park within ${CarParks.fmtDist(s.radiusM)} of this start pin. Check the route guide for where to park.</p>`;
+    const items = s.parks.map((p, i) => {
+      const where = `${CarParks.fmtDist(p.distM)} ${CarParks.compass(p.bearing)} of the start pin`;
+      const grid = window.OSMap ? OSMap.gridRef(p.lat, p.lng, 8) : "";
+      return `<li>
+        <strong>${esc(p.name || "Public car park")}</strong> <span class="plan-cp-where">${esc(where)}</span>
+        <span class="plan-cp-links"><a href="${mapsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a>
+        <button type="button" class="hike-link" data-cp-host="${esc(w.id)}" data-cp-i="${i}">Host from here</button></span>
+        ${grid ? `<span class="plan-cp-grid">${esc(grid)}</span>` : ""}
+      </li>`;
+    }).join("");
+    return `<div class="plan-cp-box"><p class="plan-cp-h">Public car parks near the start pin</p><ul class="plan-cp-list">${items}</ul>
+      <p class="plan-est">From Ordnance Survey data${s.radiusM > 1500 ? `, widened to ${CarParks.fmtDist(s.radiusM)} because none were closer` : ""}. OS lists surveyed public car parks only: lay-bys, field parking and some small car parks may be missing, and nothing here says what a car park costs or when it closes, so check the signs.</p></div>`;
+  }
+
+  function paintCarParks(id){
+    const w = walks.find(x => x.id === id);
+    const box = document.querySelector(`[data-cp-for="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+    if (w && box) box.innerHTML = carParksHtml(w);
+  }
+
+  async function findCarParks(id, force){
+    const w = walks.find(x => x.id === id);
+    if (!w || !window.CarParks) return;
+    cpState[id] = { status: "loading" }; paintCarParks(id);
+    try {
+      const r = await CarParks.find({ key: w.start.key, lat: w.start.lat, lng: w.start.lng }, { force: !!force });
+      cpState[id] = { status: "ready", parks: r.parks, radiusM: r.radiusM };
+    } catch (err) {
+      cpState[id] = { status: "error", code: (err && err.code) || "failed" };
+    }
+    paintCarParks(id);
+  }
+
+  // "Host this walk": hand the walk to hike.html (hosted hikes) via sessionStorage. `start` overrides
+  // the pre-filled meeting point (used by "Host from here" on a car park).
+  function hostWalk(w, start){
+    const s = start || { name: w.start.name, lat: w.start.lat, lng: w.start.lng };
     try {
       sessionStorage.setItem("ww_host_walk", JSON.stringify({
         id: w.id, label: w.label, miles: w.miles, ascent: w.ascent, fells: w.fells.map(f => f.name),
         top_name: w.top.name, top_m: w.top.m, top_lat: w.top.lat, top_lng: w.top.lng,
-        start_name: w.start.name, start_lat: w.start.lat, start_lng: w.start.lng, url: w.url || null
+        start_name: s.name, start_lat: s.lat, start_lng: s.lng, url: w.url || null
       }));
     } catch (err) { return; }
     window.location.href = "hike.html?new=1";
+  }
+
+  document.getElementById("planner-results").addEventListener("click", (e) => {
+    const find = e.target.closest("[data-find-carparks]");
+    if (find) { const st = cpState[find.dataset.findCarparks]; findCarParks(find.dataset.findCarparks, !!(st && st.status === "error")); return; }   // "Try again" skips the saved copy
+    const cp = e.target.closest("[data-cp-host]");
+    if (cp) {
+      const w = walks.find(x => x.id === cp.dataset.cpHost), s = cpState[cp.dataset.cpHost];
+      const p = w && s && s.parks && s.parks[Number(cp.dataset.cpI)];
+      if (p) hostWalk(w, { name: (p.name || "Public car park") + " (from OS data)", lat: Number(p.lat.toFixed(5)), lng: Number(p.lng.toFixed(5)) });
+      return;
+    }
+    const b = e.target.closest("[data-host-walk]");
+    if (!b) return;
+    const w = walks.find(x => x.id === b.dataset.hostWalk);
+    if (w) hostWalk(w);
   });
 
   // ---------- startup ----------
