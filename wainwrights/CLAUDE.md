@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v8` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v9` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -528,3 +528,39 @@ not retried for 60 s.
 - **Later (asked for, not built):** a leaderboard heat map of where the community has climbed, and an offline emergency card
   (needs offline tiles/grid-ref helper in the service worker). `sw.js` is `wainwrights-beta-v8` (new files in SHELL, Leaflet
   precached); tiles and `api.os.uk` are never cached or intercepted.
+
+## Difficulty ratings: Effort and Technical (beta only) — 2026-11-06
+
+Built in `beta/`, **not promoted**. Two separate 1-5 grades for every peak and every walk (`beta/difficulty.js`, pure data +
+functions, no DOM at load). It is a **formula plus hand-tagged exceptions, not measured terrain data**; the technical grades are
+estimates from general knowledge of the routes, and the legend says so. Correct a grade by editing `TECH`, `EDGE` or `WALK_TECH`
+at the top of the file. When OS Terrain 50 slope stats exist per summit, they replace the height default in `techFor()` and no
+page changes.
+
+- **Effort** = Naismith time (3 mph + 1 h per 600 m), banded: under 2 h Gentle (1), 2-3.5 Moderate (2), 3.5-5 Strenuous (3),
+  5-6.5 Hard (4), over 6.5 Very hard (5). For a **walk**, its own miles and ascent. For a **peak**, the simplest sensible walk:
+  out and back from the nearest car park in `PLANNER_BASES` (honouring `PLANNER_BASE_OVERRIDES`), path = straight line x 1.5
+  (`PEAK_PATH_FACTOR`), ascent = summit minus the base's `elev`. So peaks only span Effort 1-3 (96 / 105 / 13 across the 214),
+  because no single peak from its nearest car park is a Hard day; walks span 2-5. A custom hike with no distance/ascent shows
+  "Effort: not rated".
+- **Technical** = ground and exposure: 1 easy paths, 2 steep or stony, 3 rough/loose/pathless, 4 Grade 1 scrambling, 5 exposed
+  scrambling. A **peak** shows its EASIEST normal way up (default 1 below 700 m, 2 at 700 m+, overridden by name in `TECH`:
+  15 fells at 3, a dozen low fells bumped to 2, remote or plain-walking high fells held at 1/2). Where a famous harder way
+  exists it is `EDGE` and shown as a range, e.g. Helvellyn **T2-4** (Striding Edge), Blencathra T3-5 (Sharp Edge), Pavey Ark
+  T3-4 (Jack's Rake), Scafell, Crinkle Crags (Bad Step), Bowfell (Climbers' Traverse), Catstycam, Helm Crag, Wetherlam. A
+  **walk** shows the hardest section of its standard route: `WALK_TECH` for 8 of the 17 named rounds, otherwise the hardest of
+  its summits' easiest-route grades (generated walks never use the edges). The hike page finds a named round's override by
+  matching `walk.label` against `PLANNER_WALKS`, because the hike snapshot carries no route id (no migration was needed).
+- **Where it shows:** tracker fell rows (compact "E2 T2-4" chip, with `aria-label`/`title` spelling it out) plus a key line above
+  the regions; planner walk cards (labelled badges, "?" opens the key) and two new sort options, Effort grade (orders by hours so
+  walks in one grade still sort sensibly) and Technical grade (grade first, effort breaks ties); the hike page card; and the OS
+  map, where a "Colour by Climbed / Effort / Technical" control recolours the markers from the same 5-step ramp (climbed becomes a
+  thick dark-green ring; a ramp legend appears; tooltips carry the grades). The ramp is also printed as numbers, so colour is
+  never the only signal on cards and chips (map markers rely on colour plus the tooltip). `Difficulty.showLegend()` is the key
+  popup (Esc, backdrop, focus returned).
+- **Not changed:** the planner's Best match score does not use difficulty (that would silently reorder everyone's results; add
+  it deliberately if wanted). Nothing is stored in the database.
+- **Tested:** all tag names checked against `fells-data.js` and `planner-walks.js` (none unknown); Node run of every fell and
+  named walk; headless Chromium against the mocked backend: chips on all 214 rows, legend and focus return, OS map colour modes
+  (ramp colours, thick ring on the climbed fell, restore to Climbed), planner sort both ways, hike card incl. a custom hike with
+  no distance. Not validated against anyone's real route knowledge: expect to correct some grades.

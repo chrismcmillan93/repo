@@ -26,7 +26,7 @@
   let selectedDay = null;
   let pairMode = false;
   let showAll = false;
-  let sortKey = "best";        // best | walk | drive | ascent
+  let sortKey = "best";        // best | walk | drive | ascent | effort | tech
   let sortDesc = false;        // for the non-"best" sorts: false = lowest first
   let expanded = false;        // "Show all" pressed for the current day
   const INITIAL_SHOWN = 8;
@@ -264,12 +264,15 @@
       if (driveMins != null) score -= driveMins * 0.15;
       if (tight) score -= 25;
       if (w.linear) score -= 5;
-      return { w, newFells, wx, d, spare, tight, score };
+      return { w, newFells, wx, d, spare, tight, score, diff: Difficulty.forWalk({ miles: w.miles, ascent: w.ascent, fells: w.fells, routeId: w.generated ? null : w.id }) };
     });
     const filtered = showAll ? rows : rows.filter(r => r.newFells.length);
     const list = filtered.length ? filtered : rows;
     if (!applySort || sortKey === "best") return list.sort((a, b) => b.score - a.score);
-    const val = r => sortKey === "walk" ? r.w.miles : sortKey === "ascent" ? r.w.ascent : (r.d ? r.d.miles : null);
+    const val = r => sortKey === "walk" ? r.w.miles : sortKey === "ascent" ? r.w.ascent
+      : sortKey === "effort" ? r.diff.effort && r.diff.effort.hours                       // continuous, so walks in one grade still order sensibly
+      : sortKey === "tech" ? r.diff.tech.grade * 100 + (r.diff.effort ? r.diff.effort.hours : 0)   // technical grade first, effort breaks ties
+      : (r.d ? r.d.miles : null);
     return list.sort((a, b) => {
       const x = val(a), y = val(b);
       if (x == null && y == null) return b.score - a.score;
@@ -443,6 +446,7 @@
       <article class="chal-card plan-walk">
         <h3><span class="plan-rank">${rank}</span>${esc(w.label)}</h3>
         <p class="plan-meta"><strong>${r.newFells.length} new</strong> of ${w.fells.length} fell${w.fells.length === 1 ? "" : "s"} · ${est}${w.miles} mi · ${est}${w.ascent} m ascent · ${fmtHours(w.hours)} walking${w.alltrails ? " · " + esc(w.alltrails.type.toLowerCase()) : w.linear ? " · one-way" : ""}</p>
+        ${Difficulty.fullHtml(r.diff)}
         ${w.alltrails ? `<p class="plan-est">AllTrails route: ${esc(w.alltrails.name)}</p>` : w.generated ? '<p class="plan-est">Suggested walk — distance, ascent and route are estimates. Plan the line on a map.</p>' : ""}
         ${wxTxt}
         <p class="plan-meta">Park: ${esc(w.start.name)} · ${driveTxt}</p>
@@ -454,7 +458,7 @@
       </article>`;
   }
 
-  const SORT_LABELS = { walk: ["Shortest first", "Longest first"], drive: ["Nearest first", "Furthest first"], ascent: ["Least climb first", "Most climb first"] };
+  const SORT_LABELS = { walk: ["Shortest first", "Longest first"], drive: ["Nearest first", "Furthest first"], ascent: ["Least climb first", "Most climb first"], effort: ["Easiest first", "Hardest first"], tech: ["Easiest ground first", "Hardest ground first"] };
   function syncSortUi(){
     const btn = document.getElementById("planner-sort-dir");
     btn.style.display = sortKey === "best" ? "none" : "";

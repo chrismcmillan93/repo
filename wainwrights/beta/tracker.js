@@ -387,6 +387,7 @@
                + challengeBadge
                + routeBadge
                + escapeHtml(f.name)
+               + diffChip(f)
                + '<span class="fell-links">'
                + '<a href="' + osm + '" target="_blank" rel="noopener noreferrer">Map</a>'
                + '<a href="' + at + '" target="_blank" rel="noopener noreferrer">Routes</a>'
@@ -404,6 +405,10 @@
     });
 
     container.innerHTML = html;
+  }
+
+  function diffChip(f){
+    return (typeof Difficulty !== "undefined") ? Difficulty.compactHtml(Difficulty.forFell(f)) : "";
   }
 
   // ---------- render: map ----------
@@ -487,15 +492,56 @@
     return v || fallback;
   }
 
+  // What the OS map markers are coloured by: "climbed" (default), or the fell's "effort" / "tech" grade.
+  let osColour = "climbed";
+
   function osMarkerStyle(f, done){
     const t = Math.max(0, Math.min(1, (f.m - 200) / 750));
-    return {
+    const base = {
       radius: 5 + t * 4,
       weight: done ? 2 : 1.5,
       color: done ? cssVar("--green-deep", "#24392a") : cssVar("--ink", "#262b20"),
       fillColor: done ? cssVar("--green", "#3f6b45") : "#ffffff",
       fillOpacity: done ? 0.95 : 0.55
     };
+    if(osColour !== "climbed" && typeof Difficulty !== "undefined"){
+      const d = Difficulty.forFell(f);
+      const g = osColour === "effort" ? (d.effort && d.effort.grade) : d.tech.grade;
+      if(g){
+        base.fillColor = Difficulty.RAMP[g][0];
+        base.fillOpacity = 0.95;
+        // colour carries the grade, so "climbed" moves to a thick dark-green ring
+        base.weight = done ? 3.5 : 1.5;
+        base.color = done ? cssVar("--green-deep", "#24392a") : "#262b20";
+      }
+    }
+    return base;
+  }
+
+  function osTooltip(f){
+    if(typeof Difficulty === "undefined") return f.name + " · " + f.m + " m";
+    const d = Difficulty.forFell(f);
+    return f.name + " · " + f.m + " m · " + (d.effort ? "E" + d.effort.grade + " " : "") + "T" + d.tech.grade + (d.tech.edge ? "–" + d.tech.edge.grade : "");
+  }
+
+  function paintRamp(){
+    const ramp = document.getElementById("map-ramp");
+    if(!ramp) return;
+    if(osColour === "climbed" || typeof Difficulty === "undefined"){ ramp.style.display = "none"; return; }
+    ramp.innerHTML = '<span>' + (osColour === "effort" ? "Effort" : "Technical") + ' (1 easier &rarr; 5 harder)</span>' +
+      [1,2,3,4,5].map(g => '<span class="map-ramp-step" style="background:' + Difficulty.RAMP[g][0] + ';color:' + Difficulty.RAMP[g][1] + '">' + g + '</span>').join("") +
+      '<span>thick ring = climbed</span>';
+    ramp.style.display = "";
+  }
+
+  function setOsColour(mode){
+    osColour = mode;
+    document.querySelectorAll("#map-colour [data-colour]").forEach(b=>{
+      const on = b.dataset.colour === mode;
+      b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", String(on));
+    });
+    updateOsMarkers();
+    paintRamp();
   }
 
   function updateOsMarkers(){
@@ -510,7 +556,7 @@
     FELLS_DATA.forEach((area, ai)=> area.fells.forEach((f, fi)=>{
       if(f.lat == null || f.lng == null) return;
       const marker = L.circleMarker([f.lat, f.lng], osMarkerStyle(f, !!state[f.name])).addTo(osMap);
-      marker.bindTooltip(f.name + " · " + f.m + " m", { direction: "top", offset: [0, -4] });
+      marker.bindTooltip(osTooltip(f), { direction: "top", offset: [0, -4] });
       marker.on("click", ()=> jumpToPeak(ai, fi));
       osMarkers.push({marker, f});
       pts.push([f.lat, f.lng]);
@@ -548,6 +594,9 @@
       }
     }
     osMode = wantOs;
+    const colourBar = document.getElementById("map-colour");
+    if(colourBar) colourBar.style.display = wantOs ? "" : "none";
+    if(!wantOs) { const r = document.getElementById("map-ramp"); if(r) r.style.display = "none"; } else paintRamp();
     el.style.display = wantOs ? "" : "none";
     sketch.style.display = wantOs ? "none" : "";
     document.querySelectorAll(".map-card .map-caption").forEach(c => c.style.display = wantOs ? "none" : "");
@@ -563,6 +612,7 @@
     if(bSketch) bSketch.addEventListener("click", ()=> setMapMode(false));
     if(bOs) bOs.addEventListener("click", ()=> setMapMode(true));
     if(where) where.addEventListener("click", ()=> OSMap.whereAmI());
+    document.querySelectorAll("#map-colour [data-colour]").forEach(b=> b.addEventListener("click", ()=> setOsColour(b.dataset.colour)));
     let saved = null;
     try { saved = localStorage.getItem(MODE_KEY); } catch(e){}
     if(saved === "os") setMapMode(true);

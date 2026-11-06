@@ -1584,3 +1584,28 @@
 .live-state.is-bad{ color:var(--rust); }
 .live-dot{ width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
 .live-pin{ font:600 11px/1 var(--font-mono); white-space:nowrap; }
+
+/* ---------- difficulty: Effort and Technical grades (beta) ---------- */
+.diff-pill{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; font-weight:700; letter-spacing:0.02em; line-height:1; padding:3px 6px; border-radius:3px; border:1px solid rgba(38,43,32,.28); white-space:nowrap; }
+.diff-compact{ display:inline-flex; gap:3px; margin-left:8px; vertical-align:middle; }
+.diff-full{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin:8px 0; }
+.diff-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); }
+.diff-badge .diff-pill{ font-size:11.5px; padding:4px 8px; }
+.diff-name{ color:var(--ink); }
+.diff-none{ color:var(--ink-faint); font-style:italic; }
+.diff-note{ flex:0 0 100%; margin:0; font-size:12px; color:var(--ink-faint); line-height:1.45; }
+.diff-help{ font-family:var(--font-mono); font-size:11px; font-weight:700; width:20px; height:20px; padding:0; border-radius:50%; border:1px solid var(--line-strong); background:var(--paper-card); color:var(--ink-soft); cursor:pointer; }
+.diff-keyline .diff-help{ width:auto; height:auto; border-radius:var(--radius); padding:3px 8px; font-weight:600; }
+.diff-keyline .diff-compact{ margin:0 6px 0 0; }
+.diff-key{ list-style:none; padding:0; margin:6px 0 12px; }
+.diff-key li{ margin-bottom:7px; }
+.diff-key .diff-pill{ min-width:28px; text-align:center; margin-right:4px; }
+.diff-fine{ font-size:12px; color:var(--ink-faint); }
+.cell-name .diff-compact{ margin-left:6px; }
+
+.map-colour{ display:flex; align-items:center; flex-wrap:wrap; gap:0; margin:0 2px 8px; }
+.map-colour-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-right:8px; }
+.map-colour .map-mode{ border:1px solid var(--line-strong); }
+.map-colour .map-mode + .map-mode{ margin-left:-1px; }
+.map-ramp{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:0 2px 8px; }
+.map-ramp-step{ display:inline-block; min-width:22px; text-align:center; padding:3px 0; border:1px solid rgba(38,43,32,.28); font-weight:700; }
