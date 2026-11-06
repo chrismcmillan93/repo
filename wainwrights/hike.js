@@ -437,6 +437,7 @@
       <article class="chal-card hike-card">
         <p class="plan-meta">${statusBadge} <strong>${esc(fmtWhen(h.start_at))}</strong> · ${esc(h.area)} · hosted by ${esc(h.host_name)}${h.team_name ? " for " + esc(h.team_name) : h.is_team_hike ? " for a team" : ""}</p>
         <p class="plan-meta">${[esc(w.label || ""), w.miles != null ? w.miles + " mi" : "", w.ascent != null ? w.ascent + " m ascent" : "", h.turnaround_time ? "turn back at <strong>" + esc(h.turnaround_time) + "</strong>" : ""].filter(Boolean).join(" · ")}</p>
+        ${window.Difficulty ? Difficulty.fullHtml(Difficulty.forWalk({ miles: w.miles, ascent: w.ascent, fells: w.fells || [], label: w.label })) : ""}
         <p class="plan-meta">${h.approved_count} of ${h.spaces} places taken${left > 0 && h.status === "open" ? ` · ${left} left` : ""}</p>
         <div class="chal-fell-list">${fells}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">View the route ↗</a>` : ""}
@@ -444,11 +445,13 @@
         ${kit}
         ${detail}
       </article>
+      <div id="hike-live"></div>
       ${body}
       ${storyCardHtml()}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
+    if (window.HikeLive) HikeLive.mount(h, $("hike-live"));   // live map card (host and approved walkers, on the day)
   }
 
   function storyCardHtml(){

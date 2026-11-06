@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>html{background:#e8e2d0}</style>
+<title>The Wainwrights — Emergency card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="shared.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#24392a">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wainwrights">
+<!--
+  Deliberately no sign-in, no pwa.js and no network calls: this page has to work on a hill with no
+  signal and no valid login. pwa.js would cover the page with a "You're offline" notice, and the
+  sign-in check can fail offline. Everything it needs (fells-data.js, osmap.js for the grid
+  reference maths, this page) is precached by sw.js.
+-->
+</head>
+<body>
+<div class="wrap em-wrap">
+
+  <div class="topnav">
+    <span class="topnav-word">The Wainwrights</span>
+    <nav class="topnav-links"><a href="index.html">&larr; Back to the tracker</a></nav>
+  </div>
+
+  <div class="section-heading"><h2>Emergency card</h2><div class="rule"></div></div>
+  <p class="em-conn" id="em-conn" role="status"></p>
+
+  <div id="em-root"><noscript>This page needs JavaScript.</noscript></div>
+
+</div>
+<script src="fells-data.js"></script>
+<script src="osmap.js"></script>
+<script src="emergency.js"></script>
+</body>
+</html>

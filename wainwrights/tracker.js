@@ -387,6 +387,7 @@
                + challengeBadge
                + routeBadge
                + escapeHtml(f.name)
+               + diffChip(f)
                + '<span class="fell-links">'
                + '<a href="' + osm + '" target="_blank" rel="noopener noreferrer">Map</a>'
                + '<a href="' + at + '" target="_blank" rel="noopener noreferrer">Routes</a>'
@@ -404,6 +405,10 @@
     });
 
     container.innerHTML = html;
+  }
+
+  function diffChip(f){
+    return (typeof Difficulty !== "undefined") ? Difficulty.compactHtml(Difficulty.forFell(f)) : "";
   }
 
   // ---------- render: map ----------
@@ -466,6 +471,7 @@
 
     svg.outerHTML = s;
     const fresh = document.getElementById("fell-map");
+    if(fresh && osMode) fresh.style.display = "none";   // OS map is showing; the sketch stays in the page for the share image
     if(fresh){
       fresh.querySelectorAll(".peak-mark").forEach(g=>{
         g.addEventListener("click", ()=> jumpToPeak(parseInt(g.dataset.area,10), parseInt(g.dataset.fell,10)));
@@ -473,10 +479,150 @@
     }
   }
 
+  // ---------- OS map (beta) ----------
+  // An alternative to the sketch map: real OS Outdoor tiles with the same fells
+  // on top. The sketch <svg> stays in the page (hidden) because the Story share
+  // image is drawn from it. If OS tiles aren't available (not configured, or
+  // the token call fails) the toggle says so and the sketch stays up.
+  let osMap = null, osMarkers = [], osMode = false;
+  const MODE_KEY = "ww_map_mode";
+
+  function cssVar(name, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  // What the OS map markers are coloured by: "climbed" (default), or the fell's "effort" / "tech" grade.
+  let osColour = "climbed";
+
+  function osMarkerStyle(f, done){
+    const t = Math.max(0, Math.min(1, (f.m - 200) / 750));
+    const base = {
+      radius: 5 + t * 4,
+      weight: done ? 2 : 1.5,
+      color: done ? cssVar("--green-deep", "#24392a") : cssVar("--ink", "#262b20"),
+      fillColor: done ? cssVar("--green", "#3f6b45") : "#ffffff",
+      fillOpacity: done ? 0.95 : 0.55
+    };
+    if(osColour !== "climbed" && typeof Difficulty !== "undefined"){
+      const d = Difficulty.forFell(f);
+      const g = osColour === "effort" ? (d.effort && d.effort.grade) : d.tech.grade;
+      if(g){
+        base.fillColor = Difficulty.RAMP[g][0];
+        base.fillOpacity = 0.95;
+        // colour carries the grade, so "climbed" moves to a thick dark-green ring
+        base.weight = done ? 3.5 : 1.5;
+        base.color = done ? cssVar("--green-deep", "#24392a") : "#262b20";
+      }
+    }
+    return base;
+  }
+
+  function osTooltip(f){
+    if(typeof Difficulty === "undefined") return f.name + " · " + f.m + " m";
+    const d = Difficulty.forFell(f);
+    return f.name + " · " + f.m + " m · " + (d.effort ? "E" + d.effort.grade + " " : "") + "T" + d.tech.grade + (d.tech.edge ? "–" + d.tech.edge.grade : "");
+  }
+
+  function paintRamp(){
+    const ramp = document.getElementById("map-ramp");
+    if(!ramp) return;
+    if(osColour === "climbed" || typeof Difficulty === "undefined"){ ramp.style.display = "none"; return; }
+    ramp.innerHTML = '<span>' + (osColour === "effort" ? "Effort" : "Technical") + ' (1 easier &rarr; 5 harder)</span>' +
+      [1,2,3,4,5].map(g => '<span class="map-ramp-step" style="background:' + Difficulty.RAMP[g][0] + ';color:' + Difficulty.RAMP[g][1] + '">' + g + '</span>').join("") +
+      '<span>thick ring = climbed</span>';
+    ramp.style.display = "";
+  }
+
+  function setOsColour(mode){
+    osColour = mode;
+    document.querySelectorAll("#map-colour [data-colour]").forEach(b=>{
+      const on = b.dataset.colour === mode;
+      b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", String(on));
+    });
+    updateOsMarkers();
+    paintRamp();
+  }
+
+  function updateOsMarkers(){
+    osMarkers.forEach(({marker, f})=> marker.setStyle(osMarkerStyle(f, !!state[f.name])));
+  }
+
+  async function buildOsMap(){
+    const el = document.getElementById("os-map");
+    osMap = await OSMap.createMap(el);
+    if(!osMap) return false;
+    const pts = [];
+    FELLS_DATA.forEach((area, ai)=> area.fells.forEach((f, fi)=>{
+      if(f.lat == null || f.lng == null) return;
+      const marker = L.circleMarker([f.lat, f.lng], osMarkerStyle(f, !!state[f.name])).addTo(osMap);
+      marker.bindTooltip(osTooltip(f), { direction: "top", offset: [0, -4] });
+      marker.on("click", ()=> jumpToPeak(ai, fi));
+      osMarkers.push({marker, f});
+      pts.push([f.lat, f.lng]);
+    }));
+    osMap.fitBounds(pts, { padding: [24, 24] });
+    return true;
+  }
+
+  async function setMapMode(wantOs){
+    const sketch = document.getElementById("fell-map");
+    const el = document.getElementById("os-map");
+    const note = document.getElementById("os-map-note");
+    const bSketch = document.getElementById("map-mode-sketch");
+    const bOs = document.getElementById("map-mode-os");
+    if(!el || !sketch) return;
+    note.style.display = "none";
+    if(wantOs){
+      if(typeof L === "undefined" || typeof OSMap === "undefined"){
+        note.textContent = "The OS map couldn't load. Check your connection and reload.";
+        note.style.display = "";
+        wantOs = false;
+      } else {
+        el.style.display = "";            // must be visible before Leaflet measures it
+        if(!osMap){
+          bOs.disabled = true; bOs.textContent = "Loading…";
+          const ok = await buildOsMap();
+          bOs.disabled = false; bOs.textContent = "OS map";
+          if(!ok){
+            el.style.display = "none";
+            note.textContent = "The OS map isn't available right now, so you're seeing the sketch map.";
+            note.style.display = "";
+            wantOs = false;
+          }
+        } else osMap.invalidateSize();
+      }
+    }
+    osMode = wantOs;
+    const colourBar = document.getElementById("map-colour");
+    if(colourBar) colourBar.style.display = wantOs ? "" : "none";
+    if(!wantOs) { const r = document.getElementById("map-ramp"); if(r) r.style.display = "none"; } else paintRamp();
+    el.style.display = wantOs ? "" : "none";
+    sketch.style.display = wantOs ? "none" : "";
+    document.querySelectorAll(".map-card .map-caption").forEach(c => c.style.display = wantOs ? "none" : "");
+    bSketch.classList.toggle("is-on", !wantOs); bSketch.setAttribute("aria-pressed", String(!wantOs));
+    bOs.classList.toggle("is-on", wantOs);     bOs.setAttribute("aria-pressed", String(wantOs));
+    try { localStorage.setItem(MODE_KEY, wantOs ? "os" : "sketch"); } catch(e){}
+  }
+
+  function initMapTools(){
+    const bSketch = document.getElementById("map-mode-sketch");
+    const bOs = document.getElementById("map-mode-os");
+    const where = document.getElementById("where-btn");
+    if(bSketch) bSketch.addEventListener("click", ()=> setMapMode(false));
+    if(bOs) bOs.addEventListener("click", ()=> setMapMode(true));
+    if(where) where.addEventListener("click", ()=> OSMap.whereAmI());
+    document.querySelectorAll("#map-colour [data-colour]").forEach(b=> b.addEventListener("click", ()=> setOsColour(b.dataset.colour)));
+    let saved = null;
+    try { saved = localStorage.getItem(MODE_KEY); } catch(e){}
+    if(saved === "os") setMapMode(true);
+  }
+
   function renderAll(){
     renderHero();
     renderSkyline();
     renderMap();
+    updateOsMarkers();
     renderCharts();
     renderAreas();
     attachAreaEvents();
@@ -1091,6 +1237,7 @@
     attachSearchEvents();
     setupChallengeModal();
     setupRouteModal();
+    initMapTools();
     setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
     document.getElementById("export-btn").onclick = exportCsv;
