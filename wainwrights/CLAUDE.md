@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v6` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v7` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v8` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -473,3 +473,58 @@ the three differences listed at the top of this file.
   (simulated install prompt: button calls `prompt()` and closes the popup; Esc, backdrop
   and Close all close it; no chip when standalone or on production). Not tested: the real
   install flow on a phone.
+
+## OS map, "Where am I?" and the live hike map (beta only) — 2026-11-06
+
+Built in `beta/`, **not promoted**. Three features on Ordnance Survey (OS Data Hub) APIs. Docs: https://docs.os.uk/os-apis.
+
+**Credentials never reach the browser.** Edge Function `os-token` (`supabase/functions/os-token/index.ts`,
+verify_jwt false, authenticates the caller itself like `drive-times`) trades the project's `OS_API_KEY` +
+`OS_API_SECRET` secrets for a ~5-minute OAuth2 token and returns it to **signed-in users only** (OS's own rule:
+don't hand tokens to anonymous visitors). It caches the token in memory until it has under a minute left. The browser
+then calls `api.os.uk` directly with `Authorization: Bearer <token>` (OS's CORS preflight allows that header).
+**Not deployed yet and the two secrets aren't set** (needs the OS Data Hub project with OS Maps API and OS Names API added).
+Until then everything degrades quietly: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
+Where am I? still gives a grid ref and nearest summit, and the hike page shows the list without a map. A failed token call is
+not retried for 60 s.
+
+- **`beta/osmap.js`** (shared; needs Leaflet 1.9.4 from jsDelivr with SRI, loaded by `index.html` and `hike.html`):
+  `OSMap.createMap(el)` (OS **Outdoor_3857** raster tiles via a small `L.TileLayer` subclass that fetches each tile with the
+  bearer header and hands it to the `<img>` as a blob, retrying once on 401; tiles are OS OpenData up to zoom 16, so
+  `maxNativeZoom` is 16 and 17+ just scales up rather than touching Premium data), `OSMap.gridRef(lat, lng, digits)` (WGS84 to
+  OSGB36 Helmert + transverse Mercator, no library; checked against all 214 `gr` values in `fells-data.js`: 211 identical to
+  6 figures, 3 within 100 m, plus Ben Nevis), `OSMap.nearestFells`, and `OSMap.whereAmI()`.
+- **Attribution:** the map shows "Contains OS data © Crown copyright and database right <year>" plus a Terms link. **OS's branding
+  rules also want the OS API logo bottom-left and an error-reporting link; neither is in yet** (the logo zip is on
+  osdatahub.os.uk, which this environment couldn't reach). Add both before this goes to production.
+- **Tracker (`index.html`, `tracker.js`):** a Sketch / OS map toggle on the map card. The sketch `<svg id="fell-map">` stays in
+  the page (hidden) because the Story share image is drawn from it. Fell markers on the OS map are circles sized by height,
+  filled when ticked (`updateOsMarkers()` runs from `renderAll`), tap to jump to that fell in the list. The choice is remembered
+  in `localStorage.ww_map_mode`; OS tiles are only requested once someone chooses it.
+- **Where am I?** (button on the map card and on a live hike): 10-figure grid ref + 6-figure, E/N, lat/lng, accuracy, the 3
+  nearest summits with distance and compass point, nearest named place from OS Names (`/search/names/v1/nearest`, 1 km radius,
+  looked up again only after ~100 m of movement), "Copy grid ref" / "Copy full message" for reading to Mountain Rescue, and a 999
+  line. Position is never sent anywhere except the grid coordinate to OS Names. Grid ref and nearest summit work with no OS access at all.
+- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, not applied yet):**
+  on a hosted hike, the host and approved walkers get a "Live hike map" card from 3 h before the start to 18 h after. Strictly
+  opt-in per person per hike ("Share my location"); positions upload at most every 15 s (or 25 m of movement); everyone polls
+  every 20 s. A web page can only read GPS while open with the screen on, and the card says so (it's not a safety tracker). The
+  opt-in is remembered in `localStorage` (`ww_live_<hike id>`) for 24 h so reopening the page resumes. Table
+  `hike_live_positions` (one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
+  grants revoked) is reached only through `share_hike_position`, `stop_sharing_hike_position` and `get_hike_positions` (SECURITY
+  DEFINER, `authenticated` only). Reads are limited to the host and approved walkers and only show people who are still the host
+  or approved, updated in the last 3 h. Triggers clear rows when a hike stops being `open` (cancelled/completed) and when someone
+  stops being approved (withdrawn/removed). Names and pin labels are inserted as text, never HTML.
+- **Tested:** grid maths in Node; tracker and hike pages in headless Chromium against a mocked Supabase, OS tiles and OS Names
+  (token-only auth on every tile, 214 markers, fallback when the token call fails, location sheet, share/stop/resume, who must
+  not see the card, hostile names); the migration on a scratch Postgres 16 with stand-ins for `auth.users`, `hikes` and
+  `hike_attendees` (24 checks: stranger/pending/removed refused, host and approved walker allowed, window enforced, 5-decimal
+  rounding, stale and no-longer-approved rows hidden, direct table access and anon refused, stop/withdraw/cancel clear rows).
+  **Not tested:** the real OS token endpoint and live tiles (no key available), `os-token` itself (no Deno here), a real phone's
+  GPS, or two real accounts on the live database. Do the last with two accounts before telling anyone.
+- **To switch it on:** add OS Maps API + OS Names API to an OS Data Hub project, `supabase secrets set OS_API_KEY=... OS_API_SECRET=...`
+  on walking-up-hills, deploy `os-token` with verify_jwt false, apply the migration. Then check the key's usage limits in the Data Hub
+  (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
+- **Later (asked for, not built):** a leaderboard heat map of where the community has climbed, and an offline emergency card
+  (needs offline tiles/grid-ref helper in the service worker). `sw.js` is `wainwrights-beta-v8` (new files in SHELL, Leaflet
+  precached); tiles and `api.os.uk` are never cached or intercepted.

@@ -1540,3 +1540,47 @@
   .admin-bar.is-on{ color: #b3261e; border-left-color: #b3261e; }
   .admin-bar.is-here{ pointer-events: none; }
   .topnav-links{ order: 2; }
+
+/* ---------- OS map, Where am I?, live hike map (beta) ---------- */
+.map-tools{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:0 2px 8px; }
+.map-modes{ display:inline-flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden; }
+.map-mode{
+  font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:8px 14px;
+  background:var(--paper-card); color:var(--ink); border:0; cursor:pointer;
+}
+.map-mode + .map-mode{ border-left:1px solid var(--line-strong); }
+.map-mode.is-on{ background:var(--green-deep); color:var(--paper-card); }
+.map-mode:disabled{ opacity:.6; cursor:default; }
+.map-where{ padding:8px 12px; }
+.os-map, .live-map{ isolation:isolate; }   /* keep Leaflet's high z-index panes below modals and the top bar */
+.os-map{ width:100%; height:min(70vh,520px); min-height:320px; border:1px solid var(--line-strong); border-radius:var(--radius); background:var(--paper-deep); touch-action:none; }
+.map-note{ font-family:var(--font-mono); font-size:11px; color:var(--rust); margin:8px 2px 0; }
+.os-map .leaflet-tooltip{ font-family:var(--font-mono); font-size:11px; }
+.os-map .leaflet-control-attribution, .live-map .leaflet-control-attribution{ font-size:10px; }
+
+.where-ref{ font-family:var(--font-mono); font-size:26px; font-weight:700; color:var(--green-deep); letter-spacing:0.04em; margin:2px 0 4px; word-break:break-word; }
+.where-sub{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin:0 0 6px; }
+.where-status{ margin:4px 0; }
+.where-warn{ color:var(--rust); font-size:12.5px; margin:6px 0; }
+.where-place{ margin:10px 0 4px; }
+.where-h{ font-family:var(--font-display); font-size:14px; color:var(--green-deep); margin:14px 0 4px; }
+.where-fells{ margin:0; padding-left:18px; }
+.where-fells li{ margin-bottom:4px; }
+.where-actions{ display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 6px; }
+.where-sos{ font-size:12.5px; border-left:3px solid var(--rust); padding-left:10px; margin:12px 0 6px; color:var(--ink); }
+.where-fine{ font-size:11.5px; color:var(--ink-faint); margin:6px 0 14px; }
+
+.live-card{ margin-top:14px; }
+.live-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.live-lede{ font-size:13px; color:var(--ink-soft); line-height:1.5; margin:6px 0 10px; }
+.live-actions{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+.live-map{ width:100%; height:min(60vh,420px); min-height:280px; border:1px solid var(--line-strong); border-radius:var(--radius); margin-top:10px; touch-action:none; }
+.live-list{ list-style:none; padding:0; margin:10px 0 0; font-size:13px; }
+.live-list li{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid var(--line); }
+.live-list .is-stale{ opacity:.55; }
+.live-when{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); white-space:nowrap; }
+.live-state{ font-family:var(--font-mono); font-size:11.5px; margin:6px 0 0; }
+.live-state.is-on{ color:var(--green-deep); font-weight:600; }
+.live-state.is-bad{ color:var(--rust); }
+.live-dot{ width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.live-pin{ font:600 11px/1 var(--font-mono); white-space:nowrap; }

@@ -444,11 +444,13 @@
         ${kit}
         ${detail}
       </article>
+      <div id="hike-live"></div>
       ${body}
       ${storyCardHtml()}
       ${safetyHtml(false)}
       ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
+    if (window.HikeLive) HikeLive.mount(h, $("hike-live"));   // live map card (host and approved walkers, on the day)
   }
 
   function storyCardHtml(){

@@ -11,24 +11,28 @@
 //   itself never waits for this. Bump CACHE when the shell list changes.
 // - Only two kinds of request are handled: same-origin GETs inside this folder, and a
 //   short allow-list of third-party *libraries and fonts* (supabase-js on jsDelivr,
-//   Google Fonts), which are public and not user data. Supabase API calls, Open-Meteo,
-//   postcodes.io and everything else are never intercepted or cached, so signed-in
+//   Google Fonts), which are public and not user data. Leaflet (the map library on jsDelivr)
+//   is cached the same way. OS map tiles and OS Names (api.os.uk), Supabase API calls,
+//   Open-Meteo, postcodes.io and everything else are never intercepted or cached, so signed-in
 //   data is always live.
 // - Same-origin cache keys drop the query string and fragment, so a hike's secret
 //   share token (hike.html?t=...) or an auth code is never written to Cache Storage.
 // - A page load with nothing cached and no network shows offline.html.
-const CACHE = "wainwrights-beta-v7";
+const CACHE = "wainwrights-beta-v8";
 const SHELL = [
   "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html", "admin.html", "admin.js",
   "shared.css", "shared-auth.js", "pwa.js", "fells-data.js", "story.js", "tracker.js",
-  "leaderboard.js", "challenges-data.js", "challenges.js", "planner-walks.js", "planner.js", "hike.js",
+  "leaderboard.js", "challenges-data.js", "challenges.js", "planner-walks.js", "planner.js", "hike.js", "osmap.js", "hike-live.js",
   "offline.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"
 ];
 const SUPABASE_JS = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+const LEAFLET_JS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+const LEAFLET_CSS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
 const THIRD_PARTY = [
   /^https:\/\/fonts\.googleapis\.com\//,
   /^https:\/\/fonts\.gstatic\.com\//,
-  /^https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@/
+  /^https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@/,
+  /^https:\/\/cdn\.jsdelivr\.net\/npm\/leaflet@1\.9\.4\//
 ];
 const CHECK_EVERY_MS = 30 * 1000;   // don't re-check the whole shell more often than this
 
@@ -50,7 +54,10 @@ self.addEventListener("install", event => {
           return fetch(u, { cache: "reload" }).then(r => { if (r.ok) return c.put(keyFor(u), r); });
         }),
         // The library every page needs first; fetched no-cors like the <script> tag does.
-        fetch(SUPABASE_JS, { mode: "no-cors" }).then(r => c.put(SUPABASE_JS, r)).catch(() => {})
+        fetch(SUPABASE_JS, { mode: "no-cors" }).then(r => c.put(SUPABASE_JS, r)).catch(() => {}),
+        // Leaflet (the OS map). The pages load these with integrity + crossorigin, so fetch them as CORS requests.
+        fetch(LEAFLET_JS, { mode: "cors" }).then(r => { if (r.ok) return c.put(LEAFLET_JS, r); }).catch(() => {}),
+        fetch(LEAFLET_CSS, { mode: "cors" }).then(r => { if (r.ok) return c.put(LEAFLET_CSS, r); }).catch(() => {})
       ]))
       .then(() => self.skipWaiting())
   );
