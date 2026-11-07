@@ -102,8 +102,8 @@
     const f = peopleFilter.trim().toLowerCase();
     const rows = f ? list.filter(p => [p.name, p.email, p.instagram_handle].some(v => String(v || "").toLowerCase().includes(f))) : list;
     return `<input class="lock-input" id="people-filter" type="search" placeholder="Search name, email or Instagram" value="${esc(peopleFilter)}">
-      <p class="chart-note">${rows.length} of ${list.length} people</p>` + (rows.length ? rows.map(p => `<div class="plan-card admin-item">
-      <div class="admin-head"><strong>${esc(p.name || "(no name)")}</strong> ${p.on_leaderboard ? badge("leaderboard", "is-good") : ""}${p.suspended ? " " + badge("suspended", "is-bad") : ""}${p.is_admin ? " " + badge("admin", "is-fair") : ""}</div>
+      <p class="chart-note">${rows.length} of ${list.length} people · the beta site (/beta/) is only open to admins and people with beta access, which you switch here</p>` + (rows.length ? rows.map(p => `<div class="plan-card admin-item">
+      <div class="admin-head"><strong>${esc(p.name || "(no name)")}</strong> ${p.on_leaderboard ? badge("leaderboard", "is-good") : ""}${p.suspended ? " " + badge("suspended", "is-bad") : ""}${p.is_admin ? " " + badge("admin", "is-fair") : ""}${!p.is_admin && p.beta_access ? " " + badge("beta access", "is-good") : ""}</div>
       <p class="plan-meta">${esc(p.email || "no email")} ${igLink(p.instagram_handle)}</p>
       <p class="chart-note">Joined ${esc(fmt(p.created_at))} · last sign-in ${esc(fmt(p.last_sign_in_at))} · ${p.fells} fells · ${p.hikes_hosted} hike${p.hikes_hosted === 1 ? "" : "s"} hosted${p.suspended && p.suspended_reason ? " · suspended: " + esc(p.suspended_reason) : ""}</p>
       <div class="hike-actions">
@@ -112,6 +112,7 @@
         ${p.on_leaderboard ? `<button type="button" class="btn hike-small" data-act="remove-board" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Remove from leaderboard…</button>` : ""}
         ${p.is_admin ? "" : p.suspended ? `<button type="button" class="btn hike-small" data-act="unsuspend" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Unsuspend</button>` : `<button type="button" class="btn hike-small" data-act="suspend" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Suspend…</button>`}
         ${p.is_admin ? "" : `<button type="button" class="btn hike-small admin-danger" data-act="delete-user" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}" data-email="${esc(p.email || "")}" data-fells="${Number(p.fells) || 0}" data-hosted="${Number(p.hikes_hosted) || 0}">Delete user…</button>`}
+        ${p.is_admin ? "" : `<button type="button" class="btn hike-small" data-act="${p.beta_access ? "beta-off" : "beta-on"}" data-id="${esc(p.user_id)}" data-name="${esc(p.name || p.email || "")}">${p.beta_access ? "Remove beta access" : "Give beta access"}</button>`}
       </div></div>`).join("") : '<p class="chart-note">Nobody matches.</p>') + unconfirmedHtml();
   }
   // Accounts that never confirmed their email are left out of the list above. They can be shown here, and deleted.
@@ -244,6 +245,10 @@
     }
     if (a === "unsuspend") {
       return guard(btn, async () => { await rpc("admin_set_suspended", { p_user_id: id, p_suspended: false, p_reason: null }); flash(name + " unsuspended."); await refresh(); });
+    }
+    if (a === "beta-on" || a === "beta-off") {
+      const on = a === "beta-on";
+      return guard(btn, async () => { await rpc("admin_set_beta_access", { p_user_id: id, p_on: on }); flash(name + (on ? " can now open the beta." : " can no longer open the beta.")); await refresh(); });
     }
     if (a === "delete-user") {
       const email = btn.dataset.email || "", fells = Number(btn.dataset.fells) || 0, hosted = Number(btn.dataset.hosted) || 0;
