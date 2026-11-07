@@ -1,0 +1,45 @@
+# Deploys the Wainwrights app (the wainwrights/ folder, as-is) to Azure Static Web Apps.
+# No build step: the folder is published exactly as it is in the repo.
+# Only runs when something under wainwrights/ (or this file) changes, so the other
+# apps in the repo (goals, thailand, usa, ...) never trigger or touch this.
+#
+# Needs one repository secret: AZURE_STATIC_WEB_APPS_API_TOKEN
+# (the Static Web App's deployment token: Azure portal -> the app -> Overview ->
+# "Manage deployment token").
+
+name: Deploy Wainwrights to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wainwrights/**"
+      - ".github/workflows/azure-static-web-apps-wainwrights.yml"
+  workflow_dispatch:
+
+# One deploy at a time; a newer push replaces one still waiting.
+concurrency:
+  group: azure-static-web-apps-wainwrights
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "wainwrights"
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true

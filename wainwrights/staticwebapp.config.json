@@ -1,0 +1,21 @@
+{
+  "routes": [
+    { "route": "/beta", "redirect": "/beta/", "statusCode": 301 },
+    { "route": "/supabase/*", "statusCode": 404 },
+    { "route": "/CLAUDE.md", "statusCode": 404 },
+    { "route": "/icons/*", "headers": { "Cache-Control": "public, max-age=86400" } }
+  ],
+  "responseOverrides": {
+    "404": { "rewrite": "/404.html" }
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-cache",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Permissions-Policy": "geolocation=(self), camera=(), microphone=()"
+  },
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  }
+}
