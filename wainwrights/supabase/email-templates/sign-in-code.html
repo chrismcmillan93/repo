@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Your Wainwrights sign-in code</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f1ea;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your sign-in code is {{ .Token }}. It works once and expires soon.</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f1ea;">
+<tr><td align="center" style="padding:24px 12px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:480px;background:#ffffff;border-radius:8px;">
+    <tr><td style="padding:24px 28px 8px;font-family:Georgia,'Times New Roman',serif;font-size:20px;color:#2b3a2f;">The Wainwrights</td></tr>
+    <tr><td style="padding:8px 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#222222;">
+      Hi, here is your code to sign in to the Wainwrights app. Type it into the app on the screen where you asked for it.
+    </td></tr>
+    <tr><td align="center" style="padding:20px 28px;">
+      <div style="font-family:'Courier New',Courier,monospace;font-size:34px;letter-spacing:6px;font-weight:bold;color:#2b3a2f;background:#eef2ea;border-radius:6px;padding:14px 10px;">{{ .Token }}</div>
+    </td></tr>
+    <tr><td style="padding:0 28px 8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#444444;">
+      The code works once and expires after an hour. If you didn't ask to sign in, you can ignore this email and nothing will happen. Never share this code with anyone.
+    </td></tr>
+    <tr><td style="padding:16px 28px 24px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#777777;border-top:1px solid #eeeeee;">
+      Sent by Walking Up Hills because this address was entered at wainwrights.walkinguphills.co.uk. Replies to this email are not read.
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>
