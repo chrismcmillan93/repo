@@ -527,6 +527,15 @@ The OpenStreetMap car park results (see the car park finder section) now also sh
 - **Tested:** headless Chromium with the mocked Overpass service (lookup then map, map then lookup, picker with no saved results and with saved results, tapping the list and the marker,
   typed note kept, no lookup before tapping). Not promoted to production.
 
+## Milestones and the countdown (2026-11-07) — beta
+
+- **Countdown on the tracker:** under the hero numbers, "9 fells to go until 10 fells" with a bar from the last milestone to the next (`renderMilestone` in `tracker.js`). Milestones are
+  `MILESTONES = [10, 25, 50, 75, 100, 107, 125, 150, 175, 200, 214]` (107 is halfway). At 214 it says "All 214 climbed. Wainwright complete!".
+- **Milestone card:** once you've passed the first milestone a "Share my N fells milestone" button appears; it draws `WWStory.milestoneCard` (`story.js`): the milestone you last passed
+  in a big progress ring, climbed / complete / elevation, and a "NEXT UP" panel with the countdown bar. It always shows the **current** milestone and countdown (the date on it is the day you
+  share it, not the day you passed it: older ticks have no timestamp, so the real date can't always be known).
+- **Tested:** headless Chromium (countdown text and bar, no button before the first milestone, three rendered cards viewed by eye: 50, halfway, all 214). Not promoted to production.
+
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 
 "Sort by" under the planner controls: Best match (the default scored ranking),

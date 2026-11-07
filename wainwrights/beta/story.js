@@ -503,5 +503,51 @@
     }
   }
 
-  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, share, run, _test: { routeOrder, resolveFells, flatten, tickOrderIsReal } };
+  // milestone: the last milestone you passed (10, 25, 50 ... halfway, all 214) in a big ring, and a countdown to the next one.
+  // d = { reached, title, dateLabel, climbed, total, percent, elevation, next, nextLabel, toGo, prev }
+  async function milestoneCard(d){
+    await ensureFonts();
+    const { canvas, ctx } = newCard();
+    let y = heading(ctx, TOP, "MILESTONE", d.title, d.dateLabel);
+    // the ring: how much of the 214 is done, with the milestone number inside
+    const cx = W / 2, R = 230, cy = y + R + 40, LW = 44;
+    ctx.lineWidth = LW; ctx.lineCap = "round";
+    ctx.strokeStyle = C.paperDeep; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    const frac = Math.max(0.004, Math.min(1, d.climbed / d.total));
+    ctx.strokeStyle = C.green; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+    ctx.lineCap = "butt";
+    ctx.textAlign = "center"; ctx.fillStyle = C.greenDeep;
+    ctx.font = "700 210px " + SERIF; ctx.fillText(String(d.reached), cx, cy + 62);
+    ctx.fillStyle = C.inkSoft; ctx.font = "400 26px " + MONO;
+    spaced(ctx, d.reached === d.total ? "ALL CLIMBED" : "FELLS CLIMBED", cx, cy + 118, 3);
+    y = cy + R + LW / 2 + 36;
+    y = stats(ctx, y, [
+      { v: d.climbed + " / " + d.total, l: "CLIMBED" },
+      { v: d.percent + "%", l: "COMPLETE" },
+      { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }
+    ]);
+    // countdown to the next milestone
+    const ph = 228;
+    panel(ctx, y, ph);
+    ctx.textAlign = "left"; ctx.fillStyle = C.green; ctx.font = "700 26px " + MONO;
+    spaced(ctx, d.next ? "NEXT UP" : "WAINWRIGHT COMPLETE", M + 8, y + 52, 4, "left");
+    if(d.next){
+      ctx.font = "700 62px " + SERIF; ctx.fillStyle = C.greenDeep; ctx.textAlign = "left";
+      ctx.fillText(d.nextLabel, M + 8, y + 128);
+      ctx.textAlign = "right"; ctx.font = "700 40px " + MONO; ctx.fillStyle = C.green;
+      ctx.fillText(d.toGo + " to go", W - M - 8, y + 124);
+      const bx = M + 8, bw = W - (M + 8) * 2, by = y + 164;
+      ctx.fillStyle = C.paperDeep; ctx.fillRect(bx, by, bw, 30);
+      const span = Math.max(1, d.next - d.prev), done = Math.max(0, Math.min(1, (d.climbed - d.prev) / span));
+      ctx.fillStyle = C.green; ctx.fillRect(bx, by, Math.max(8, bw * done), 30);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, 30);
+    } else {
+      ctx.textAlign = "left"; ctx.font = "italic 500 40px " + SERIF; ctx.fillStyle = C.inkSoft;
+      ctx.fillText("Every fell in the Lakeland guides.", M + 8, y + 130);
+    }
+    footer(ctx);
+    return toBlob(canvas);
+  }
+
+  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, milestoneCard, share, run, _test: { routeOrder, resolveFells, flatten, tickOrderIsReal } };
 })();

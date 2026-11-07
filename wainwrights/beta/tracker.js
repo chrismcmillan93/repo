@@ -261,12 +261,53 @@
 
   // ---------- render: hero ----------
 
+  // Milestones: the fell counts that get a card and a countdown. 107 is halfway (half of 214).
+  const MILESTONES = [10, 25, 50, 75, 100, 107, 125, 150, 175, 200, 214];
+  const milestoneLabel = n => n === 107 ? "halfway (107 fells)" : n === 214 ? "all 214" : n + " fells";
+  const milestoneTitle = n => n === 107 ? "Halfway there" : n === 214 ? "All 214 done" : n + " fells";
+  function milestoneInfo(climbed){
+    let prev = 0, next = null;
+    for(const m of MILESTONES){ if(m <= climbed) prev = m; else { next = m; break; } }
+    return { prev, next, toGo: next ? next - climbed : 0 };
+  }
+  // The countdown under the hero numbers: "12 to go until 50 fells", a bar from the last milestone to the next, and (once you have passed one) a button for the card.
+  function renderMilestone(){
+    const el = document.getElementById("milestone");
+    if(!el) return;
+    const { climbed } = computeCounts();
+    const m = milestoneInfo(climbed);
+    const text = document.getElementById("milestone-text"), fill = document.getElementById("milestone-fill"), btn = document.getElementById("share-milestone-btn");
+    if(m.next){
+      text.innerHTML = '<strong>' + m.toGo + (m.toGo === 1 ? " fell" : " fells") + ' to go</strong> until ' + escapeHtml(milestoneLabel(m.next));
+      fill.style.width = Math.max(2, Math.round(((climbed - m.prev) / (m.next - m.prev)) * 100)) + "%";
+    } else {
+      text.innerHTML = '<strong>All ' + TOTAL + ' climbed.</strong> Wainwright complete!';
+      fill.style.width = "100%";
+    }
+    el.style.display = "";
+    if(btn){ btn.style.display = m.prev ? "" : "none"; btn.textContent = "Share my " + (m.prev ? milestoneLabel(m.prev).replace(" (107 fells)", "") : "") + " milestone"; }
+  }
+  function shareMilestoneCard(){
+    const btn = document.getElementById("share-milestone-btn");
+    WWStory.run(btn, async ()=>{
+      const c = computeCounts(), m = milestoneInfo(c.climbed);
+      if(!m.prev) throw new Error("no milestone yet");
+      return WWStory.milestoneCard({
+        reached: m.prev, title: milestoneTitle(m.prev),
+        dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
+        climbed: c.climbed, total: TOTAL, percent: c.percent, elevation: c.elevation,
+        next: m.next, nextLabel: m.next ? milestoneTitle(m.next) : "", toGo: m.toGo, prev: m.prev
+      });
+    }, "wainwrights-milestone.jpg", "My Wainwrights milestone");
+  }
+
   function renderHero(){
     const { climbed, remaining, percent, elevation } = computeCounts();
     document.getElementById("stat-climbed").innerHTML = climbed + "<small> / " + TOTAL + "</small>";
     document.getElementById("stat-remaining").textContent = remaining;
     document.getElementById("stat-percent").textContent = percent + "%";
     document.getElementById("stat-elevation").textContent = elevation.toLocaleString() + "m";
+    renderMilestone();
   }
 
   function renderSkyline(){
@@ -1410,6 +1451,7 @@
     document.getElementById("export-btn").onclick = exportCsv;
     document.getElementById("share-btn").onclick = shareProgressCard;
     document.getElementById("share-today-btn").onclick = shareTodayCard;
+    const msb = document.getElementById("share-milestone-btn"); if(msb) msb.onclick = shareMilestoneCard;
     refreshTodayButton();
     subscribeRealtime(user.id);
 
