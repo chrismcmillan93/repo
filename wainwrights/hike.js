@@ -103,6 +103,11 @@
   // A plain Google Maps pin link (parsePoint can read the coordinates back out of it).
   const pinLink = (lat, lng) => `https://www.google.com/maps/search/?api=1&query=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
   const mapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&travelmode=driving`;
+  const appleUrl = (lat, lng) => `https://maps.apple.com/?daddr=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&dirflg=d`;
+  const pickHtml = inputId => `<div class="hike-pick"><button type="button" class="btn hike-small" data-action="pick-point" data-for="${inputId}" aria-expanded="false">Pick on the map</button>
+    <div class="hike-pick-box" id="pick-${inputId}" hidden><div class="hike-pick-map"></div><p class="chart-note hike-pick-cap">Tap the map where people should meet (drag the pin to adjust). Put it on the car park or lay-by itself, because navigation apps route to the nearest road.</p><div class="hike-parks" data-parks-for="${inputId}"></div></div></div>`;
+  let pickSearch = null;     // where car parks are looked up from the create form's picker: { key, lat, lng } (the walk's start pin)
+  let pickFellNames = [];   // the walk's fells (or a function returning them), shown as context on the picker
   const localISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hikeLink = t => location.origin + location.pathname.replace(/[^/]*$/, "") + "hike.html?t=" + encodeURIComponent(t);
 
@@ -250,7 +255,7 @@
         <div class="hike-form-fells">
           <h3 class="hike-sub">Which Wainwrights?</h3>
           <input class="lock-input" id="f-search" type="search" placeholder="Search fells…" autocomplete="off">
-          <p class="chart-note" id="f-count">No fells picked yet. Up to 30.</p>
+          <p class="chart-note" id="f-count">No fells picked yet. Up to 50.</p>
           <div id="f-list">${books}</div>
         </div>
         <label>Distance in miles (optional)<input class="lock-input" id="n-miles" type="number" min="1" max="200" step="0.5" inputmode="decimal"></label>
@@ -259,6 +264,7 @@
         <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}"></label>
         <label>Places (not counting you)<input class="lock-input" id="n-spaces" type="number" min="1" max="20" value="4"></label>
         <label>Meeting point — Google Maps link or "lat, lng" (required; in Google Maps press and hold the car park, then copy the coordinates). Only approved walkers see it.<input class="lock-input" id="n-point" placeholder="54.5436, -2.9490"></label>
+        ${pickHtml("n-point")}
         <label>Meeting point note<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park"></label>
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
@@ -273,7 +279,7 @@
     const picks = () => Array.from(document.querySelectorAll(".f-pick:checked"));
     function refresh(){
       const n = picks().length;
-      $("f-count").textContent = n ? `${n} fell${n === 1 ? "" : "s"} picked${n > 30 ? " — too many, the limit is 30" : ""}.` : "No fells picked yet. Up to 30.";
+      $("f-count").textContent = n ? `${n} fell${n === 1 ? "" : "s"} picked${n > 50 ? " — too many, the limit is 50" : ""}.` : "No fells picked yet. Up to 50.";
       FELLS_DATA.forEach((b, bi) => {
         const c = document.querySelectorAll(`.f-pick[data-book="${bi}"]:checked`).length;
         const el = document.querySelector(`[data-count-for="${bi}"]`); if (el) el.textContent = c ? `· ${c} picked` : "";
@@ -285,6 +291,8 @@
       document.querySelectorAll(".fell-opt").forEach(l => { l.style.display = !q || l.dataset.name.includes(q) || l.querySelector("input").checked ? "" : "none"; });
       document.querySelectorAll(".fell-book").forEach(d => { d.open = !!q; });
     });
+    pickSearch = null;
+    pickFellNames = () => Array.from(document.querySelectorAll(".f-pick:checked")).map(i => i.value);   // the fells ticked so far
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(null)); });
   }
 
@@ -304,7 +312,8 @@
       <div class="section-heading"><h2>Host this walk</h2><div class="rule"></div></div>
       <div id="hike-msg" style="display:none;"></div>
       <form id="hike-new" class="plan-card hike-form">
-        <p class="plan-meta"><strong>${esc(walk.label)}</strong> · ${walk.miles} mi · ${walk.ascent} m · ${walk.fells.length} fell${walk.fells.length === 1 ? "" : "s"}</p>
+        <p class="plan-meta"><strong>${esc(walk.label)}</strong> · ${walk.miles != null ? walk.miles + " mi · " : ""}${walk.ascent != null ? walk.ascent + " m · " : ""}${walk.fells.length} fell${walk.fells.length === 1 ? "" : "s"}</p>
+        ${walk.note ? `<p class="chart-note">${esc(walk.note)}</p>` : ""}
         <label>Title<input class="lock-input" id="n-title" maxlength="80" value="${esc(walk.label)}"></label>
         <label>Area (shown to anyone with the link)<input class="lock-input" id="n-area" maxlength="60" value="${esc(area)}"></label>
         <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}" required></label>
@@ -312,8 +321,10 @@
         <label>Meeting point note (only approved walkers see this)<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park, by the toilets" value="${esc(walk.start_name || "")}"></label>
         ${walk.from_carpark && walk.start_lat != null && walk.start_lng != null
           ? `<label>Meeting point (the car park you picked: change the link if you want a different spot)<input class="lock-input" id="n-point" value="${esc(pinLink(walk.start_lat, walk.start_lng))}"></label>
+        ${pickHtml("n-point")}
         <p class="chart-note" id="n-point-open"><a class="plan-maps" id="n-point-link" href="${esc(pinLink(walk.start_lat, walk.start_lng))}" target="_blank" rel="noopener">Open this meeting point in Google Maps ↗</a></p>`
-          : `<label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>`}
+          : `<label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>
+        ${pickHtml("n-point")}`}
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
@@ -324,6 +335,9 @@
         <div class="share-row"><button class="btn" type="submit" id="n-submit">Create hike</button></div>
         <p class="chart-note">Your display name is shown to people who open the link. Anyone with the link can ask to join; you approve each person.</p>
       </form>`;
+    pickFellNames = walk.fells || [];
+    pickSearch = walk.search_lat != null ? { key: walk.search_key || "start", lat: Number(walk.search_lat), lng: Number(walk.search_lng) }
+      : walk.start_lat != null ? { key: "start", lat: Number(walk.start_lat), lng: Number(walk.start_lng) } : null;
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(walk)); });
     // keep the "Open in Google Maps" link in step with whatever is in the meeting point box
     const pointBox = $("n-point"), pointLink = $("n-point-link");
@@ -346,7 +360,7 @@
     if (custom) {
       const names = Array.from(document.querySelectorAll(".f-pick:checked")).map(x => x.value);
       if (!names.length) { flash("Pick at least one fell.", true); return; }
-      if (names.length > 30) { flash("A hike can include up to 30 fells.", true); return; }
+      if (names.length > 50) { flash("A hike can include up to 50 fells.", true); return; }
       const byName = {}; FELLS_DATA.forEach(b => b.fells.forEach(f => { byName[f.name] = f; }));
       const top = names.map(n => byName[n]).reduce((a, f) => (!a || f.m > a.m ? f : a), null);
       const miles = Number($("n-miles").value), ascent = Number($("n-ascent").value), url = $("n-url").value.trim();
@@ -359,9 +373,14 @@
     } else {
       lat = walk.start_lat; lng = walk.start_lng;
       if (pt) { lat = pt.lat; lng = pt.lng; }
+      // a walk handed over from the Challenges page has no highest-fell fields: work them out from the fell names
+      const byNameW = {}; FELLS_DATA.forEach(b => b.fells.forEach(f => { byNameW[f.name] = f; }));
+      const topW = walk.top_name ? null : walk.fells.map(n => byNameW[n]).filter(Boolean).reduce((a, f) => (!a || f.m > a.m ? f : a), null);
       snapshot = {
-        label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells, top_name: walk.top_name, top_m: walk.top_m,
-        top_lat: walk.top_lat, top_lng: walk.top_lng, start_name: walk.start_name, url: walk.url || null
+        label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells,
+        top_name: walk.top_name || (topW && topW.name), top_m: walk.top_m != null ? walk.top_m : (topW && topW.m),
+        top_lat: walk.top_lat != null ? walk.top_lat : (topW && topW.lat), top_lng: walk.top_lng != null ? walk.top_lng : (topW && topW.lng),
+        start_name: walk.start_name, url: walk.url || null
       };
     }
     const wa = $("n-wa").value.trim();
@@ -442,7 +461,8 @@
     const detail = priv ? `
       <div class="hike-private">
         <h3 class="hike-sub">Meeting point</h3>
-        <p><a class="plan-maps" href="${mapsUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions to the meeting point in Google Maps ↗</a></p>
+        <p><a class="plan-maps" href="${mapsUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions to the meeting point in Google Maps ↗</a><br><a class="plan-maps" href="${appleUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions in Apple Maps ↗</a></p>
+        ${window.OSMap ? `<p class="chart-note">Grid reference ${esc(OSMap.gridRef(Number(priv.meet_lat), Number(priv.meet_lng), 8))}</p>` : ""}
         ${priv.meet_note ? `<p>${esc(priv.meet_note)}</p>` : ""}
         ${priv.host_contact ? `<p><strong>Host contact:</strong> ${esc(priv.host_contact)}</p>` : ""}
         ${priv.whatsapp_url && waOk(priv.whatsapp_url) ? `<p><a class="btn" href="${esc(priv.whatsapp_url)}" target="_blank" rel="noopener noreferrer">Join the WhatsApp chat ↗</a></p>` : ""}
@@ -467,6 +487,7 @@
         <div id="hike-weather">${weatherHtml()}</div>
         ${kit}
         ${detail}
+        <div class="hike-mapwrap"><button type="button" class="btn hike-small" data-action="show-map" aria-expanded="false">Show map</button><div id="hike-map" hidden></div></div>
       </article>
       <div id="hike-live"></div>
       ${body}
@@ -591,6 +612,7 @@
         <label>Places<input class="lock-input" id="e-spaces" type="number" min="1" max="20" value="${h.spaces}"></label>
         <label>Meeting point note<input class="lock-input" id="e-note" maxlength="300" value="${esc(p.meet_note || "")}"></label>
         <label>Meeting point (Google Maps link or "lat, lng")<input class="lock-input" id="e-point" value="${esc(p.meet_lat != null ? Number(p.meet_lat).toFixed(5) + ", " + Number(p.meet_lng).toFixed(5) : "")}"></label>
+        ${pickHtml("e-point")}
         <label>${can("host_contact") ? "Your contact" : "Host's contact (only the host can change this)"}<input class="lock-input" id="e-contact" maxlength="120" value="${esc(p.host_contact || "")}" ${can("host_contact") ? "" : "disabled"}></label>
         <label>WhatsApp group invite link (only approved walkers see it; clear to remove)<input class="lock-input" id="e-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..." value="${esc(p.whatsapp_url || "")}"></label>
         <label>Turnaround time<input class="lock-input" id="e-turn" type="time" value="${esc(h.turnaround_time || "")}"></label>
@@ -615,6 +637,56 @@
     const a = btn.dataset.action, uid = btn.dataset.uid;
     if (a === "open-cancel") { const d = $("hike-cancel"); if (d) { d.open = true; d.scrollIntoView({ block: "center" }); } return; }
     if (a === "open-report") { $("hike-report").innerHTML = `<div class="plan-card hike-form"><label>What's wrong with this hike?<textarea class="lock-input hike-text" id="rep-reason" rows="3" maxlength="500"></textarea></label><div class="share-row"><button class="btn" data-action="send-report">Send report</button></div></div>`; return; }
+    if (a === "show-map") {
+      const box = $("hike-map");
+      if (!box.hidden) { box.hidden = true; btn.textContent = "Show map"; btn.setAttribute("aria-expanded", "false"); return; }
+      box.hidden = false; btn.textContent = "Hide map"; btn.setAttribute("aria-expanded", "true");
+      if (box.__map) { box.__map.invalidateSize(); return; }
+      if (box.dataset.busy) return;
+      box.dataset.busy = "1";
+      const pv = hike.private;
+      box.__map = await WWMaps.view(box, { fells: WWMaps.fells((hike.walk || {}).fells), meet: pv && pv.meet_lat != null ? { lat: Number(pv.meet_lat), lng: Number(pv.meet_lng) } : null });
+      delete box.dataset.busy;
+      return;
+    }
+    if (a === "pick-point") {
+      const inputId = btn.dataset.for, input = $(inputId), box = $("pick-" + inputId);
+      if (!input || !box) return;
+      if (!box.hidden) { box.hidden = true; btn.textContent = "Pick on the map"; btn.setAttribute("aria-expanded", "false"); return; }
+      box.hidden = false; btn.textContent = "Close the map"; btn.setAttribute("aria-expanded", "true");
+      if (box.__pick) { box.__pick.map.invalidateSize(); return; }
+      if (box.dataset.busy) return;
+      box.dataset.busy = "1";
+      const cur = parsePoint(input.value), cap = box.querySelector(".hike-pick-cap");
+      const names = hike && hike.walk ? hike.walk.fells : (typeof pickFellNames === "function" ? pickFellNames() : pickFellNames);
+      const show = (lat, lng) => {
+        const out = !WWMaps.inBox(lat, lng);
+        cap.className = "chart-note hike-pick-cap" + (out ? " is-bad" : "");
+        cap.textContent = out ? "That's outside the Lake District, where hikes can meet. Move the pin."
+          : "Pin at " + (window.OSMap ? "grid reference " + OSMap.gridRef(lat, lng, 8) + " · " : "") + lat.toFixed(5) + ", " + lng.toFixed(5) + ". Drag it to adjust.";
+      };
+      box.__pick = await WWMaps.pick(box.querySelector(".hike-pick-map"), {
+        lat: cur && cur !== "bad" ? cur.lat : null, lng: cur && cur !== "bad" ? cur.lng : null, fells: WWMaps.fells(names),
+        onChange: (lat, lng) => { input.value = lat.toFixed(5) + ", " + lng.toFixed(5); input.dispatchEvent(new Event("input", { bubbles: true })); show(lat, lng); }
+      });
+      if (cur && cur !== "bad") show(cur.lat, cur.lng);
+      box.__autoNote = $("n-note") ? $("n-note").value : "";
+      if (inputId === "n-point" && pickSearch && window.CarParks) setupParks(box);
+      delete box.dataset.busy;
+      return;
+    }
+    if (a === "pick-parks") {
+      const box = btn.closest(".hike-pick-box"), wrap = box.querySelector(".hike-parks");
+      wrap.innerHTML = '<p class="plan-est">Looking up car parks near the start pin… this can take a minute or two, so please keep this page open.</p>';
+      try { showParks(box, await CarParks.find(pickSearch, {})); }
+      catch (err) { wrap.innerHTML = `<p class="plan-est plan-cp-err">${err && err.code === "busy" ? "The map-data service is busy right now. Try again in a minute." : "Couldn't look up car parks. Try again later, or tap the map instead."}</p><button type="button" class="btn hike-small" data-action="pick-parks">Try again</button>`; }
+      return;
+    }
+    if (a === "pick-park") {
+      const box = btn.closest(".hike-pick-box"), p = box.__parks && box.__parks[Number(btn.dataset.i)];
+      if (p) choosePark(box, p);
+      return;
+    }
     if (a === "copy") { try { await navigator.clipboard.writeText(hikeLink(token)); flash("Link copied."); } catch (er) { flash("Couldn't copy — select the link and copy it by hand.", true); } return; }
     if (a === "story-invite") {
       try { await navigator.clipboard.writeText(hikeLink(token)); } catch (er) { /* link is also on the page */ }
@@ -686,6 +758,34 @@
       await notify(hike.id); await reload();
       flash(`Done — ${r.ticked} new tick${r.ticked === 1 ? "" : "s"} across ${r.people} ${r.people === 1 ? "person" : "people"}.`);
     });
+  }
+
+  // ---- car parks on the meeting-point picker: the same OpenStreetMap results the planner shows (saved on this device if it already looked them up)
+  function setupParks(box){
+    const wrap = box.querySelector(".hike-parks");
+    if (!wrap) return;
+    const cached = CarParks.cached(pickSearch);
+    if (cached) showParks(box, cached);
+    else wrap.innerHTML = '<button type="button" class="btn hike-small" data-action="pick-parks">Show car parks near the start</button>';
+  }
+  function showParks(box, r){
+    const wrap = box.querySelector(".hike-parks");
+    box.__parks = r.parks || [];
+    if (!box.__parks.length) { wrap.innerHTML = `<p class="plan-est">OpenStreetMap lists no car park within ${CarParks.fmtDist(r.radiusM)} of the start pin. Tap the map to place the meeting point.</p>`; return; }
+    box.__pick.setParks(box.__parks, p => choosePark(box, p));
+    wrap.innerHTML = `<p class="plan-cp-h">Car parks near the start (also numbered on the map): tap one to use it</p><ul class="hike-parks-list">${box.__parks.map((p, i) => {
+      const bits = [CarParks.fmtDist(p.distM) + " " + CarParks.compass(p.bearing)];
+      if (p.fee === "pay") bits.push(p.charge ? "Pay: " + p.charge : "Pay to park"); else if (p.fee === "free") bits.push("Free"); else if (p.fee === "donation") bits.push("Donation");
+      if (p.capacity) bits.push("about " + p.capacity + " spaces");
+      return `<li><button type="button" class="hike-link" data-action="pick-park" data-i="${i}">${i + 1}. ${esc(p.name)}</button> <span class="plan-cp-bits">${esc(bits.join(" · "))}</span></li>`;
+    }).join("")}</ul>
+      <p class="plan-est">From OpenStreetMap (<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>). Volunteers map these, so one can be missing or out of date: check the pin is on the right car park.</p>`;
+  }
+  function choosePark(box, p){
+    if (!box.__pick) return;
+    box.__pick.moveTo(Number(p.lat), Number(p.lng));
+    const note = $("n-note");
+    if (note && (!note.value.trim() || note.value === box.__autoNote)) { note.value = p.name + " (from OpenStreetMap)"; box.__autoNote = note.value; }
   }
 
   async function onChange(e){
