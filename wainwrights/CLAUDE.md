@@ -26,7 +26,7 @@ certificate itself. Paths in the app are all relative, so nothing inside it know
   `hike-reminders` is the same address (`hike-reminders` redeployed as v8; the live `hike-notify` still has the old fallback
   until it is next deployed from the repo, harmless while `SITE_URL` is set).
 - **Email:** Resend sends from `walkinguphills.co.uk` (domain verified at GoDaddy: DKIM, SPF, MX on `send`, DMARC). The sender
-  is `info@walkinguphills.co.uk` (a real mailbox, so replies are read) for both the hike emails (`HIKE_FROM_EMAIL`) and the
+  is `info@walkinguphills.co.uk` (a real mailbox, but replies are deliberately not handled: the sign-in email footer says "Replies to this email are not read") for both the hike emails (`HIKE_FROM_EMAIL`) and the
   Supabase sign-in emails (custom SMTP; sender address and name set in the Supabase dashboard, see "Sign-in is code-only" below).
 - **Beta:** stays a folder (`/beta/`), invited-only by the path-based gate in `beta/shared-auth.js`; its sign-in card shows a
   BETA badge. A separate beta app was considered and rejected for now (one sign-in, same promote process).
