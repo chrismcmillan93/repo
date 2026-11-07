@@ -42,6 +42,7 @@ const SUBJECTS: Record<string, string> = {
   cancelled: "Hike cancelled",
   ticked: "Fells ticked after your hike",
   undo: "A walker removed their hike ticks",
+  cohost: "Your role on a hike has changed",
 };
 
 Deno.serve(async (req) => {

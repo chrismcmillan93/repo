@@ -433,6 +433,41 @@ applied to walking-up-hills. The database side is live for everyone, **productio
 - Not built: email or push alerts when a report is filed; an "undo" for permanent deletes (the log keeps
   the details, not the data).
 
+## Co-hosts on hosted hikes (2026-11-07) — database live, page in beta only
+
+A host can make any **approved** attendee a co-host and pick one of three levels per person (no limit on how many). Migrations
+`20261107150000_wainwrights_hike_cohosts.sql` and `20261107150100_wainwrights_hike_cohosts_undo_notify.sql` (both applied; the second holds
+`undo_hike_ticks` alone because the Supabase connector asks for confirmation on anything containing a delete). Only `create or replace` and
+`add column`; nothing dropped.
+
+- **Data:** `hike_attendees.cohost_level` (`approvals` | `standard` | `full` | null). A co-host is still an approved attendee (takes a place,
+  sees the private details, can share their live position). `private.hike_rank(hike, user)` returns 4 host, 3 full, 2 standard, 1 approvals,
+  0 nobody; every `SECURITY DEFINER` function checks it instead of `host_id = uid`. A trigger (`cohost_reset`) clears the level whenever the
+  attendee's status stops being `approved` (withdrawn, removed, declined), so a level never outlives the place.
+- **Levels:** *approvals* = approve or decline requests. *standard* = that, plus edit details, WhatsApp link, remove people, tick the fells for
+  everyone. *full* = standard, plus cancel the hike, remove-and-block, and add or remove co-hosts. **Only the original host** can grant or
+  change `full`, change the host contact line (a co-host's edit leaves `hike_private.host_contact` alone), or remove another co-host. A co-host
+  can't change their own level or remove themself (they pull out with `withdraw_hike_place`). Blocks made by a full co-host go on the host's
+  list (`host_blocks.host_id = hikes.host_id`); `unblock_hiker` is still host-only.
+- **`set_hike_cohost(hike, user, level)`** (level null clears): errors `not_allowed`, `host_only`, `bad_level`, `cannot_change_self`, `is_host`,
+  `not_attendee`, `hike_closed`. Tells the person (`hike_notifications.kind = 'cohost'`, emailed by `hike-notify`, v12 adds the subject).
+- **Notifications:** `private.hike_notify_hosts(hike, kind, body, except)` sends to the host and every co-host. Used for new requests,
+  team-member joins, someone pulling out (not told to the person who did it) and a walker undoing their ticks. Edits and cancels by a
+  co-host tell the host (and everyone else, not the actor). The day-before reminder says "co-hosting" for co-hosts.
+- **`complete_hike`** by a co-host ticks for the host, the co-host and the people selected (the host is always included).
+- **Page (`beta/hike.js`):** `get_hike_by_token` now returns `is_manager`, a `can` object (approve, edit, remove, tick, cancel, block, cohosts,
+  grant_full, host_contact), `my_cohost_level` and a public `cohosts` list (names and levels, visible to anyone with the link, like the host name).
+  Managers see the host view gated by `can`; the Going list has a role selector per person (host: none / approvals / standard / full; full
+  co-host: no Full); a co-host sees a note with their level and "Pull out"; "hosted by X with Y, Z" on the card, the invite Story card, and
+  " · co-host" after names on the "we walked" card. `my_hikes` returns `cohost_level` (the list says "Co-hosting" and counts waiting requests).
+  **Not in production yet**: production's `hike.js` still keys everything on `is_host`, so a co-host there would see only the walker view (they
+  could not use their powers); promote `hike.js` and `shared.css` together.
+- **Tested:** in a rolled-back transaction on the live database with five real accounts (60 checks: every refusal per level, host contact kept,
+  notifications to the right people and not the actor, level cleared on removal and pulling out, ticks for host + co-host + selected, reminder
+  wording, public vs manager vs walker vs stranger views of `get_hike_by_token`, signed-out refused; nothing left behind, anon cannot execute
+  `set_hike_cohost`); the page in headless Chromium against mocks (host, full, standard, approvals-only, plain walker, tick form, role change
+  calls the function and reloads). **Not tried with two real accounts through the page.**
+
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 
 "Sort by" under the planner controls: Best match (the default scored ranking),
