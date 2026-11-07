@@ -284,6 +284,7 @@
   function mapPanel(ctx, y, h, o){
     const sel = resolveFells(o.fells);
     if(!sel.length) return null;
+    if(SKETCH) return sketchPanel(ctx, y, h, { fells: sel.map(p=> p.name), caption: o.caption || "Summits sketched in on the Lakeland map" });
     const lat0 = sel.reduce((s, p)=> s + p.lat, 0) / sel.length;
     const k = flatten(sel, lat0);
     let hint = null;
@@ -647,7 +648,7 @@
       const top = d.fells.slice().sort((a, b)=> b.m - a.m);
       return { kicker: d.kicker, title: plural(d.fells.length, "fell", "fells"), sub: d.range, big: { v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" },
         stats: [{ v: String(d.days), l: d.days === 1 ? "DAY OUT" : "DAYS OUT" }, { v: d.elevation.toLocaleString() + "m", l: "SUMMITS" }, { v: String(d.streak), l: d.streak === 1 ? "WEEK IN A ROW" : "WEEKS IN A ROW" }],
-        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), rowsAre: "fells", map: { fells: d.fells } };
+        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), rowsAre: "fells", map: null };
     }
     throw new Error("unknown card " + kind);
   }
@@ -701,6 +702,7 @@
 
   // all 214 fells as dots (climbed ones filled); `zoom` crops to the chosen fells and names the nearby ones
   function allMap(ctx, y, h, o){
+    if(SKETCH) return sketchPanel(ctx, y, h, { fells: (o.fells || []).map(n=> typeof n === "string" ? n : n.name), climbed: o.climbed, zoom: o.zoom, label: o.label, all: !o.zoom, caption: o.caption || (o.climbed ? "Inked in = climbed" : o.zoom ? "The fells around it" : "") });
     const idx = fellByName(), names = Object.keys(idx).filter(n=> idx[n].lat != null);
     const hi = (o.fells || []).map(n=> idx[typeof n === "string" ? n : n.name]).filter(Boolean);
     const lat0 = names.reduce((a, n)=> a + idx[n].lat, 0) / names.length, k = Math.cos(lat0 * D2R);
@@ -910,6 +912,72 @@
     footer(ctx); return canvas;
   }
 
+  // ---- Sketch map style (optional) ----
+  // The tracker page's engraved look: little mountain glyphs at each summit's position on the sketch map (the x/y in fells-data.js, the same
+  // coordinates the tracker uses), the fells in the card inked in and named, the rest faint. Pure drawing, no map data, so no licence question.
+  let SKETCH = false;
+  function sketchGlyph(ctx, x, y, t, gs, inked){
+    const w = (5 + t * 7) * gs, h = (7 + t * 11) * gs;
+    ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x - w * 0.25, y - h * 0.72); ctx.lineTo(x, y - h); ctx.lineTo(x + w * 0.4, y - h * 0.55); ctx.lineTo(x + w, y); ctx.closePath();
+    if(inked){ ctx.fill(); }
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - w * 0.45, y - h * 0.12); ctx.lineTo(x, y - h * 0.78); ctx.stroke();
+  }
+  function sketchPanel(ctx, y, h, o){
+    const idx = fellByName(), names = Object.keys(idx).filter(n=> idx[n].x != null);
+    if(!names.length) return y + h + 24;
+    const hs = names.map(n=> idx[n].m), hmin = Math.min(...hs), hmax = Math.max(...hs);
+    const hiSet = new Set((o.fells || []).filter(n=> idx[n] && idx[n].x != null));
+    const x0 = M - 16, w = W - x0 * 2;
+    panel(ctx, y, h);
+    let pool = o.all || !hiSet.size ? names : [...hiSet];
+    let minX = Math.min(...pool.map(n=> idx[n].x)), maxX = Math.max(...pool.map(n=> idx[n].x)), minY = Math.min(...pool.map(n=> idx[n].y)), maxY = Math.max(...pool.map(n=> idx[n].y));
+    const pad = o.all || !hiSet.size ? 0 : 0.25;
+    const sx = Math.max(maxX - minX, 110), sy = Math.max(maxY - minY, 110);
+    minX -= (sx - (maxX - minX)) / 2 + sx * pad; maxX = minX + sx * (1 + 2 * pad); minY -= (sy - (maxY - minY)) / 2 + sy * pad; maxY = minY + sy * (1 + 2 * pad);
+    const padX = o.all ? 44 : 110, padT = o.all ? 60 : 90, padB = o.all ? 66 : 100;
+    const scale = Math.min((w - padX * 2) / (maxX - minX), (h - padT - padB) / (maxY - minY));
+    const ox = x0 + w / 2 - ((minX + maxX) / 2) * scale, oy = y + padT + (h - padT - padB) / 2 - ((minY + maxY) / 2) * scale;
+    const Q = n=> ({ x: ox + idx[n].x * scale, y: oy + idx[n].y * scale });
+    const gs = o.all ? 1.5 : 2.3, zoomed = !o.all;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0 + 2, y + 2, w - 4, h - 4); ctx.clip();
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    if(o.all && typeof FELLS_DATA !== "undefined"){
+      ctx.fillStyle = C.inkFaint; ctx.font = "700 20px " + MONO; ctx.textAlign = "center"; ctx.globalAlpha = 0.7;
+      FELLS_DATA.forEach(a=>{ const xs = a.fells.map(f=> f.x), ys = a.fells.map(f=> f.y); if(xs.some(v=> v == null)) return;
+        spaced(ctx, a.name.replace(/^The /, "").toUpperCase(), ox + xs.reduce((p, q)=> p + q, 0) / xs.length * scale, oy + (ys.reduce((p, q)=> p + q, 0) / ys.length - 52) * scale, 2); });
+      ctx.globalAlpha = 1;
+    }
+    const order = names.slice().sort((a, b)=> idx[a].y - idx[b].y);
+    order.forEach(n=>{
+      const q = Q(n); if(q.x < x0 - 20 || q.x > x0 + w + 20 || q.y < y - 20 || q.y > y + h + 20) return;
+      const isHi = hiSet.has(n), done = !!(o.climbed && o.climbed.has(n)), t = (idx[n].m - hmin) / (hmax - hmin || 1);
+      const inked = isHi ? !o.climbed || done : done;
+      ctx.lineWidth = isHi ? 3 : 2; ctx.strokeStyle = isHi || done ? C.greenDeep : C.inkFaint; ctx.fillStyle = C.green; ctx.globalAlpha = isHi || done ? 1 : 0.55;
+      sketchGlyph(ctx, q.x, q.y + 6 * gs, t, isHi && zoomed ? gs * 1.15 : gs, inked);
+    });
+    ctx.globalAlpha = 1;
+    // names for the fells in the card, avoiding each other
+    if(hiSet.size && o.label !== false && (zoomed || hiSet.size <= 3)){
+      const fs = hiSet.size > 10 ? 22 : 26; ctx.font = "600 " + fs + "px " + SERIF; ctx.textAlign = "left";
+      const rects = [];
+      [...hiSet].forEach(n=>{
+        const q = Q(n), tw = ctx.measureText(n).width, hh = 20 * gs / 2 + 8;
+        const cands = [{ x: q.x + 18 + gs * 6, y: q.y - fs * 0.6 }, { x: q.x - 18 - gs * 6 - tw, y: q.y - fs * 0.6 }, { x: q.x - tw / 2, y: q.y + hh }, { x: q.x - tw / 2, y: q.y - hh - fs - 12 }].map(c=> ({ x: c.x, y: c.y, w: tw, h: fs }));
+        const ok = c=> c.x > x0 + 12 && c.x + c.w < x0 + w - 12 && c.y > y + 12 && c.y + c.h < y + h - 40 && !rects.some(b=> c.x < b.x + b.w && c.x + c.w > b.x && c.y < b.y + b.h && c.y + c.h > b.y);
+        const spot = cands.find(ok); if(!spot) return; rects.push(spot);
+        ctx.lineWidth = 7; ctx.strokeStyle = C.paperCard; ctx.strokeText(n, spot.x, spot.y + fs * 0.8); ctx.fillStyle = C.ink; ctx.fillText(n, spot.x, spot.y + fs * 0.8);
+      });
+    }
+    // north arrow and caption
+    const nx = x0 + w - 50, ny = y + 62; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.textAlign = "center"; ctx.fillStyle = C.ink;
+    ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nx, ny - 34); ctx.moveTo(nx - 9, ny - 24); ctx.lineTo(nx, ny - 36); ctx.lineTo(nx + 9, ny - 24); ctx.stroke();
+    ctx.font = "700 22px " + SERIF; ctx.fillText("N", nx, ny + 22);
+    ctx.restore();
+    if(o.caption){ ctx.fillStyle = C.inkSoft; ctx.font = "400 21px " + MONO; ctx.textAlign = "center"; const ct = fit(ctx, o.caption, w - 120); ctx.lineWidth = 8; ctx.strokeStyle = C.paperCard; ctx.lineJoin = "round"; ctx.strokeText(ct, x0 + w / 2, y + h - 18); ctx.fillText(ct, x0 + w / 2, y + h - 18); }
+    return y + h + 24;
+  }
+
   // ---- OS map backdrop (optional) ----
   // An extra "Map" choice in the share sheet: OS Outdoor tiles drawn under the fells instead of the plain drawn map. Only OS OpenData is used
   // (Open Zoomstack, zoom 7 to 16: free to everyone under the Open Government Licence, so a picture of it may be shared) and every map panel carries
@@ -990,6 +1058,7 @@
     const job = renderQueue.then(async ()=>{
       await ensureFonts();
       setStyle(style); PHOTO = photo || null; OSFAILED = false; OSCAP = OSLAYERS = null;
+      SKETCH = !!(style && style.mapStyle === "sketch" && (((style.layout) || "classic") === "classic" || style.layout === "map"));
       const layout = (style && style.layout) || "classic";
       if(style && style.mapStyle === "os" && window.OSMap && (layout === "classic" || layout === "map")){
         try{
@@ -1032,7 +1101,7 @@
   function loadPrefs(){
     let p = {}; try{ p = JSON.parse(localStorage.getItem(PREF_KEY) || "{}") || {}; }catch(e){}
     const ok = (list, v, d)=> list.some(x=> x[0] === v) ? v : d;
-    return { layout: ok(LAYOUTS, p.layout, "classic"), size: ok(SIZE_LABELS, p.size, "story"), theme: ok(THEME_LABELS, p.theme, "paper"), mapStyle: p.mapStyle === "os" ? "os" : "drawn" };
+    return { layout: ok(LAYOUTS, p.layout, "classic"), size: ok(SIZE_LABELS, p.size, "story"), theme: ok(THEME_LABELS, p.theme, "paper"), mapStyle: p.mapStyle === "os" ? "os" : p.mapStyle === "sketch" ? "sketch" : "drawn" };
   }
   const el = (tag, cls, html)=>{ const e = document.createElement(tag); if(cls) e.className = cls; if(html != null) e.innerHTML = html; return e; };
   const escH = s=> String(s).replace(/[&<>"']/g, c=> ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -1067,8 +1136,8 @@
     chips("Colours", THEME_LABELS, ()=> prefs.theme, v=> { prefs.theme = v; }, "p");
     const themeNote = el("p", "chart-note story-note", "The Photo layout keeps its own colours.");
     // optional: an Ordnance Survey map under the fells (only where OS maps are loaded and the card has a map)
-    const hasMap = o.kind !== "team" && !!window.OSMap;
-    const mapRow = hasMap ? chips("Map", [["drawn", "Drawn"], ["os", "OS map"]], ()=> prefs.mapStyle, v=> { prefs.mapStyle = v; }, "p") : null;
+    const hasMap = o.kind !== "team" && o.kind !== "recap";
+    const mapRow = hasMap ? chips("Map", [["drawn", "Drawn"], ["sketch", "Sketch"]].concat(window.OSMap ? [["os", "OS map"]] : []), ()=> prefs.mapStyle, v=> { prefs.mapStyle = v; }, "p") : null;
     const mapNote = hasMap ? el("p", "chart-note story-note", "The OS map is Ordnance Survey data (Open Government Licence) and is credited on the card. It shows on the Classic and Map layouts, and needs a connection.") : null;
     if(mapNote) rows.appendChild(mapNote);
     // photo row
