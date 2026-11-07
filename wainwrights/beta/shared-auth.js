@@ -57,6 +57,11 @@
   function showApp(user){
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("app-content").style.display = "";
+    // Beta only: a bar above the page tabs so it's always clear this is the test copy (IS_BETA is decided by the URL path)
+    if(IS_BETA && !document.getElementById("beta-strip")){
+      document.getElementById("app-content").insertAdjacentHTML("afterbegin",
+        '<div class="beta-strip" id="beta-strip" role="note"><strong>BETA</strong><span> test version, things may change or break</span><a href="../">Open the main app</a></div>');
+    }
     const emailEl = document.getElementById("auth-user-email");
     if(emailEl) emailEl.textContent = user.email || "";
     if(!hasInitialized){
