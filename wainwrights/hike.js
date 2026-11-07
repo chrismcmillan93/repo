@@ -67,7 +67,7 @@
     too_many_hikes: "You already have 10 upcoming hikes. Cancel or finish one first.",
     hike_closed: "This hike is no longer open.", hike_full: "All places are taken. Remove someone or raise the spaces first.",
     cannot_rejoin: "You can't request a place on this hike.", is_host: "You're the host of this hike.",
-    not_host: "Only the host can do that.", no_pending_request: "That request has already been dealt with.",
+    not_host: "Only the host can do that.", not_allowed: "Your co-host level doesn't allow that.", host_only: "Only the host can do that.", bad_level: "Pick one of the co-host levels.", cannot_change_self: "You can't change your own co-host level.", no_pending_request: "That request has already been dealt with.",
     spaces_below_approved: "You can't set fewer spaces than the number of people already approved.",
     confirmation_required: "Please tick the box to confirm who attended.", not_started: "You can tick fells once the walk has started.",
     too_late: "It's more than 14 days since this walk, so it can't be ticked from here any more.",
@@ -90,6 +90,15 @@
     try { await WW.sb.functions.invoke("hike-notify", { body: { hike_id: hikeId } }); } catch (e) { /* emails are best-effort */ }
   }
   const $ = id => document.getElementById(id);
+  const LEVELS = { approvals: "Approvals only", standard: "Standard", full: "Full" };
+  const LEVEL_HELP = {
+    approvals: "can approve or decline join requests",
+    standard: "can approve requests, edit details, remove people and tick the fells for everyone",
+    full: "can do everything the host can, except change the host's contact or hand out Full"
+  };
+  const can = k => !!(hike && hike.can && hike.can[k]);
+  const coNames = () => (hike.cohosts || []).map(c => c.display_name);
+  const hostedBy = () => esc(hike.host_name) + (coNames().length ? " with " + coNames().map(esc).join(", ") : "");
   const fmtWhen = iso => new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   // A plain Google Maps pin link (parsePoint can read the coordinates back out of it).
   const pinLink = (lat, lng) => `https://www.google.com/maps/search/?api=1&query=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
@@ -189,11 +198,11 @@
       WW.sb.from("host_blocks").select("blocked_user_id,display_name").order("created_at")
     ]);
     const byId = {}; (mine || []).forEach(h => { byId[h.id] = h; });
-    const roleLabel = h => h.role === "host" ? "Hosting" : h.role === "approved" ? "Going" : "Requested";
+    const roleLabel = h => h.role === "host" ? "Hosting" : h.role === "approved" ? (h.cohost_level ? "Co-hosting" : "Going") : "Requested";
     const rows = (mine || []).map(h => `
       <a class="hike-row" href="hike.html?t=${encodeURIComponent(h.share_token)}">
         <span class="hike-row-title">${esc(h.title)}</span>
-        <span class="hike-row-meta">${esc(fmtWhen(h.start_at))} · ${esc(roleLabel(h))}${h.status !== "open" ? " · " + esc(h.status) : ""}${h.role === "host" && h.pending_count ? ` · <strong>${h.pending_count} waiting</strong>` : ""}</span>
+        <span class="hike-row-meta">${esc(fmtWhen(h.start_at))} · ${esc(roleLabel(h))}${h.status !== "open" ? " · " + esc(h.status) : ""}${(h.role === "host" || h.cohost_level) && h.pending_count ? ` · <strong>${h.pending_count} waiting</strong>` : ""}</span>
       </a>`).join("");
     const noteRows = ((notes && notes.data) || []).map(n => {
       const h = byId[n.hike_id];
@@ -399,7 +408,7 @@
     if (!weather) return "";
     if (weather.note) return `<p class="chart-note">${esc(weather.note)} <a href="${MWIS}" target="_blank" rel="noopener">Mountain forecast ↗</a></p>`;
     const soon = (new Date(hike.start_at) - new Date()) < 48 * 3600 * 1000;
-    const nudge = hike.is_host && hike.status === "open" && weather.bad && soon
+    const nudge = can("cancel") && hike.status === "open" && weather.bad && soon
       ? `<p class="hike-nudge"><strong>The forecast is ${weather.verdict === "Poor" ? "poor" : "marginal"}.</strong> Think about cancelling or moving the walk, and tell your walkers early. <button class="btn hike-small" data-action="open-cancel">Cancel this hike</button></p>` : "";
     return `<div class="hike-weather ${weather.cls}"><span class="plan-verdict ${weather.cls}">${esc(weather.verdict)}</span> <span>${esc(weather.text)}</span>
       <p class="chart-note">A model forecast for the summit, not a guarantee. Check the <a href="${MWIS}" target="_blank" rel="noopener">Mountain Weather Information Service ↗</a> before you set off.</p></div>${nudge}`;
@@ -443,13 +452,13 @@
     if (h.status === "cancelled") {
       body = `<div class="hike-note-box is-bad"><strong>This hike has been cancelled.</strong>${h.status_note ? " " + esc(h.status_note) : ""}</div>`;
     }
-    if (h.is_host) body += hostHtml(); else body += visitorHtml(left);
+    if (h.is_manager) body += hostHtml(); else body += visitorHtml(left);
 
     root.innerHTML = `
       <div class="section-heading"><h2>${esc(h.title)}</h2><div class="rule"></div></div>
       <div id="hike-msg" style="display:none;"></div>
       <article class="chal-card hike-card">
-        <p class="plan-meta">${statusBadge} <strong>${esc(fmtWhen(h.start_at))}</strong> · ${esc(h.area)} · hosted by ${esc(h.host_name)}${h.team_name ? " for " + esc(h.team_name) : h.is_team_hike ? " for a team" : ""}</p>
+        <p class="plan-meta">${statusBadge} <strong>${esc(fmtWhen(h.start_at))}</strong> · ${esc(h.area)} · hosted by ${hostedBy()}${h.team_name ? " for " + esc(h.team_name) : h.is_team_hike ? " for a team" : ""}</p>
         <p class="plan-meta">${[esc(w.label || ""), w.miles != null ? w.miles + " mi" : "", w.ascent != null ? w.ascent + " m ascent" : "", h.turnaround_time ? "turn back at <strong>" + esc(h.turnaround_time) + "</strong>" : ""].filter(Boolean).join(" · ")}</p>
         ${window.Difficulty ? Difficulty.fullHtml(Difficulty.forWalk({ miles: w.miles, ascent: w.ascent, fells: w.fells || [], label: w.label })) : ""}
         <p class="plan-meta">${h.approved_count} of ${h.spaces} places taken${left > 0 && h.status === "open" ? ` · ${left} left` : ""}</p>
@@ -463,7 +472,7 @@
       ${body}
       ${storyCardHtml()}
       ${safetyHtml(false)}
-      ${h.is_host ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
+      ${h.is_manager ? "" : `<p class="chart-note"><button class="hike-link" data-action="open-report">Report this hike</button></p><div id="hike-report"></div>`}
       <p class="chart-note"><a href="hike.html?list=1">← All my hikes</a></p>`;
     if (window.HikeLive) HikeLive.mount(h, $("hike-live"));   // live map card (host and approved walkers, on the day)
   }
@@ -476,7 +485,7 @@
         <h4>After the walk</h4>
         <p>${h.is_host ? "A “we walked” card: the fells, the distance and who came, with names and @handles." : "A “we walked” card: the fells, the distance and who came, with names and @handles."}</p>
         <button class="btn" data-action="story" ${started ? "" : "disabled"}>${started ? "Share the walk" : "Opens when the walk starts"}</button></div>`;
-    if (!h.is_host) return h.my_status === "approved" ? `<div class="plan-card"><h3 class="hike-sub">Instagram Story</h3><div class="hike-story-grid">${after}</div></div>` : "";
+    if (!can("edit")) return h.my_status === "approved" ? `<div class="plan-card"><h3 class="hike-sub">Instagram Story</h3><div class="hike-story-grid">${after}</div></div>` : "";
     const invite = `<div class="hike-story-opt${started ? " is-off" : ""}">
         <h4>Invite people</h4>
         <p>An invitation with the details and places left. Copies the link — add it as a Link sticker so people can ask for a place.</p>
@@ -527,35 +536,53 @@
   function hostHtml(){
     const h = hike, list = h.attendees || [];
     const pending = list.filter(a => a.status === "requested"), approved = list.filter(a => a.status === "approved");
+    const open = h.status === "open";
     let html = "";
+    // a co-host's own note: what they can do, and a way out
+    if (!h.is_host) {
+      const lvl = h.my_cohost_level;
+      html += `<div class="hike-note-box is-good"><strong>You're a co-host${lvl ? " (" + esc(LEVELS[lvl] || lvl) + ")" : ""}.</strong> ${esc(LEVEL_HELP[lvl] || "")}.${open && !hasStarted() ? ` <button class="btn hike-small" data-action="ics">Add to calendar</button> <button class="btn hike-small" data-action="withdraw">Pull out</button>` : ""}</div>`;
+    }
     // share
     html += `<div class="plan-card"><h3 class="hike-sub">Share this hike</h3>
       <p class="hike-link-box" id="hike-link">${esc(hikeLink(token))}</p>
-      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}${h.status === "open" ? '<button class="btn" data-action="ics">Add to calendar</button>' : ""}</div>
-      <p class="chart-note">Anyone with this link can ask to join. Only people you approve see the meeting point, your contact and the WhatsApp link.</p></div>`;
-    if (h.status === "open") {
+      <div class="hike-actions"><button class="btn" data-action="copy">Copy link</button>${navigator.share ? '<button class="btn" data-action="share">Share…</button>' : ""}${h.is_host && open ? '<button class="btn" data-action="ics">Add to calendar</button>' : ""}</div>
+      <p class="chart-note">Anyone with this link can ask to join. Only people approved see the meeting point, the host's contact and the WhatsApp link.</p></div>`;
+    if (open) {
       html += `<div class="plan-card"><h3 class="hike-sub">Requests${pending.length ? " (" + pending.length + ")" : ""}</h3>${pending.length ? pending.map(a => `
         <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${igLink(a.instagram_handle) ? `<div class="hike-ig-line">${igLink(a.instagram_handle)}</div>` : '<div class="hike-ig-line hike-ig-none">No Instagram given</div>'}${a.message ? `<div class="hike-msg">${esc(a.message)}</div>` : ""}</div>
         <div class="hike-person-actions"><button class="btn hike-small" data-action="approve" data-uid="${esc(a.user_id)}">Approve</button>
         <button class="btn hike-small" data-action="decline" data-uid="${esc(a.user_id)}">Decline</button></div></div>`).join("") : '<p class="chart-note">No requests waiting.</p>'}</div>`;
     }
-    const canTick = h.status === "open" && hasStarted();
-    html += `<div class="plan-card"><h3 class="hike-sub">Going (${approved.length} of ${h.spaces})</h3>${approved.length ? approved.map(a => `
-      <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${igLink(a.instagram_handle) ? `<div class="hike-ig-line">${igLink(a.instagram_handle)}</div>` : ""}</div>
-      ${h.status === "open" && !hasStarted() ? `<div class="hike-person-actions"><button class="btn hike-small" data-action="remove" data-uid="${esc(a.user_id)}">Remove</button>
-      <button class="btn hike-small" data-action="remove-block" data-uid="${esc(a.user_id)}">Remove &amp; block</button></div>` : ""}</div>`).join("") : '<p class="chart-note">Nobody approved yet.</p>'}</div>`;
+    const canTick = open && hasStarted() && can("tick");
+    const levelSelect = a => {
+      if (!(open && can("cohosts")) || a.user_id === user.id) return "";
+      const locked = !can("grant_full") && a.cohost_level === "full";   // only the host changes a Full co-host
+      const opts = [["", "Not a co-host"], ["approvals", "Co-host: approvals only"], ["standard", "Co-host: standard"]].concat(can("grant_full") ? [["full", "Co-host: full"]] : []);
+      return `<label class="hike-cohost"><span class="hike-cohost-label">Role</span><select class="lock-input hike-cohost-select" data-uid="${esc(a.user_id)}" ${locked ? "disabled" : ""} aria-label="Co-host level for ${esc(a.display_name)}">${opts.map(o => `<option value="${o[0]}" ${(a.cohost_level || "") === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}${locked ? `<option value="full" selected>Co-host: full</option>` : ""}</select></label>`;
+    };
+    html += `<div class="plan-card"><h3 class="hike-sub">Going (${approved.length} of ${h.spaces})</h3>${approved.length ? approved.map(a => {
+      const isCo = !!a.cohost_level, mine = a.user_id === user.id;
+      const removable = open && !hasStarted() && can("remove") && !mine && (!isCo || h.is_host);
+      return `
+      <div class="hike-person"><div><strong>${esc(a.display_name)}</strong>${isCo ? ` <span class="hike-cohost-badge">Co-host · ${esc(LEVELS[a.cohost_level] || a.cohost_level)}</span>` : ""}${igLink(a.instagram_handle) ? `<div class="hike-ig-line">${igLink(a.instagram_handle)}</div>` : ""}${levelSelect(a)}</div>
+      ${removable ? `<div class="hike-person-actions"><button class="btn hike-small" data-action="remove" data-uid="${esc(a.user_id)}">Remove</button>
+      ${can("block") ? `<button class="btn hike-small" data-action="remove-block" data-uid="${esc(a.user_id)}">Remove &amp; block</button>` : ""}</div>` : ""}</div>`;
+    }).join("") : '<p class="chart-note">Nobody approved yet.</p>'}
+      ${open && can("cohosts") && approved.length ? `<p class="chart-note">Co-hosts are approved walkers you trust to help run the hike. <strong>Approvals only</strong>: approve or decline requests. <strong>Standard</strong>: also edit details, remove people and tick the fells for everyone. <strong>Full</strong>: also cancel the hike and block people${can("grant_full") ? "" : " (only the host can give or change Full)"}.</p>` : ""}</div>`;
     if (canTick) {
+      const others = approved.filter(a => a.user_id !== user.id);
       html += `<div class="plan-card" id="hike-tick"><h3 class="hike-sub">Tick the fells for everyone</h3>
-        <p class="chart-note">Untick anyone who didn't make it. Fells (${(h.walk.fells || []).map(esc).join(", ")}) are ticked for you and for each person ticked below. Each walker is told and can undo it.</p>
-        <label class="plan-check"><input type="checkbox" checked disabled> You (host)</label>
-        ${approved.map(a => `<label class="plan-check"><input type="checkbox" class="tick-who" value="${esc(a.user_id)}" checked> ${esc(a.display_name)}</label>`).join("")}
+        <p class="chart-note">Untick anyone who didn't make it. Fells (${(h.walk.fells || []).map(esc).join(", ")}) are ticked for ${h.is_host ? "you" : "you and the host"} and for each person ticked below. Each walker is told and can undo it.</p>
+        <label class="plan-check"><input type="checkbox" checked disabled> ${h.is_host ? "You (host)" : "You, and the host (" + esc(h.host_name) + ")"}</label>
+        ${others.map(a => `<label class="plan-check"><input type="checkbox" class="tick-who" value="${esc(a.user_id)}" checked> ${esc(a.display_name)}</label>`).join("")}
         <label class="plan-check"><input type="checkbox" id="tick-confirm"> I confirm everyone ticked above was on this walk.</label>
         <div class="share-row"><button class="btn" data-action="complete">Tick fells for everyone</button></div></div>`;
     }
     if (h.status === "completed") {
       html += `<div class="hike-note-box is-good"><strong>Done.</strong> Fells were ticked for the people who attended.${h.my_tick_count > 0 ? ` <button class="btn hike-small" data-action="undo">Remove my own ticks</button>` : ""}</div>`;
     }
-    if (h.status === "open") {
+    if (open && can("edit")) {
       const d = new Date(h.start_at), local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
       const p = h.private || {};
       html += `<details class="plan-card" id="hike-edit"><summary class="hike-sub">Edit details</summary>
@@ -564,13 +591,15 @@
         <label>Places<input class="lock-input" id="e-spaces" type="number" min="1" max="20" value="${h.spaces}"></label>
         <label>Meeting point note<input class="lock-input" id="e-note" maxlength="300" value="${esc(p.meet_note || "")}"></label>
         <label>Meeting point (Google Maps link or "lat, lng")<input class="lock-input" id="e-point" value="${esc(p.meet_lat != null ? Number(p.meet_lat).toFixed(5) + ", " + Number(p.meet_lng).toFixed(5) : "")}"></label>
-        <label>Your contact<input class="lock-input" id="e-contact" maxlength="120" value="${esc(p.host_contact || "")}"></label>
+        <label>${can("host_contact") ? "Your contact" : "Host's contact (only the host can change this)"}<input class="lock-input" id="e-contact" maxlength="120" value="${esc(p.host_contact || "")}" ${can("host_contact") ? "" : "disabled"}></label>
         <label>WhatsApp group invite link (only approved walkers see it; clear to remove)<input class="lock-input" id="e-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..." value="${esc(p.whatsapp_url || "")}"></label>
         <label>Turnaround time<input class="lock-input" id="e-turn" type="time" value="${esc(h.turnaround_time || "")}"></label>
         <label>Kit list (one per line)<textarea class="lock-input hike-text" id="e-kit" rows="6">${esc((h.kit || []).join("\n"))}</textarea></label>
         <label>Message to everyone approved or waiting (optional — they get an email if you change the time, place or add a message)<input class="lock-input" id="e-msg" maxlength="250" placeholder="e.g. Moved to 08:30 to beat the rain"></label>
-        <div class="share-row"><button class="btn" data-action="save-edit">Save changes</button></div></div></details>
-        <details class="plan-card" id="hike-cancel"><summary class="hike-sub">Cancel this hike</summary>
+        <div class="share-row"><button class="btn" data-action="save-edit">Save changes</button></div></div></details>`;
+    }
+    if (open && can("cancel")) {
+      html += `<details class="plan-card" id="hike-cancel"><summary class="hike-sub">Cancel this hike</summary>
         <div class="hike-form"><label>Reason (shown to everyone)<input class="lock-input" id="c-reason" maxlength="250" placeholder="e.g. Red weather warning for the tops"></label>
         <div class="share-row"><button class="btn" data-action="cancel">Cancel hike and tell everyone</button></div></div></details>`;
     }
@@ -592,7 +621,7 @@
       return WWStory.run(btn, async () => {
         const w = hike.walk || {}, d = new Date(hike.start_at);
         return WWStory.inviteCard({
-          title: hike.title, host: hike.host_name, area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
+          title: hike.title, host: hike.host_name + (coNames().length ? " with " + coNames().join(", ") : ""), area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           start: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label
@@ -607,7 +636,7 @@
           title: hike.title, past: hike.status === "completed" || d < new Date(),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label,
-          people: (people || []).map(p => ({ name: p.display_name, handle: p.instagram_handle }))
+          people: (people || []).map(p => ({ name: p.display_name + (!p.is_host && coNames().includes(p.display_name) ? " · co-host" : ""), handle: p.instagram_handle }))
         });
       }, "wainwrights-hike.jpg", hike.title);
     }
@@ -659,6 +688,17 @@
     });
   }
 
+  async function onChange(e){
+    const sel = e.target.closest ? e.target.closest(".hike-cohost-select") : null;
+    if (!sel) return;
+    const uid = sel.dataset.uid, level = sel.value || null;
+    return guard(sel, async () => {
+      await rpc("set_hike_cohost", { p_hike_id: hike.id, p_user_id: uid, p_level: level });
+      await notify(hike.id); await reload();
+      flash(level ? "Co-host updated. They've been told." : "They're no longer a co-host.");
+    }).then(() => reload().catch(() => {}));
+  }
+
   function onSubmit(e){
     if (e.target.id === "hike-request") {
       e.preventDefault();
@@ -676,6 +716,7 @@
     user = u;
     root.addEventListener("click", onClick);
     root.addEventListener("submit", onSubmit);
+    root.addEventListener("change", onChange);
     try {
       if (!token && !wantsNew && params.get("list") !== "1") {
         try {

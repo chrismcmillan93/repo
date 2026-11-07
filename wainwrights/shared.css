@@ -1692,3 +1692,7 @@
 .sk-hint{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint, #6b6b5f); }
 .sk-btns{ display:inline-flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden; }
 .sk-btns .map-mode{ padding:6px 12px; }
+.hike-cohost-badge{ font-family:var(--font-mono); font-size:11px; letter-spacing:.04em; color:var(--paper-card); background:var(--green-deep); padding:2px 8px; border-radius:999px; margin-left:6px; white-space:nowrap; }
+.hike-cohost{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+.hike-cohost-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint, #6b6b5f); }
+.hike-cohost-select{ max-width:240px; padding:6px 8px; font-size:13px; }
