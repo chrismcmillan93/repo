@@ -34,7 +34,7 @@ if (RETIRED) {
     open.forEach(c => { try { c.navigate(c.url); } catch (e) { /* page forwards itself on its next load */ } });
   })()));
 }
-const CACHE = "wainwrights-prod-v25";
+const CACHE = "wainwrights-prod-v26";
 const SHELL = [
   "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html", "admin.html", "admin.js",
   "shared.css", "shared-auth.js", "pwa.js", "fells-data.js", "story.js", "tracker.js",
