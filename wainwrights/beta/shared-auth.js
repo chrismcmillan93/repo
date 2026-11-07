@@ -209,11 +209,11 @@
         sentWrap.style.display = "block";
         codeInput.focus();
       }catch(err){
-        errorEl.textContent = err.message || "Something went wrong sending that link.";
+        errorEl.textContent = err.message || "Something went wrong sending that code.";
         errorEl.style.display = "block";
       }finally{
         submitBtn.disabled = false;
-        submitBtn.textContent = "Send magic link";
+        submitBtn.textContent = "Email me a sign-in code";
       }
     });
 
