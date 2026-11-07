@@ -1,6 +1,5 @@
 {
   "routes": [
-    { "route": "/beta", "redirect": "/beta/", "statusCode": 301 },
     { "route": "/supabase/*", "statusCode": 404 },
     { "route": "/CLAUDE.md", "statusCode": 404 },
     { "route": "/icons/*", "headers": { "Cache-Control": "public, max-age=86400" } }

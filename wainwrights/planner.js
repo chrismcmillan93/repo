@@ -512,7 +512,7 @@
   function carParksHtml(w){
     const s = cpState[w.id];
     if (!s) return `<button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Find car parks near the start</button>`;
-    if (s.status === "loading") return `<p class="plan-est">Looking up car parks near the start pin…</p>`;
+    if (s.status === "loading") return `<p class="plan-est">Looking up car parks near the start pin… this can take a minute or two, so please keep this page open. It is working, the map-data service is just slow.</p>`;
     if (s.status === "error") return `<p class="plan-est plan-cp-err">${esc(CP_ERRORS[s.code] || CP_ERRORS.failed)}</p><button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Try again</button>`;
     if (!s.parks.length) return `<p class="plan-est">OpenStreetMap lists no car park within ${CarParks.fmtDist(s.radiusM)} of this start pin. Check the route guide for where to park. <span class="plan-cp-credit">&copy; OpenStreetMap contributors</span></p>`;
     const items = s.parks.map((p, i) => {
