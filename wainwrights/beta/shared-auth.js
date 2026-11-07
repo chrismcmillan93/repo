@@ -185,6 +185,19 @@
       });
     }
 
+    // Plain-English sign-in errors (the raw ones are "Load failed", "429: For security purposes..." and so on)
+    function friendlyAuthError(err, fallback){
+      const msg = String((err && err.message) || "");
+      const wait = msg.match(/after (\d+) seconds?/i);
+      if((err && (err.status === 429 || err.code === "over_email_send_rate_limit")) || wait){
+        return { rateLimited: true, text: "A code was already sent a moment ago, so another can't be sent yet" + (wait ? " (try again in about " + Math.ceil(Number(wait[1]) / 60) + " min)" : "") + ". Check your email, including Junk, and enter the code you already have." };
+      }
+      if(/load failed|failed to fetch|networkerror|network request failed/i.test(msg)){
+        return { text: "Couldn't reach the sign-in service. Check your connection and try again. If you just asked for a code, it may already be in your email." };
+      }
+      return { text: msg || fallback };
+    }
+
     let pendingEmail = "";
 
     form.addEventListener("submit", async function(e){
@@ -209,8 +222,16 @@
         sentWrap.style.display = "block";
         codeInput.focus();
       }catch(err){
-        errorEl.textContent = err.message || "Something went wrong sending that code.";
+        const f = friendlyAuthError(err, "Something went wrong sending that code.");
+        errorEl.textContent = f.text;
         errorEl.style.display = "block";
+        if(f.rateLimited){
+          // an earlier code is still valid: let them type it in
+          pendingEmail = emailInput.value.trim();
+          form.style.display = "none";
+          sentWrap.style.display = "block";
+          codeInput.focus();
+        }
       }finally{
         submitBtn.disabled = false;
         submitBtn.textContent = "Email me a sign-in code";
@@ -235,7 +256,7 @@
         if(error) throw error;
         // success fires onAuthStateChange, which swaps in the app
       }catch(err){
-        errorEl.textContent = err.message || "That code wasn't accepted.";
+        errorEl.textContent = friendlyAuthError(err, "That code wasn't accepted.").text;
         errorEl.style.display = "block";
         codeInput.value = "";
         codeInput.focus();
