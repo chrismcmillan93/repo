@@ -141,6 +141,7 @@
 
   // state: { "<fell name>": true|false }
   let state = {};
+  let tickedAt = {};   // fell name -> ISO time it was ticked (checkbox_states.ticked_at; older ticks have none)
   let expandedAreas = new Set();
   let searchQuery = "";
 
@@ -164,12 +165,15 @@
     try{
       const { data, error } = await WW.sb
         .from(TABLE)
-        .select("item_id,is_checked")
+        .select("item_id,is_checked,ticked_at")
         .eq("dashboard_id", DASHBOARD_ID)
         .eq("user_id", userId);
       if(error) throw error;
       const merged = Object.assign({}, fallback);
-      (data || []).forEach(row=>{ merged[row.item_id] = !!row.is_checked; });
+      (data || []).forEach(row=>{
+        merged[row.item_id] = !!row.is_checked;
+        if(row.is_checked && row.ticked_at) tickedAt[row.item_id] = row.ticked_at;
+      });
       showSyncStatus("ok");
       return merged;
     }catch(e){
@@ -209,6 +213,7 @@
           const row = (payload.eventType === "DELETE") ? payload.old : payload.new;
           if(!row || !row.item_id) return;
           const checked = (payload.eventType === "DELETE") ? false : !!row.is_checked;
+          if(checked && row.ticked_at) tickedAt[row.item_id] = row.ticked_at; else delete tickedAt[row.item_id];
           if(state[row.item_id] !== checked){
             state[row.item_id] = checked;
             renderAll();
@@ -474,7 +479,7 @@
     if(fresh && osMode) fresh.style.display = "none";   // OS map is showing; the sketch stays in the page for the share image
     if(fresh){
       fresh.querySelectorAll(".peak-mark").forEach(g=>{
-        g.addEventListener("click", ()=> jumpToPeak(parseInt(g.dataset.area,10), parseInt(g.dataset.fell,10)));
+        g.addEventListener("click", ()=> showFellInfo(parseInt(g.dataset.area,10), parseInt(g.dataset.fell,10)));
       });
     }
   }
@@ -557,7 +562,7 @@
       if(f.lat == null || f.lng == null) return;
       const marker = L.circleMarker([f.lat, f.lng], osMarkerStyle(f, !!state[f.name])).addTo(osMap);
       marker.bindTooltip(osTooltip(f), { direction: "top", offset: [0, -4] });
-      marker.on("click", ()=> jumpToPeak(ai, fi));
+      marker.on("click", ()=> showFellInfo(ai, fi));
       osMarkers.push({marker, f});
       pts.push([f.lat, f.lng]);
     }));
@@ -626,6 +631,7 @@
     renderCharts();
     renderAreas();
     attachAreaEvents();
+    refreshFellInfo();
   }
 
   // ---------- interactions ----------
@@ -633,6 +639,7 @@
   function toggleFell(ai, fi, checked){
     const f = FELLS_DATA[ai].fells[fi];
     state[f.name] = checked;
+    if(checked) tickedAt[f.name] = new Date().toISOString(); else delete tickedAt[f.name];
     renderAll();
     upsertFell(f.name, checked);
   }
@@ -654,6 +661,54 @@
     if(section){
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  // ---------- fell info panel (map taps) ----------
+  //
+  // Tapping a fell on the map shows its details in place instead of jumping to
+  // the list. "Show in list" is still there for when you do want the jump.
+  // The date is checkbox_states.ticked_at: when the tick was made in the app.
+  // Ticks made before 31 Oct 2026 (and the spreadsheet baseline) have none.
+
+  let infoFell = {};   // panel id -> { ai, fi } while that panel is open
+
+  function fellInfoHtml(ai, fi){
+    const f = FELLS_DATA[ai].fells[fi];
+    let status;
+    if(!state[f.name]) status = '<span class="fell-info-status">Not yet climbed</span>';
+    else if(tickedAt[f.name]){
+      const d = new Date(tickedAt[f.name]);
+      status = '<span class="fell-info-status is-climbed">Climbed &middot; ticked ' + escapeHtml(d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })) + '</span>';
+    } else status = '<span class="fell-info-status is-climbed">Climbed &middot; date not recorded</span>';
+    return '<div class="fell-info-main"><strong class="fell-info-name">' + escapeHtml(f.name) + '</strong>' +
+      '<span class="fell-info-meta">' + escapeHtml(FELLS_DATA[ai].name) + ' &middot; ' + f.m + ' m / ' + f.ft + ' ft</span>' + status + '</div>' +
+      '<div class="fell-info-actions"><button type="button" class="btn" data-info="list">Show in list</button>' +
+      '<button type="button" class="fell-info-close" data-info="close" aria-label="Close">&times;</button></div>';
+  }
+
+  // One panel per chart (the skyline and the map each have their own), keyed by element id.
+  function paintFellInfo(el){
+    const { ai, fi } = infoFell[el.id];
+    el.innerHTML = fellInfoHtml(ai, fi);
+    el.style.display = "flex";
+    el.querySelector('[data-info="list"]').onclick = ()=> jumpToPeak(ai, fi);
+    el.querySelector('[data-info="close"]').onclick = ()=>{ delete infoFell[el.id]; el.style.display = "none"; };
+  }
+
+  function showFellInfo(ai, fi, panelId){
+    const el = document.getElementById(panelId || "fell-info");
+    if(!el) return;
+    infoFell[el.id] = { ai, fi };
+    paintFellInfo(el);
+    // only scrolls if the panel is off screen, and then only as far as needed
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  function refreshFellInfo(){
+    Object.keys(infoFell).forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) paintFellInfo(el);
+    });
   }
 
   function jumpToPeak(ai, fi){
@@ -795,7 +850,7 @@
 
   function attachSkylineEvents(){
     document.querySelectorAll(".peak").forEach(p=>{
-      p.onclick = ()=> jumpToPeak(parseInt(p.dataset.area,10), parseInt(p.dataset.fell,10));
+      p.onclick = ()=> showFellInfo(parseInt(p.dataset.area,10), parseInt(p.dataset.fell,10), "skyline-info");
     });
   }
 
@@ -831,7 +886,8 @@
     label.style.display = "none";
   }
 
-  function setupChartTouchPreview(containerEl, peakSelector, label){
+  function setupChartTouchPreview(containerEl, peakSelector, label, onSelect){
+    const select = onSelect || jumpToPeak;
     if(!containerEl || !label) return;
 
     function peakInfoFromPoint(x, y){
@@ -868,7 +924,7 @@
       hideTouchLabel(label);
       if(info){
         e.preventDefault(); // suppress the native synthetic click so we don't double-jump
-        jumpToPeak(info.ai, info.fi);
+        select(info.ai, info.fi);
       }
     }, { passive: false });
 
@@ -1238,8 +1294,8 @@
     setupChallengeModal();
     setupRouteModal();
     initMapTools();
-    setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"));
-    setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"));
+    setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"), (ai, fi)=> showFellInfo(ai, fi, "skyline-info"));
+    setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"), (ai, fi)=> showFellInfo(ai, fi, "fell-info"));
     document.getElementById("export-btn").onclick = exportCsv;
     document.getElementById("share-btn").onclick = shareProgressCard;
     document.getElementById("share-today-btn").onclick = shareTodayCard;

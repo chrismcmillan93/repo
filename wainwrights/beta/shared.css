@@ -892,9 +892,18 @@
     box-shadow: var(--shadow);
     padding: 10px 10px 12px;
     position: relative;
-    touch-action: none;
+    /* the card scrolls normally on touch; only the map surfaces below capture gestures */
   }
-  #fell-map{ width: 100%; height: auto; display: block; }
+  #fell-map{ width: 100%; height: auto; display: block; touch-action: none; }
+
+  /* Fell details shown when a fell is tapped on the map */
+  .fell-info{ align-items: center; justify-content: space-between; gap: 10px; margin: 10px 2px 0; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--radius); }
+  .fell-info-main{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fell-info-name{ font-size: 15px; }
+  .fell-info-meta, .fell-info-status{ font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+  .fell-info-status.is-climbed{ color: var(--green-deep); font-weight: 700; }
+  .fell-info-actions{ display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .fell-info-close{ background: none; border: 0; font-size: 22px; line-height: 1; padding: 4px 8px; color: var(--ink-faint); cursor: pointer; }
 
   .map-frame-outer{ fill: none; stroke: var(--ink); stroke-width: 2.5; }
   .map-frame-inner{ fill: none; stroke: var(--ink); stroke-width: 0.8; }
