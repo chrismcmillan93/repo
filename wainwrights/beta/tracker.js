@@ -477,11 +477,112 @@
     svg.outerHTML = s;
     const fresh = document.getElementById("fell-map");
     if(fresh && osMode) fresh.style.display = "none";   // OS map is showing; the sketch stays in the page for the share image
+    skApply();
     if(fresh){
       fresh.querySelectorAll(".peak-mark").forEach(g=>{
         g.addEventListener("click", ()=> showFellInfo(parseInt(g.dataset.area,10), parseInt(g.dataset.fell,10)));
       });
     }
+  }
+
+  // ---------- Sketch map zoom ----------
+  // Pinch, scroll wheel, double-tap and the + / - buttons zoom the sketch map; dragging pans once zoomed in.
+  // It only changes the <svg>'s viewBox, never the data. The share image always draws the whole map (see svgToImage).
+  const SK_MAX = 8;
+  const sk = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+  function skApply(){
+    const svg = document.getElementById("fell-map");
+    if(svg) svg.setAttribute("viewBox", sk.x.toFixed(1) + " " + sk.y.toFixed(1) + " " + sk.w.toFixed(1) + " " + sk.h.toFixed(1));
+    const card = document.querySelector(".map-card");
+    const zoomed = sk.w < MAP_W - 0.5;
+    if(card) card.__zoomed = zoomed;
+    const reset = document.getElementById("sk-reset"), out = document.getElementById("sk-out"), inn = document.getElementById("sk-in");
+    if(reset) reset.disabled = !zoomed;
+    if(out) out.disabled = !zoomed;
+    if(inn) inn.disabled = sk.w <= MAP_W / SK_MAX + 0.5;
+  }
+  function skClamp(){
+    sk.w = Math.min(MAP_W, Math.max(MAP_W / SK_MAX, sk.w));
+    sk.h = sk.w * (MAP_H / MAP_W);
+    sk.x = Math.min(MAP_W - sk.w, Math.max(0, sk.x));
+    sk.y = Math.min(MAP_H - sk.h, Math.max(0, sk.y));
+  }
+  // factor > 1 zooms in. (fx, fy) is a point as a 0..1 fraction of the visible map that stays under the finger/cursor.
+  function skZoomAt(factor, fx, fy){
+    const px = sk.x + fx * sk.w, py = sk.y + fy * sk.h;
+    sk.w = sk.w / factor; skClamp();
+    sk.x = px - fx * sk.w; sk.y = py - fy * sk.h; skClamp();
+    skApply();
+  }
+  function skReset(){ sk.x = 0; sk.y = 0; sk.w = MAP_W; sk.h = MAP_H; skApply(); }
+  function setupSketchZoom(){
+    const card = document.querySelector(".map-card");
+    if(!card) return;
+    const frac = (e)=>{
+      const svg = document.getElementById("fell-map");
+      const r = svg.getBoundingClientRect();
+      return [ (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, r ];
+    };
+    const onMap = (e)=> !osMode && e.target.closest && e.target.closest("#fell-map");
+    const btn = (id, fn)=>{ const b = document.getElementById(id); if(b) b.addEventListener("click", fn); };
+    btn("sk-in", ()=> skZoomAt(1.6, 0.5, 0.5));
+    btn("sk-out", ()=> skZoomAt(1 / 1.6, 0.5, 0.5));
+    btn("sk-reset", skReset);
+
+    card.addEventListener("wheel", (e)=>{
+      if(!onMap(e)) return;
+      e.preventDefault();
+      const [fx, fy] = frac(e);
+      skZoomAt(e.deltaY < 0 ? 1.25 : 1 / 1.25, fx, fy);
+    }, { passive: false });
+
+    const pts = new Map();
+    let last = null, startDist = 0, startW = 0, moved = 0;
+    card.addEventListener("pointerdown", (e)=>{
+      if(!onMap(e)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      moved = 0;
+      if(pts.size === 2){
+        const [a, b] = Array.from(pts.values());
+        startDist = Math.hypot(a.x - b.x, a.y - b.y); startW = sk.w;
+      }
+      last = { x: e.clientX, y: e.clientY };
+    });
+    card.addEventListener("pointermove", (e)=>{
+      if(!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const svg = document.getElementById("fell-map"); if(!svg) return;
+      const r = svg.getBoundingClientRect();
+      if(pts.size === 2){
+        const [a, b] = Array.from(pts.values());
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if(startDist > 0){
+          const mx = ((a.x + b.x) / 2 - r.left) / r.width, my = ((a.y + b.y) / 2 - r.top) / r.height;
+          const target = startW * (startDist / d);   // fingers apart = smaller visible width = zoomed in
+          skZoomAt(sk.w / target, mx, my);
+          card.__dragged = true; moved = 99;
+        }
+      } else if(pts.size === 1 && card.__zoomed){
+        const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+        moved += Math.abs(dx) + Math.abs(dy);
+        if(moved > 6){
+          sk.x -= dx / r.width * sk.w; sk.y -= dy / r.height * sk.h; skClamp(); skApply();
+          card.__dragged = true;
+        }
+      }
+    });
+    const end = (e)=>{
+      pts.delete(e.pointerId);
+      if(pts.size < 2) startDist = 0;
+      if(pts.size === 0) setTimeout(()=>{ card.__dragged = false; }, 0);
+    };
+    card.addEventListener("pointerup", end);
+    card.addEventListener("pointercancel", end);
+    // a drag that ends on a fell must not count as tapping it
+    card.addEventListener("click", (e)=>{ if(card.__dragged && onMap(e)){ e.stopPropagation(); e.preventDefault(); } }, true);
+    card.addEventListener("dblclick", (e)=>{ if(!onMap(e)) return; const [fx, fy] = frac(e); skZoomAt(2, fx, fy); });
+    skApply();
   }
 
   // ---------- OS map (beta) ----------
@@ -604,6 +705,7 @@
     if(!wantOs) { const r = document.getElementById("map-ramp"); if(r) r.style.display = "none"; } else paintRamp();
     el.style.display = wantOs ? "" : "none";
     sketch.style.display = wantOs ? "none" : "";
+    const skBar = document.getElementById("sk-zoom"); if(skBar) skBar.style.display = wantOs ? "none" : "";
     document.querySelectorAll(".map-card .map-caption").forEach(c => c.style.display = wantOs ? "none" : "");
     bSketch.classList.toggle("is-on", !wantOs); bSketch.setAttribute("aria-pressed", String(!wantOs));
     bOs.classList.toggle("is-on", wantOs);     bOs.setAttribute("aria-pressed", String(wantOs));
@@ -908,6 +1010,7 @@
     }, { passive: true });
 
     containerEl.addEventListener("touchmove", (e)=>{
+      if(containerEl.__zoomed || e.touches.length > 1){ hideTouchLabel(label); e.preventDefault(); return; }   // zoomed map: dragging pans
       const t = e.touches[0];
       const info = peakInfoFromPoint(t.clientX, t.clientY);
       if(info){
@@ -919,6 +1022,7 @@
     }, { passive: false });
 
     containerEl.addEventListener("touchend", (e)=>{
+      if(containerEl.__dragged){ hideTouchLabel(label); return; }   // that was a pan or pinch, not a tap
       const t = e.changedTouches[0];
       const info = peakInfoFromPoint(t.clientX, t.clientY);
       hideTouchLabel(label);
@@ -1017,6 +1121,7 @@
     const clone = svgEl.cloneNode(true);
     clone.setAttribute("width", MAP_W);
     clone.setAttribute("height", MAP_H);
+    clone.setAttribute("viewBox", "0 0 " + MAP_W + " " + MAP_H);   // the share image always shows the whole map, whatever the zoom
     const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
     styleEl.textContent = selfContainedStyle;
     clone.insertBefore(styleEl, clone.firstChild);
@@ -1295,6 +1400,7 @@
     setupRouteModal();
     initMapTools();
     setupChartTouchPreview(document.getElementById("skyline"), ".peak", document.getElementById("skyline-touch-label"), (ai, fi)=> showFellInfo(ai, fi, "skyline-info"));
+    setupSketchZoom();
     setupChartTouchPreview(document.querySelector(".map-card"), ".peak-mark", document.getElementById("map-touch-label"), (ai, fi)=> showFellInfo(ai, fi, "fell-info"));
     document.getElementById("export-btn").onclick = exportCsv;
     document.getElementById("share-btn").onclick = shareProgressCard;
