@@ -621,7 +621,7 @@ Where am I? sheet and the live hike card. Promoted to production 2026-11-06.
 - **Tested:** `emergency.html` in headless Chromium: grid ref, accuracy and fix age, message contents, offline operation with no requests,
   saving and restoring details, "what's happened" not stored, sms link, old-fix warning and wording, and the no-position case.
 
-## Car park finder and Story route maps (beta only, not promoted) — 2026-11-06
+## Car park finder and Story route maps (promoted to production 2026-11-07) — 2026-11-06
 
 Two more features built in `beta/` only. `sw.js` was `wainwrights-beta-v11` (`carparks.js` added to SHELL); now v12 (see the beta access section). Production is still
 `wainwrights-prod-v7` and has neither.
@@ -724,4 +724,4 @@ unaffected.
   Chromium for allowed, closed, unreachable, remembered-yes (fresh, stale, cleared by a "no"), signed-out, and production pages and the emergency card
   untouched; the admin toggle (badge, buttons, admin mode off refuses, calls and refresh).
 
-**OS logo + error link (2026-11-07).** `OSMap.createMap` adds OS's required logo (`beta/icons/os-logo.svg`, dark variant, bottom-left, links to OS) and a "Report a map error" attribution link. The error-report URL (`OS_ERROR_URL` in `osmap.js`) could not be opened from the build sandbox: confirm it loads. Not yet promoted to production.
+**OS logo + error link (2026-11-07).** `OSMap.createMap` adds OS's required logo (`beta/icons/os-logo.svg`, dark variant, bottom-left, links to OS) and a "Report a map error" attribution link. The error-report URL (`OS_ERROR_URL` in `osmap.js`) could not be opened from the build sandbox: confirm it loads. Promoted to production 2026-11-07 (prod cache v10).

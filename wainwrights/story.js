@@ -170,6 +170,218 @@
     return y + total + 24;
   }
 
+
+  // ---------- route map panel ----------
+  // A small map of the fells in the story, drawn on the canvas in the app's own style (no map tiles,
+  // so there are no licence questions about putting it in a shared image). Only the fells are drawn:
+  // they're public data. Nothing private goes on it, in particular never a hike's meeting point.
+  // The line joins the summits in order. For today's ticks that is the order they were ticked
+  // (numbered); for a hike nobody knows the real path, so the summits are joined in a short,
+  // likely order and the caption says it isn't the exact route.
+  const D2R = Math.PI / 180;
+  let fellIdx = null;
+  function fellByName(){
+    if(fellIdx) return fellIdx;
+    fellIdx = Object.create(null);
+    if(typeof FELLS_DATA !== "undefined") FELLS_DATA.forEach(b=> b.fells.forEach(f=>{ fellIdx[f.name] = f; }));
+    return fellIdx;
+  }
+
+  function resolveFells(list){
+    const idx = fellByName();
+    const seen = new Set();
+    return (list || []).map(x=>{
+      const name = typeof x === "string" ? x : x && x.name;
+      const f = idx[name];
+      if(!f || f.lat == null || f.lng == null || seen.has(name)) return null;
+      seen.add(name);
+      return { name, lat: f.lat, lng: f.lng, m: f.m, at: x && x.ticked_at ? Date.parse(x.ticked_at) : NaN };
+    }).filter(Boolean);
+  }
+
+  // local flat coordinates in degrees of latitude (longitude scaled by cos(latitude))
+  function flatten(pts, lat0){
+    const k = Math.cos(lat0 * D2R);
+    pts.forEach(p=>{ p.u = p.lng * k; p.v = -p.lat; });
+    return k;
+  }
+  const dist2 = (a, b)=> (a.u - b.u) ** 2 + (a.v - b.v) ** 2;
+  const dist = (a, b)=> Math.sqrt(dist2(a, b));
+
+  // A sensible order to join summits: nearest-neighbour from a start, then 2-opt to remove crossings.
+  // `hint` ({u,v}) is where the walk probably starts (used only for ordering, never drawn).
+  function routeOrder(pts, hint){
+    const n = pts.length;
+    if(n < 3) return pts.slice();
+    let startIdx = 0;
+    if(hint){
+      let best = Infinity;
+      pts.forEach((p, i)=>{ const d = dist2(p, hint); if(d < best){ best = d; startIdx = i; } });
+    } else {
+      // one end of the walk: the western member of the two summits furthest apart
+      let best = -1, a = 0, b = 0;
+      for(let i = 0; i < n; i++) for(let j = i + 1; j < n; j++){ const d = dist2(pts[i], pts[j]); if(d > best){ best = d; a = i; b = j; } }
+      startIdx = pts[a].u <= pts[b].u ? a : b;
+    }
+    const left = pts.map((p, i)=> i).filter(i=> i !== startIdx);
+    const path = [pts[startIdx]];
+    while(left.length){
+      const last = path[path.length - 1];
+      let bi = 0, bd = Infinity;
+      left.forEach((idx, k)=>{ const d = dist2(pts[idx], last); if(d < bd){ bd = d; bi = k; } });
+      path.push(pts[left.splice(bi, 1)[0]]);
+    }
+    for(let pass = 0, improved = true; improved && pass < 50; pass++){
+      improved = false;
+      for(let i = 1; i < n - 1; i++){
+        for(let j = i + 1; j < n; j++){
+          const before = dist(path[i - 1], path[i]) + (j + 1 < n ? dist(path[j], path[j + 1]) : 0);
+          const after = dist(path[i - 1], path[j]) + (j + 1 < n ? dist(path[i], path[j + 1]) : 0);
+          if(after + 1e-12 < before){ path.splice(i, j - i + 1, ...path.slice(i, j + 1).reverse()); improved = true; }
+        }
+      }
+    }
+    return path;
+  }
+
+  // Are these ticks spread over time enough for "the order you ticked them" to mean something?
+  // (A hike ticked for everyone at once has the same time on every fell.)
+  function tickOrderIsReal(pts){
+    const ts = pts.map(p=> p.at);
+    if(ts.length < 2 || ts.some(t=> !isFinite(t))) return false;
+    const sorted = ts.slice().sort((a, b)=> a - b);
+    return sorted[sorted.length - 1] - sorted[0] >= 10 * 60 * 1000;
+  }
+
+  function startHint(label){
+    if(!label || typeof PLANNER_WALKS === "undefined") return null;
+    const k = Object.keys(PLANNER_WALKS).find(id=> PLANNER_WALKS[id].label === label);
+    const s = k && PLANNER_WALKS[k].start;
+    return s && s.lat != null ? { lat: s.lat, lng: s.lng } : null;
+  }
+
+  function niceKm(maxKm){
+    const steps = [0.5, 1, 2, 5, 10, 20];
+    let pick = steps[0];
+    steps.forEach(s=>{ if(s <= maxKm) pick = s; });
+    return pick;
+  }
+
+  // Draws the panel at y with height h. Returns the y to continue from, or null if there is nothing to draw.
+  function mapPanel(ctx, y, h, o){
+    const sel = resolveFells(o.fells);
+    if(!sel.length) return null;
+    const lat0 = sel.reduce((s, p)=> s + p.lat, 0) / sel.length;
+    const k = flatten(sel, lat0);
+    let hint = null;
+    if(o.hint){ hint = { u: o.hint.lng * k, v: -o.hint.lat }; }
+    const ordered = o.ordered && sel.length > 1 && tickOrderIsReal(sel);
+    const route = ordered ? sel.slice().sort((a, b)=> a.at - b.at) : routeOrder(sel, hint);
+
+    const x0 = M - 16, w = W - x0 * 2;
+
+    // fit
+    const padX = 120, padTop = 84, padBottom = 96;
+    const minU = Math.min(...sel.map(p=> p.u)), maxU = Math.max(...sel.map(p=> p.u));
+    const minV = Math.min(...sel.map(p=> p.v)), maxV = Math.max(...sel.map(p=> p.v));
+    const MIN_SPAN = 0.024;   // about 2.7 km, so a single fell isn't zoomed to nothing
+    const cu = (minU + maxU) / 2, cv = (minV + maxV) / 2;
+    const spanU = Math.max(maxU - minU, MIN_SPAN), spanV = Math.max(maxV - minV, MIN_SPAN);
+    // a long north-south ridge wants a tall panel, an east-west one a short one (more room for the list below)
+    h = Math.round(Math.max(Math.min(420, h), Math.min(h, padTop + padBottom + (w - padX * 2) * (spanV / spanU))));
+    panel(ctx, y, h);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0 + 2, y + 2, w - 4, h - 4); ctx.clip();
+    const availW = w - padX * 2, availH = h - padTop - padBottom;
+    const scale = Math.min(availW / spanU, availH / spanV);
+    const ox = x0 + w / 2, oy = y + padTop + availH / 2;
+    const px = p=> ({ x: ox + (p.u - cu) * scale, y: oy + (p.v - cv) * scale });
+
+    // the other fells nearby, as quiet dots for context
+    const others = [];
+    const idx = fellByName();
+    Object.keys(idx).forEach(n=>{
+      const f = idx[n];
+      if(f.lat == null || sel.some(s=> s.name === n)) return;
+      const p = { u: f.lng * k, v: -f.lat };
+      const q = px(p);
+      if(q.x > x0 + 14 && q.x < x0 + w - 14 && q.y > y + 14 && q.y < y + h - 14) others.push(q);
+    });
+    ctx.strokeStyle = C.inkFaint; ctx.lineWidth = 2; ctx.globalAlpha = 0.55;
+    others.forEach(q=>{ ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.stroke(); });
+    ctx.globalAlpha = 1;
+
+    // the line
+    if(route.length > 1){
+      ctx.strokeStyle = C.greenDeep; ctx.lineWidth = 5; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.setLineDash(ordered ? [] : [18, 12]);
+      ctx.beginPath();
+      route.forEach((p, i)=>{ const q = px(p); if(i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // markers, then labels (labels avoid each other)
+    const fs = route.length > 10 ? 22 : 26;
+    const placed = [];
+    const rects = [];
+    const r = ordered ? 21 : 15;
+    route.forEach((p, i)=>{
+      const q = px(p);
+      if(ordered){
+        ctx.fillStyle = C.greenDeep; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = C.paperCard; ctx.font = "700 22px " + MONO; ctx.textAlign = "center";
+        ctx.fillText(String(i + 1), q.x, q.y + 8);
+      } else {
+        ctx.fillStyle = C.green; ctx.strokeStyle = C.greenDeep; ctx.lineWidth = 3; ctx.lineJoin = "round";
+        ctx.beginPath(); ctx.moveTo(q.x - 17, q.y + 13); ctx.lineTo(q.x - 3, q.y - 15); ctx.lineTo(q.x + 5, q.y - 5); ctx.lineTo(q.x + 10, q.y - 11); ctx.lineTo(q.x + 19, q.y + 13); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      }
+      placed.push({ p, q });
+      rects.push({ x: q.x - r, y: q.y - r, w: r * 2, h: r * 2 });
+    });
+    ctx.font = "600 " + fs + "px " + SERIF; ctx.textAlign = "left";
+    const inside = b=> b.x > x0 + 12 && b.x + b.w < x0 + w - 12 && b.y > y + 12 && b.y + b.h < y + h - 40;
+    const hit = (a, b)=> a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    placed.forEach(({ p, q })=>{
+      const tw = ctx.measureText(p.name).width, th = fs;
+      const gap = r + 8;
+      const cands = [
+        { x: q.x - tw / 2, y: q.y - gap - th },
+        { x: q.x - tw / 2, y: q.y + gap },
+        { x: q.x + gap, y: q.y - th / 2 },
+        { x: q.x - gap - tw, y: q.y - th / 2 }
+      ].map(c=> ({ x: c.x, y: c.y, w: tw, h: th }));
+      const spot = cands.find(c=> inside(c) && !rects.some(b=> hit(c, b)));
+      if(!spot) return;
+      rects.push(spot);
+      ctx.lineWidth = 7; ctx.strokeStyle = C.paperCard; ctx.lineJoin = "round";
+      ctx.strokeText(p.name, spot.x, spot.y + th * 0.8);
+      ctx.fillStyle = C.ink; ctx.fillText(p.name, spot.x, spot.y + th * 0.8);
+    });
+
+    // north arrow, scale bar, caption
+    ctx.textAlign = "center"; ctx.fillStyle = C.ink;
+    const nx = x0 + w - 50, ny = y + 62;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nx, ny - 34); ctx.moveTo(nx - 9, ny - 24); ctx.lineTo(nx, ny - 36); ctx.lineTo(nx + 9, ny - 24); ctx.stroke();
+    ctx.font = "700 22px " + SERIF; ctx.fillText("N", nx, ny + 22);
+    const pxPerKm = scale * (1 / 111.32);   // flat units are degrees of latitude, 111.32 km each
+    const km = niceKm((w * 0.22) / pxPerKm);
+    const bx = x0 + 44, by = y + h - 62, bw = km * pxPerKm;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(bx, by - 8); ctx.lineTo(bx, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by - 8); ctx.stroke();
+    const halo = (text, tx, ty)=>{ ctx.lineWidth = 8; ctx.strokeStyle = C.paperCard; ctx.lineJoin = "round"; ctx.strokeText(text, tx, ty); };
+    ctx.textAlign = "left"; ctx.font = "600 22px " + MONO; ctx.fillStyle = C.inkSoft;
+    const kmText = km < 1 ? km * 1000 + " m" : km + " km";
+    halo(kmText, bx, by - 16); ctx.fillText(kmText, bx, by - 16);
+    ctx.textAlign = "center"; ctx.font = "400 21px " + MONO; ctx.fillStyle = C.inkSoft;
+    const cap = fit(ctx, o.caption || (ordered ? "Numbered in the order they were ticked" : "Summits joined in a likely order, not the exact path"), w - 120);
+    halo(cap, x0 + w / 2, y + h - 22); ctx.fillText(cap, x0 + w / 2, y + h - 22);
+    ctx.restore();
+    return y + h + 24;
+  }
+
   const plural = (n, a, b)=> n + " " + (n === 1 ? a : b);
   const toBlob = c=> new Promise(res=> c.toBlob(res, "image/jpeg", 0.92));
 
@@ -182,6 +394,10 @@
       { v: d.percent + "%", l: "COMPLETE" },
       { v: d.gain.toLocaleString() + "m", l: "SUMMIT HEIGHT" }
     ]);
+    if(d.map !== false){
+      const next = mapPanel(ctx, y, 660, { fells: d.fells, ordered: true });
+      if(next != null) y = next;
+    }
     list(ctx, y, d.fells.map(f=> ({ left: f.name, right: f.m + "m" })), { maxRows: 12 });
     footer(ctx);
     return toBlob(canvas);
@@ -195,12 +411,16 @@
     if(d.miles) bits.push(d.miles + " mi");
     if(d.ascent) bits.push(d.ascent + " metres up");
     y = stats(ctx, y, bits.map((b, i)=> ({ v: b.split(" ")[0], l: b.split(" ").slice(1).join(" ").toUpperCase() })));
-    // fells, wrapped as one line of text
-    ctx.textAlign = "center"; ctx.fillStyle = C.inkSoft;
-    ctx.font = "italic 500 32px " + SERIF;
-    const fl = wrap(ctx, d.fells.join(" · "), W - M * 2).slice(0, 4);
-    fl.forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
-    y += 14;
+    // a map of the fells, or (if none can be placed) the names as one wrapped line
+    const mapped = d.map === false ? null : mapPanel(ctx, y, 660, { fells: d.fells, hint: startHint(d.label) });
+    if(mapped != null) y = mapped;
+    else {
+      ctx.textAlign = "center"; ctx.fillStyle = C.inkSoft;
+      ctx.font = "italic 500 32px " + SERIF;
+      const fl = wrap(ctx, d.fells.join(" · "), W - M * 2).slice(0, 4);
+      fl.forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
+      y += 14;
+    }
     list(ctx, y, d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" })), { maxRows: 12 });
     footer(ctx);
     return toBlob(canvas);
@@ -230,17 +450,21 @@
     if(d.miles) bits.push({ v: String(d.miles), l: "MILES" });
     if(d.ascent) bits.push({ v: String(d.ascent), l: "METRES UP" });
     y = stats(ctx, y, bits);
-    ctx.textAlign = "center"; ctx.fillStyle = C.inkSoft;
-    ctx.font = "italic 500 32px " + SERIF;
-    wrap(ctx, d.fells.join(" · "), W - M * 2).slice(0, 4).forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
-    y += 20;
+    const mapped = d.map === false ? null : mapPanel(ctx, y, 620, { fells: d.fells, hint: startHint(d.label) });
+    if(mapped != null) y = mapped;
+    else {
+      ctx.textAlign = "center"; ctx.fillStyle = C.inkSoft;
+      ctx.font = "italic 500 32px " + SERIF;
+      wrap(ctx, d.fells.join(" · "), W - M * 2).slice(0, 4).forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
+      y += 20;
+    }
     const rows = [
       { left: "Hosted by", right: d.host },
       { left: "Area", right: d.area },
       { left: "Places left", right: d.left + " of " + d.spaces }
     ];
     if(d.start) rows.push({ left: "Starts", right: d.start });
-    y = list(ctx, y, rows, { maxRowH: 70 });
+    y = list(ctx, y, rows, { maxRowH: mapped != null ? 56 : 70 });
     ctx.fillStyle = C.green; ctx.font = "700 34px " + MONO;
     spaced(ctx, "TAP THE LINK TO ASK FOR A PLACE", W / 2, y + 50, 2);
     footer(ctx);
@@ -279,5 +503,5 @@
     }
   }
 
-  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, share, run };
+  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, share, run, _test: { routeOrder, resolveFells, flatten, tickOrderIsReal } };
 })();

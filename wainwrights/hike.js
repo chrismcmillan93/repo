@@ -581,7 +581,7 @@
           title: hike.title, host: hike.host_name, area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           start: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null
+          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label
         });
       }, "wainwrights-hike-invite.jpg", hike.title);
     }
@@ -592,7 +592,7 @@
         return WWStory.hikeCard({
           title: hike.title, past: hike.status === "completed" || d < new Date(),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
-          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null,
+          fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label,
           people: (people || []).map(p => ({ name: p.display_name, handle: p.instagram_handle }))
         });
       }, "wainwrights-hike.jpg", hike.title);
