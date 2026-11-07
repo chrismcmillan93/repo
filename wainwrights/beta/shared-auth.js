@@ -193,12 +193,25 @@
         return { rateLimited: true, text: "A code was already sent a moment ago, so another can't be sent yet" + (wait ? " (try again in about " + Math.ceil(Number(wait[1]) / 60) + " min)" : "") + ". Check your email, including Junk, and enter the code you already have." };
       }
       if(/load failed|failed to fetch|networkerror|network request failed/i.test(msg)){
-        return { text: "Couldn't reach the sign-in service. Check your connection and try again. If you just asked for a code, it may already be in your email." };
+        return { network: true, text: "Couldn't reach the sign-in service. Check your connection and try again. If you just asked for a code, it may already be in your email." };
       }
       return { text: msg || fallback };
     }
 
     let pendingEmail = "";
+    // Remember (on this device only) when a code was last sent to an address. Supabase refuses a second code for a few
+    // minutes, and on some phones that refusal reaches the page as a bare "Load failed", so the page checks first.
+    const SENT_KEY = "ww_code_sent_";
+    function lastSent(email){ try{ return Number(localStorage.getItem(SENT_KEY + email.toLowerCase())) || 0; }catch(e){ return 0; } }
+    function markSent(email){ try{ localStorage.setItem(SENT_KEY + email.toLowerCase(), String(Date.now())); }catch(e){} }
+    function showCodeBox(email, note){
+      pendingEmail = email;
+      errorEl.textContent = note;
+      errorEl.style.display = "block";
+      form.style.display = "none";
+      sentWrap.style.display = "block";
+      codeInput.focus();
+    }
 
     form.addEventListener("submit", async function(e){
       e.preventDefault();
@@ -206,6 +219,11 @@
       if(!WW.sb){
         errorEl.textContent = "Couldn't reach Supabase — try again shortly.";
         errorEl.style.display = "block";
+        return;
+      }
+      const typed = emailInput.value.trim();
+      if(typed && Date.now() - lastSent(typed) < 60 * 1000){
+        showCodeBox(typed, "A code was sent to this address a moment ago. Enter it below, or wait a few minutes before asking for another.");
         return;
       }
       submitBtn.disabled = true;
@@ -217,20 +235,24 @@
           options: { emailRedirectTo: REDIRECT_URL }
         });
         if(error) throw error;
+        markSent(email);
         pendingEmail = email;
         form.style.display = "none";
         sentWrap.style.display = "block";
         codeInput.focus();
       }catch(err){
         const f = friendlyAuthError(err, "Something went wrong sending that code.");
-        errorEl.textContent = f.text;
-        errorEl.style.display = "block";
+        const em = emailInput.value.trim();
+        const recent = em && Date.now() - lastSent(em) < 10 * 60 * 1000;
         if(f.rateLimited){
           // an earlier code is still valid: let them type it in
-          pendingEmail = emailInput.value.trim();
-          form.style.display = "none";
-          sentWrap.style.display = "block";
-          codeInput.focus();
+          showCodeBox(em, f.text);
+        }else if(f.network && recent){
+          // a refused repeat request can surface as a bare network error; the earlier code is still the one to use
+          showCodeBox(em, "A code was sent to this address a few minutes ago. Enter it below, or wait a few minutes before asking for another.");
+        }else{
+          errorEl.textContent = f.text;
+          errorEl.style.display = "block";
         }
       }finally{
         submitBtn.disabled = false;
