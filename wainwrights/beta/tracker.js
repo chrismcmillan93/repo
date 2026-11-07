@@ -265,6 +265,8 @@
   const MILESTONES = [10, 25, 50, 75, 100, 107, 125, 150, 175, 200, 214];
   const milestoneLabel = n => n === 107 ? "halfway (107 fells)" : n === 214 ? "all 214" : n + " fells";
   const milestoneTitle = n => n === 107 ? "Halfway there" : n === 214 ? "All 214 done" : n + " fells";
+  // heading of the card: "50 fells reached" the moment you hit it, "Past 50 fells" after that, so the card never looks like it disagrees with your count
+  const milestoneHeading = (n, climbed) => n === 214 ? "All 214 done" : climbed === n ? (n === 107 ? "Halfway there" : n + " fells reached") : (n === 107 ? "Past halfway" : "Past " + n + " fells");
   function milestoneInfo(climbed){
     let prev = 0, next = null;
     for(const m of MILESTONES){ if(m <= climbed) prev = m; else { next = m; break; } }
@@ -285,7 +287,7 @@
       fill.style.width = "100%";
     }
     el.style.display = "";
-    if(btn){ btn.style.display = m.prev ? "" : "none"; btn.textContent = "Share my " + (m.prev ? milestoneLabel(m.prev).replace(" (107 fells)", "") : "") + " milestone"; }
+    if(btn){ btn.style.display = m.prev ? "" : "none"; btn.textContent = "Share my milestone card"; }
   }
   function shareMilestoneCard(){
     const btn = document.getElementById("share-milestone-btn");
@@ -293,7 +295,7 @@
       const c = computeCounts(), m = milestoneInfo(c.climbed);
       if(!m.prev) throw new Error("no milestone yet");
       return WWStory.milestoneCard({
-        reached: m.prev, title: milestoneTitle(m.prev),
+        reached: m.prev, title: milestoneHeading(m.prev, c.climbed),
         dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
         climbed: c.climbed, total: TOTAL, percent: c.percent, elevation: c.elevation,
         next: m.next, nextLabel: m.next ? milestoneTitle(m.next) : "", toGo: m.toGo, prev: m.prev

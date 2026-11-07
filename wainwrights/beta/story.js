@@ -503,7 +503,8 @@
     }
   }
 
-  // milestone: the last milestone you passed (10, 25, 50 ... halfway, all 214) in a big ring, and a countdown to the next one.
+  // milestone: your real count in a big ring, a heading that names the milestone you have just reached or passed (10, 25, 50 ... halfway,
+  // all 214), and a countdown to the next one.
   // d = { reached, title, dateLabel, climbed, total, percent, elevation, next, nextLabel, toGo, prev }
   async function milestoneCard(d){
     await ensureFonts();
@@ -517,12 +518,12 @@
     ctx.strokeStyle = C.green; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
     ctx.lineCap = "butt";
     ctx.textAlign = "center"; ctx.fillStyle = C.greenDeep;
-    ctx.font = "700 210px " + SERIF; ctx.fillText(String(d.reached), cx, cy + 62);
+    ctx.font = "700 210px " + SERIF; ctx.fillText(String(d.climbed), cx, cy + 62);   // your real count, so the card never disagrees with your tracker
     ctx.fillStyle = C.inkSoft; ctx.font = "400 26px " + MONO;
-    spaced(ctx, d.reached === d.total ? "ALL CLIMBED" : "FELLS CLIMBED", cx, cy + 118, 3);
+    spaced(ctx, d.climbed === d.total ? "ALL CLIMBED" : "FELLS CLIMBED", cx, cy + 118, 3);
     y = cy + R + LW / 2 + 36;
     y = stats(ctx, y, [
-      { v: d.climbed + " / " + d.total, l: "CLIMBED" },
+      { v: String(d.total - d.climbed), l: "TO GO" },
       { v: d.percent + "%", l: "COMPLETE" },
       { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }
     ]);
