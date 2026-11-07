@@ -618,6 +618,11 @@
         stats: [{ v: String(d.total - d.climbed), l: "TO GO" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
         rows: rows.filter(r=> r.right !== "done").slice(0, 5), map: { all: true, climbed: new Set(d.climbedNames || []) } };
     }
+    if(kind === "progress") return {
+      kicker: "MY PROGRESS", title: d.climbed + (d.climbed === 1 ? " fell" : " fells") + " climbed", sub: d.dateLabel, big: { v: d.percent + "%", l: "COMPLETE" },
+      stats: [{ v: d.climbed + " / " + d.total, l: "FELLS CLIMBED" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
+      rows: d.regions.map(r=> ({ left: r.name.replace(/^The /, ""), right: r.climbed + " / " + r.total })), map: { all: true, climbed: new Set(d.climbedNames || []) }
+    };
     if(kind === "challenge"){
       const items = d.items || [], todo = items.filter(i=> !i.done);
       return { kicker: "CHALLENGE", title: d.label, sub: d.done + " OF " + d.total + " DONE", big: { v: d.done + "/" + d.total, l: "DONE" },
@@ -732,6 +737,31 @@
     checklist(ctx, y, (d.items || []).map(i=> ({ label: i.name, done: i.done })));
     footer(ctx); return canvas;
   }
+  // one ring per region (the original progress card's design), in the current theme
+  function regionRings(ctx, y, regions){
+    const n = regions.length, ringD = Math.floor((W - M * 2) / n - 8), r = ringD / 2 - 8, gap = (W - M * 2 - ringD * n) / Math.max(1, n - 1);
+    regions.forEach((rg, i)=>{
+      const cx = M + ringD / 2 + i * (ringD + gap), cy = y + ringD / 2;
+      ctx.lineWidth = 8; ctx.strokeStyle = C.paperDeep; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      if(rg.percent > 0){ ctx.strokeStyle = C.green; ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (rg.percent / 100) * Math.PI * 2); ctx.stroke(); }
+      ctx.textAlign = "center"; ctx.fillStyle = C.greenDeep; ctx.font = "700 30px " + SERIF; ctx.fillText(rg.percent + "%", cx, cy + 2);
+      ctx.font = "400 15px " + MONO; ctx.fillStyle = C.inkFaint; ctx.fillText(rg.climbed + " / " + rg.total, cx, cy + 26);
+      ctx.font = "600 18px " + SERIF; ctx.fillStyle = C.ink;
+      const label = rg.name.replace(/^The /, "").replace(/ Fells$/, ""), words = label.split(" ");
+      if(words.length > 1){ ctx.fillText(words.slice(0, -1).join(" "), cx, cy + ringD / 2 + 28); ctx.fillText(words[words.length - 1], cx, cy + ringD / 2 + 50); }
+      else ctx.fillText(label, cx, cy + ringD / 2 + 28);
+    });
+    return y + ringD + 70;
+  }
+  function classicProgress(m, d){
+    const { canvas, ctx } = newCard();
+    let y = heading(ctx, TOP, m.kicker, m.title, m.sub);
+    if(H > 1000) y = stats(ctx, y, m.stats);
+    const ringsH = H > 1200 ? 190 : 0, mh = BOTTOM - y - ringsH - 10;
+    if(mh >= 300) y = allMap(ctx, y, Math.min(760, mh), { climbed: new Set(d.climbedNames || []) });
+    if(ringsH) regionRings(ctx, y, d.regions);
+    footer(ctx); return canvas;
+  }
   function classicSummit(m, d){
     const { canvas, ctx } = newCard();
     let y = heading(ctx, TOP, m.kicker, m.title, m.sub);
@@ -758,7 +788,7 @@
     if(m.rows.length && BOTTOM - y > 200){ ctx.textAlign = "center"; ctx.fillStyle = C.green; ctx.font = "700 24px " + MONO; spaced(ctx, "HIGHEST", W / 2, y + 14, 4); list(ctx, y + 30, m.rows, { maxRows: tall ? 4 : 2, maxRowH: 54 }); }
     footer(ctx); return canvas;
   }
-  const CLASSIC_NEW = { challenge: classicChallenge, summit: classicSummit, recap: classicRecap };
+  const CLASSIC_NEW = { challenge: classicChallenge, summit: classicSummit, recap: classicRecap, progress: classicProgress };
   const CLASSIC_OLD = { day: dayCard, hike: hikeCard, invite: inviteCard, team: teamCard, milestone: milestoneCard };
 
   // ---- the three generic layouts ----
