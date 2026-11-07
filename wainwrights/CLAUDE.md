@@ -483,8 +483,8 @@ verify_jwt false, authenticates the caller itself like `drive-times`) trades the
 `OS_API_SECRET` secrets for a ~5-minute OAuth2 token and returns it to **signed-in users only** (OS's own rule:
 don't hand tokens to anonymous visitors). It caches the token in memory until it has under a minute left. The browser
 then calls `api.os.uk` directly with `Authorization: Bearer <token>` (OS's CORS preflight allows that header).
-**Not deployed yet and the two secrets aren't set** (needs the OS Data Hub project with OS Maps API and OS Names API added).
-Until then everything degrades quietly, in production too: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
+**Deployed 2026-11-07 (function version 1) with `OS_API_KEY` / `OS_API_SECRET` set** on walking-up-hills (the OS project has Maps, Names, Features, NGD Tiles, see the real-key checks below).
+If the function or OS can't be reached everything degrades quietly, in production too: `OSMap.createMap()` resolves null, the tracker stays on the sketch map with a note,
 Where am I? still gives a grid ref and nearest summit, and the hike page shows the list without a map. A failed token call is
 not retried for 60 s.
 
@@ -505,12 +505,12 @@ not retried for 60 s.
   nearest summits with distance and compass point, nearest named place from OS Names (`/search/names/v1/nearest`, 1 km radius,
   looked up again only after ~100 m of movement), "Copy grid ref" / "Copy full message" for reading to Mountain Rescue, and a 999
   line. Position is never sent anywhere except the grid coordinate to OS Names. Grid ref and nearest summit work with no OS access at all.
-- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, NOT applied to the database yet: the Supabase connector asks for confirmation on it because the functions contain `delete from`, and that prompt timed out four times; paste the file into the Supabase SQL editor and run it, or approve the prompt):**
+- **Live hike map (`beta/hike-live.js`, migration `20261106100000_wainwrights_hike_live_positions.sql`, applied 2026-11-07 through the SQL editor, because the Supabase connector's confirmation prompt timed out four times on its `delete from` statements; verified afterwards: table, 3 functions, 2 triggers, RLS on, no client table access, anon refused):**
   on a hosted hike, the host and approved walkers get a "Live hike map" card from 3 h before the start to 18 h after. Strictly
   opt-in per person per hike ("Share my location"); positions upload at most every 15 s (or 25 m of movement); everyone polls
   every 20 s. A web page can only read GPS while open with the screen on, and the card says so (it's not a safety tracker). The
   opt-in is remembered in `localStorage` (`ww_live_<hike id>`) for 24 h so reopening the page resumes. Table
-  `hike_live_positions` (once applied: one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
+  `hike_live_positions` (one row per person per hike, latest point only, no history; RLS on with **no policies** and all client
   grants revoked) is reached only through `share_hike_position`, `stop_sharing_hike_position` and `get_hike_positions` (SECURITY
   DEFINER, `authenticated` only). Reads are limited to the host and approved walkers and only show people who are still the host
   or approved, updated in the last 3 h. Triggers clear rows when a hike stops being `open` (cancelled/completed) and when someone
@@ -522,10 +522,18 @@ not retried for 60 s.
   rounding, stale and no-longer-approved rows hidden, direct table access and anon refused, stop/withdraw/cancel clear rows).
   **Not tested:** the real OS token endpoint and live tiles (no key available), `os-token` itself (no Deno here), a real phone's
   GPS, or two real accounts on the live database. Do the last with two accounts before telling anyone.
-- **To switch it on:** add OS Maps API + OS Names API to an OS Data Hub project, `supabase secrets set OS_API_KEY=... OS_API_SECRET=...`
-  on walking-up-hills, deploy `os-token` with verify_jwt false, and apply the live-pins migration (see above). Until the pins migration is applied the live card's
-  buttons would report "Couldn't send", but the card only appears from 3 h before a hike's start, so nothing shows until the 13 Dec hike. Then check the key's usage limits in the Data Hub
-  (rate limit is 600 requests/minute per API in a live-mode project, 50 in a dev-mode one; a map screen loads ~10-20 tiles).
+- **Real-key checks (2026-11-07, with the project key through the session's proxy; nothing was sent through `os-token`, which needs a signed-in user, so
+  its end-to-end run is the first sign-in to the beta map).** Maps API: an Outdoor_3857 tile returns 200, a 256 px PNG. Names API: `nearest` returns 200;
+  unfiltered it answered with a postcode in villages and "Copeland Forest (other landcover)" at Wasdale Head, so the request now filters `fq` to
+  Hamlet, Village, City, Suburban_Area, Other_Settlement, Hill_Or_Mountain, Valley, Inland_Water, Waterfall, Cirque_Or_Hollow, Other_Landform and
+  Cliff_Or_Slope (`Pass` is not a valid LOCAL_TYPE: OS answers 400). Result: Helvellyn, Scafell Pike, "Glenridding (village)", a valley at Honister, nothing
+  within 1 km of the Wasdale Head planner start point. **Car park data is not available on this OS plan:** the OS Features API (WFS) refuses MasterMap
+  Sites with 403 "A Premium Plan is required to access Premium Data", NGD Features is not on the plan, and the NGD Tiles vector tiles (`ngd-base`, matrix
+  `3857`, path z/y/x) carry no Site layer at the free zoom levels 12-15 (only settlements, woodland, water, landcover, landform, roads, ornament,
+  contours, buildings) and refuse zoom 16 and above as Premium. So the car park finder uses OpenStreetMap (below).
+- **Keep the OS project small.** The token the function hands to signed-in users can call every API in the project (OS lets you restrict APIs per project
+  but not data layers). Maps and Names are all the app needs: **remove OS Features API and OS NGD API – Tiles from the project** (added only for the
+  probes). The probe key is also saved as a network secret on the Claude Code environment: delete it in the environment settings when finished.
 - **Built afterwards (see the next two sections):** the community heat map and the offline emergency card. `sw.js` is `wainwrights-beta-v10`; Leaflet is precached; tiles and `api.os.uk` are never cached or intercepted.
 
 ## Difficulty ratings: Effort and Technical (beta and production) — 2026-11-06
@@ -618,19 +626,20 @@ Where am I? sheet and the live hike card. Promoted to production 2026-11-06.
 Two more features built in `beta/` only. `sw.js` was `wainwrights-beta-v11` (`carparks.js` added to SHELL); now v12 (see the beta access section). Production is still
 `wainwrights-prod-v7` and has neither.
 
-**Car park finder (planner walk cards).** A "Find car parks near the start" button on every walk card (`beta/carparks.js`, UI in `planner.js`).
-Tapping it asks OS for **public car parks** around the walk's start pin: OS NGD API - Features, collection `lus-fts-site-2` (falls back to
-`lus-fts-site-1` on a 404), `filter=description = 'Public Car Park'`, a `bbox` of 1.5 km each way (widened once to 4 km if empty), `limit=100`,
-sent with the OS bearer token from `os-token` (never a key in the URL). Each Site is a polygon, so its area-weighted centre is used. The nearest 4
-within range are listed with distance and compass direction from the start pin, an 8-figure grid ref, a Google Maps directions link and a
-**"Host from here"** button that starts a hosted hike with that car park as the meeting point (via the same `ww_host_walk` hand-off as "Host this
-walk"). Nothing is looked up on page load: one or two OS transactions per walk, only when tapped. Results are kept in this device's
-`localStorage` (`ww_carparks_v1:`, 30 days) and never on our server; "Try again" skips that saved copy. Names come from OS and are shown as text.
-The card says OS lists surveyed public car parks only (lay-bys, field parking and some small car parks may be missing, and it gives no price or
-opening times). Messages cover: OS service not set up, 401/403 (the OS project may not include NGD Features), 404, 429, other failures.
-**Unverified:** the OS plan/quota for NGD Features isn't documented in the pages I could read (only the rate limits: 600/min live, 50/min
-development), so check the Data Hub API catalogue; and the field names (`name1_text`, `description`, geometry as GeoJSON polygons) come from the
-docs and a docs-assistant answer, not from a real response (no key available). Re-check against a real response when `os-token` is live.
+**Car park finder (planner walk cards).** A "Find car parks near the start" button on every walk card (`beta/carparks.js`, UI in `planner.js`). Tapping it
+asks **OpenStreetMap** (the public Overpass API, `overpass-api.de`, then the `overpass.kumi.systems` mirror if the first is busy or down) for
+`amenity=parking` within 1.5 km of the walk's start pin, widened once to 4 km if empty (`out center tags`, POSTed as a plain form so there is no CORS
+preflight). It needs **no sign-in and no OS access**; only the walk's start coordinates (public) are sent. Left out: `access` private, no, customers,
+delivery, permit, residents or employees, and multi-storey, underground, rooftop and garage parking. Duplicates (a point and an outline of the same
+car park) are merged, keeping the one with more tags. The nearest 4 are listed with distance and direction from the pin, fee ("Pay: <charge>" / "Free" /
+"Donation"), about N spaces, who runs it, access notes, an 8-figure grid ref, a Google Maps directions link, a link to the OSM entry (so mistakes can be
+fixed there) and **"Host from here"** (starts a hosted hike with that car park as the meeting point, via the `ww_host_walk` hand-off). The card credits
+**© OpenStreetMap contributors** (link to openstreetmap.org/copyright, as the ODbL requires) and says volunteers map these so one can be missing, out of
+date or wrongly described. Looked up only on tap, kept on this device only (`localStorage` `ww_carparks_v2:`, 30 days); "Try again" skips that copy.
+Errors: busy (429/503/504 or a timed-out query) and failed, each after trying both servers. **Why not OS:** see the real-key checks in the OS section
+(Premium only). **Unverified:** my sandbox can't reach Overpass, so the response shape (`elements` with `type`, `id`, `lat`/`lon` or `center`, `tags`) comes
+from Overpass's documented format and the tests use that; check one real lookup. The Overpass public servers are fair-use: a lookup per tap plus a
+30-day device copy keeps this tiny, but don't loop it.
 
 **Story route maps (`beta/story.js`).** A map panel on the Story images, drawn on the canvas in the app's own style (no map tiles, so no OS
 licence question about putting it in a shared image): the fells in the story as peaks or numbered dots, the other fells nearby as quiet circles, a

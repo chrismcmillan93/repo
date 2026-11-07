@@ -504,31 +504,39 @@
   // list doesn't lose them.
   const cpState = {};   // walk id -> { status: "loading" | "ready" | "error", parks, radiusM, code }
   const CP_ERRORS = {
-    unavailable: "Car park lookup needs the OS map service, which isn't switched on yet.",
-    not_allowed: "OS didn't allow the car park lookup (the OS project may not include the OS NGD Features API).",
-    not_found: "OS didn't return car park data for this area.",
-    busy: "OS is busy right now. Try again in a minute.",
-    failed: "Couldn't reach OS just now. Try again."
+    busy: "The map-data service is busy right now. Try again in a minute.",
+    failed: "Couldn't reach the map-data service just now. Try again."
   };
+
 
   function carParksHtml(w){
     const s = cpState[w.id];
     if (!s) return `<button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Find car parks near the start</button>`;
     if (s.status === "loading") return `<p class="plan-est">Looking up car parks near the start pin…</p>`;
     if (s.status === "error") return `<p class="plan-est plan-cp-err">${esc(CP_ERRORS[s.code] || CP_ERRORS.failed)}</p><button type="button" class="btn hike-small" data-find-carparks="${esc(w.id)}">Try again</button>`;
-    if (!s.parks.length) return `<p class="plan-est">OS lists no public car park within ${CarParks.fmtDist(s.radiusM)} of this start pin. Check the route guide for where to park.</p>`;
+    if (!s.parks.length) return `<p class="plan-est">OpenStreetMap lists no car park within ${CarParks.fmtDist(s.radiusM)} of this start pin. Check the route guide for where to park. <span class="plan-cp-credit">&copy; OpenStreetMap contributors</span></p>`;
     const items = s.parks.map((p, i) => {
       const where = `${CarParks.fmtDist(p.distM)} ${CarParks.compass(p.bearing)} of the start pin`;
       const grid = window.OSMap ? OSMap.gridRef(p.lat, p.lng, 8) : "";
+      const bits = [];
+      if (p.fee === "pay") bits.push(p.charge ? "Pay: " + p.charge : "Pay to park");
+      else if (p.fee === "free") bits.push("Free");
+      else if (p.fee === "donation") bits.push("Donation");
+      if (p.kind === "lay-by" && p.named) bits.push("lay-by");
+      if (p.capacity) bits.push("about " + p.capacity + " spaces");
+      if (p.operator) bits.push(p.operator);
+      if (p.access) bits.push("access: " + p.access);
       return `<li>
-        <strong>${esc(p.name || "Public car park")}</strong> <span class="plan-cp-where">${esc(where)}</span>
+        <strong>${esc(p.name)}</strong> <span class="plan-cp-where">${esc(where)}</span>
+        ${bits.length ? `<span class="plan-cp-bits">${esc(bits.join(" · "))}</span>` : ""}
         <span class="plan-cp-links"><a href="${mapsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a>
-        <button type="button" class="hike-link" data-cp-host="${esc(w.id)}" data-cp-i="${i}">Host from here</button></span>
+        <button type="button" class="hike-link" data-cp-host="${esc(w.id)}" data-cp-i="${i}">Host from here</button>
+        ${p.osm ? `<a href="https://www.openstreetmap.org/${esc(p.osm)}" target="_blank" rel="noopener">OSM ↗</a>` : ""}</span>
         ${grid ? `<span class="plan-cp-grid">${esc(grid)}</span>` : ""}
       </li>`;
     }).join("");
-    return `<div class="plan-cp-box"><p class="plan-cp-h">Public car parks near the start pin</p><ul class="plan-cp-list">${items}</ul>
-      <p class="plan-est">From Ordnance Survey data${s.radiusM > 1500 ? `, widened to ${CarParks.fmtDist(s.radiusM)} because none were closer` : ""}. OS lists surveyed public car parks only: lay-bys, field parking and some small car parks may be missing, and nothing here says what a car park costs or when it closes, so check the signs.</p></div>`;
+    return `<div class="plan-cp-box"><p class="plan-cp-h">Car parks near the start pin</p><ul class="plan-cp-list">${items}</ul>
+      <p class="plan-est">From OpenStreetMap${s.radiusM > 1500 ? `, widened to ${CarParks.fmtDist(s.radiusM)} because none were closer` : ""}: volunteers map these, so a car park can be missing, out of date or wrongly described, and fees and opening times aren't guaranteed. Check the signs. <span class="plan-cp-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></span></p></div>`;
   }
 
   function paintCarParks(id){
@@ -571,7 +579,7 @@
     if (cp) {
       const w = walks.find(x => x.id === cp.dataset.cpHost), s = cpState[cp.dataset.cpHost];
       const p = w && s && s.parks && s.parks[Number(cp.dataset.cpI)];
-      if (p) hostWalk(w, { name: (p.name || "Public car park") + " (from OS data)", lat: Number(p.lat.toFixed(5)), lng: Number(p.lng.toFixed(5)) });
+      if (p) hostWalk(w, { name: p.name + " (from OpenStreetMap)", lat: Number(p.lat.toFixed(5)), lng: Number(p.lng.toFixed(5)) });
       return;
     }
     const b = e.target.closest("[data-host-walk]");

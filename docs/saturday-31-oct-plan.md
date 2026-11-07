@@ -224,24 +224,20 @@ Don't cut over late at night. Do the email sender switch and the cutover on diff
 - [ ] Screenshot the current Supabase **Authentication → URL configuration** and **SMTP settings** (rollback).
 - [ ] At GoDaddy, lower TTLs on the existing records you may touch. GoDaddy's minimum is about 10 minutes.
 
-### A. OS data (Saturday)
+### A. OS data (Saturday) — mostly done 7 Nov
 
-Built in `beta/` and waiting for credentials: OS map, Where am I? place names, car park finder, live hike pins.
+Built in `beta/`: OS map, Where am I? place names, car park finder, live hike pins.
 
-- [ ] **OS Data Hub:** create a project and add **OS Maps API, OS Names API and OS NGD API – Features**. Note the key
-      and secret. In dev mode the limit is 50 requests/minute per API, live mode 600.
-- [ ] **Supabase → walking-up-hills → Edge Functions → Secrets:** add `OS_API_KEY` and `OS_API_SECRET`. Set them in
-      the dashboard, never in chat.
-- [ ] **Claude:** deploy the `os-token` function (verify_jwt off) and test it.
-- [ ] **Live pins migration:** `wainwrights/supabase/migrations/20261106100000_wainwrights_hike_live_positions.sql`
-      is NOT applied. The Supabase connector's confirmation prompt timed out repeatedly. Paste it into the SQL
-      editor and run it, then ask Claude to verify.
-- [ ] **Check against real OS data:** map tiles, the place name in Where am I?, the heat map. Check the **car park
-      finder** against a real response: the field names (`name1_text`, `description`, polygon geometry) came from
-      the docs, not a live reply, so fix any that differ. Also check whether the OS plan includes NGD Features and
-      what the monthly limit is (Data Hub → API catalogue). If OS rejects it, car parks just stays unavailable.
-- [ ] **OS branding:** download the OS API logo from the OS brand portal. Claude adds it bottom-left on the map,
-      plus the error-report link (both are required by OS).
+- [x] **OS Data Hub project** created with Maps, Names, Features and NGD Tiles; key and secret set as Supabase secrets `OS_API_KEY` / `OS_API_SECRET`.
+- [x] **`os-token`** deployed (verify_jwt off).
+- [x] **Live pins migration** applied (SQL editor) and verified.
+- [x] **Checked against real OS responses:** Maps tile 200; Names works (now filtered to real places). **Car park data is not on this OS plan**
+      (Features API: "Premium Plan required"; NGD Tiles free zoom levels have no Site layer), so the car park finder now uses OpenStreetMap.
+- [ ] **Try it on the beta:** OS map toggle, Where am I? (place name), a planner car park lookup, the heat map's OS view. Tell Claude what you see.
+- [ ] **Remove OS Features API and OS NGD API – Tiles from the OS project** (only added for the probes; the token reaches every API in the project).
+- [ ] **Delete the probe key** saved on the Claude Code environment (environment settings, network secrets).
+- [ ] **OS branding:** download the OS API logo (`osdatahub.os.uk/brandResources/os-maps-logo-maps.zip`) and send it. Claude adds it bottom-left on the map plus the
+      error-report link (both required by OS).
 
 ### B. Azure front end (Saturday)
 
