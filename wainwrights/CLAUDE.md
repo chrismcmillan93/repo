@@ -27,12 +27,35 @@ certificate itself. Paths in the app are all relative, so nothing inside it know
   until it is next deployed from the repo, harmless while `SITE_URL` is set).
 - **Email:** Resend sends from `walkinguphills.co.uk` (domain verified at GoDaddy: DKIM, SPF, MX on `send`, DMARC). The sender
   is `info@walkinguphills.co.uk` (a real mailbox, so replies are read) for both the hike emails (`HIKE_FROM_EMAIL`) and the
-  Supabase sign-in emails (custom SMTP, sender address only).
+  Supabase sign-in emails (custom SMTP; sender address and name set in the Supabase dashboard, see "Sign-in is code-only" below).
 - **Beta:** stays a folder (`/beta/`), invited-only by the path-based gate in `beta/shared-auth.js`; its sign-in card shows a
   BETA badge. A separate beta app was considered and rejected for now (one sign-in, same promote process).
 - **Rollback:** point or remove the GoDaddy CNAME; restore Supabase URL configuration and `SITE_URL`; the old GitHub Pages
   copy keeps running throughout.
 - **Later:** content-security policy, tightening DMARC from `p=none`, Azure PR previews, Azure Functions/Maps for the planner.
+
+## Sign-in is code-only (2026-11-07)
+
+People sign in with a code emailed to them, not a link. Same Supabase Auth call as before (`signInWithOtp` then `verifyOtp` in
+`shared-auth.js`); only what the email contains and how the page words it changed. Live in beta and production.
+
+- **Why:** the first sign-in emails went to Junk on Hotmail (SPF, DKIM and DMARC all passed; the score was a reputation and content one: a brand-new
+  domain, a message that was nearly all one long link to a different domain, bare HTML). Link scanners also used up single-use links before people
+  clicked them (auth logs showed "Email link is invalid or has expired" within seconds of sending). A code has neither problem, and on a phone it
+  is typed into the installed app instead of opening a browser tab.
+- **Email template:** `supabase/email-templates/sign-in-code.html` (README beside it). **Applied by hand in the Supabase dashboard** (Authentication,
+  Emails, Templates), not by any migration or tool: paste the same HTML into **both "Magic Link" and "Confirm signup"** (an existing account gets Magic
+  Link, a first-time or unconfirmed address gets Confirm signup), subject `Your Wainwrights sign-in code`. It uses only `{{ .Token }}`, no link. Set
+  Email OTP Length to 6 under Authentication, Providers, Email, and the SMTP sender name to `Walking Up Hills`. Template saves can take a minute
+  to reach sent emails (it looked unchanged for about a minute on 2026-11-07, then worked). If the repo copy and the dashboard differ, the dashboard wins
+  until someone pastes again.
+- **Pages:** the button reads "Email me a sign-in code"; the "check your inbox" text says to enter the code; a "Paste code" button under the code box
+  (added by `shared-auth.js`, so no per-page markup) fills the box from the clipboard (first 6 to 10 digit run) where the browser allows it. The box already has
+  `autocomplete="one-time-code"` and a numeric keypad. Old emails that still contain a link keep working.
+- **Still to watch:** where the new emails land on Hotmail (reputation builds slowly; mark one "Not junk"), tightening DMARC from `p=none` and adding
+  an `rua` address, Microsoft SNDS/JMRP sign-up. An in-email "copy" button is not possible (email apps run no scripts).
+- **Auth logs** (Supabase query_logs, `auth_logs`) show each `/otp` request as `user_recovery_requested` (that is how Supabase logs a magic-link/OTP
+  email, not a password reset) and each successful code as a `login` with `login_method: otp`.
 
 The text below was written before this move; where it names `app.chris-mcmillan.co.uk/wainwrights`, read the new address.
 
@@ -210,7 +233,7 @@ the corrected function — never rewrite an applied migration, add another).
   If the page's call fails, emails wait until the next action on that hike
   (notifications older than 3 days are not sent); a scheduled sweeper would be
   the fix if that ever matters.
-- **Sign-in round trip:** the magic link returns without the query string, so
+- **Sign-in round trip (historical; sign-in is code-only since 2026-11-07, but old emailed links still work):** the magic link returns without the query string, so
   `hike.js` keeps the token in sessionStorage for 15 minutes and restores it.
   Visit `hike.html?list=1` for the "my hikes" list (nav link).
 - **Tested:** SQL level in a rolled-back transaction with simulated users
