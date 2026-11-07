@@ -630,7 +630,15 @@
       const rows = (d.milestones || []).map(m=> ({ left: m.label, right: d.climbed >= m.n ? "done" : (m.n - d.climbed) + " to go" }));
       return { kicker: "MILESTONES", title: d.title, sub: d.dateLabel, big: { v: d.percent + "%", l: "COMPLETE" },
         stats: [{ v: String(d.total - d.climbed), l: "TO GO" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
-        rows: rows.filter(r=> r.right !== "done").slice(0, 5), map: { all: true, climbed: new Set(d.climbedNames || []) } };
+        rows: rows.filter(r=> r.right !== "done").slice(0, 5), map: { all: true, climbed: new Set(d.climbedNames || []) },
+        // the Poster shows where you are and how far to the next milestone, not a list of every milestone
+        poster: (()=>{
+          const ms = (d.milestones || []).map(x=> x.n), passed = ms.filter(n=> n <= d.climbed), prev = passed.length ? passed[passed.length - 1] : 0, nxt = ms.find(n=> n > d.climbed);
+          const done = d.climbed >= d.total;
+          return { big: { v: String(d.climbed), l: d.climbed === 1 ? "FELL CLIMBED" : "FELLS CLIMBED" },
+            title: done ? "Wainwright complete!" : plural(nxt - d.climbed, "fell", "fells") + " to go until " + ((d.milestones || []).find(x=> x.n === nxt) || {}).label,
+            bar: done ? { from: String(d.total), to: String(d.total), frac: 1 } : { from: prev ? String(prev) : "0", to: String(nxt), frac: (d.climbed - prev) / (nxt - prev) } };
+        })() };
     }
     if(kind === "progress") return {
       kicker: "MY PROGRESS", title: d.climbed + (d.climbed === 1 ? " fell" : " fells") + " climbed", sub: d.dateLabel, big: { v: d.percent + "%", l: "COMPLETE" },
@@ -851,7 +859,8 @@
     ctx.shadowBlur = 0; ctx.textAlign = "center"; ctx.fillStyle = "#e6d9b0"; ctx.font = "700 26px " + MONO; spaced(ctx, "THE WAINWRIGHTS", W / 2, FOOT, 3); siteUrl(ctx, "#e6d9b0");
     return canvas;
   }
-  function posterLayout(m){
+  function posterLayout(m0){
+    const m = m0.poster ? Object.assign({}, m0, m0.poster, { rows: [], bar: m0.poster.bar }) : m0;
     const { canvas, ctx } = newCard();
     const IW = W - 180;
     // measure first, so the block can sit in the middle of the card
@@ -866,7 +875,7 @@
     const stackRows = stacked ? (m.rows || []).slice(0, H > 1500 ? 6 : 3) : [];
     const nl = !stacked && names.length && H > 1200 ? wrap(ctx, names.join("  ·  "), IW).slice(0, H > 1500 ? 4 : 2) : [];
     const statsH = m.stats && H > 1000 ? 130 : 0;
-    const total = 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + (stackRows.length ? stackRows.length * 54 + 30 : 0) + statsH;
+    const total = (m.bar ? 110 : 0) + 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + (stackRows.length ? stackRows.length * 54 + 30 : 0) + statsH;
     let y = TOP + Math.max(0, (BOTTOM - TOP - total) / 2 - 30);
     ctx.textAlign = "left"; ctx.fillStyle = C.green; ctx.font = "700 30px " + MONO; spaced(ctx, m.kicker, 90, y + 30, 4, "left");
     ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.fillText(fit(ctx, m.sub || "", IW), 90, y + 80);
@@ -875,6 +884,13 @@
     ctx.fillStyle = C.inkSoft; ctx.font = "400 34px " + MONO; spaced(ctx, m.big.l, 90, y + 56, 4, "left");
     y += 100; ctx.fillStyle = C.green; ctx.fillRect(90, y, 220, 10); y += 20;
     if(showTitle){ y += ts * 0.9; ctx.fillStyle = C.ink; tl.forEach(l=>{ ctx.font = "700 " + ts + "px " + SERIF; ctx.fillText(fit(ctx, l, IW), 90, y); y += ts * 1.15; }); y += 10; }
+    if(m.bar){
+      y += 40; const bw = IW, bh = 26;
+      ctx.fillStyle = C.paperDeep; ctx.fillRect(90, y, bw, bh); ctx.fillStyle = C.green; ctx.fillRect(90, y, Math.max(8, bw * Math.min(1, m.bar.frac)), bh);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.strokeRect(90, y, bw, bh);
+      ctx.fillStyle = C.inkSoft; ctx.font = "700 26px " + MONO; ctx.textAlign = "left"; ctx.fillText(m.bar.from, 90, y + bh + 40); ctx.textAlign = "right"; ctx.fillText(m.bar.to, 90 + bw, y + bh + 40); ctx.textAlign = "left";
+      y += bh + 56;
+    }
     if(stackRows.length){
       y += 34;
       stackRows.forEach(r=>{

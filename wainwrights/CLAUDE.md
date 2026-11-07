@@ -913,3 +913,5 @@ Recap cards have no map (removed 2026-11-07, it didn't work well there); beta ca
 Share cards carry "wainwrights.walkinguphills.co.uk" in small type under "THE WAINWRIGHTS" in the footer (`siteUrl()` in `story.js`, all cards, all layouts; beta only, cache v41).
 
 **Promoted 2026-11-07:** all share-card work (see "Story card styles..." above, plus the OS map option, Sketch style, hike toggle, footer address) is now in production too. Beta and production differ again only by the usual three things plus beta's access gate in `shared-auth.js`.
+Milestone card, Poster layout: shows fells climbed as the big number, "N fells to go until <next milestone>" and a bar from the last milestone to the next, instead of the percentage plus a list of upcoming milestones (`poster` on the milestone model in `story.js`). Beta cache v42, not yet in production.
+Milestone Poster fix promoted to production 2026-11-07 (production cache v27).
