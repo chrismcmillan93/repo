@@ -102,9 +102,11 @@
       } else if(c.host){
         html += '  <div class="chal-host-row"><button type="button" class="btn chal-host" data-host="' + key + '">Host this challenge</button></div>';
       }
+      html += '  <div class="chal-host-row"><button type="button" class="btn chal-share" data-share="' + key + '">Share my progress</button></div>';
       html += '</div>';
     });
     el.innerHTML = html;
+    el.querySelectorAll(".chal-share").forEach(b=>{ b.onclick = ()=> shareChallenge(b.dataset.share); });
     el.querySelectorAll(".chal-host").forEach(b=>{ b.onclick = ()=> hostChallenge(b.dataset.host); });
 
     el.querySelectorAll(".chal-chip").forEach(chip=>{
@@ -128,6 +130,19 @@
       }));
     }catch(e){ return; }
     window.location.href = "hike.html?new=1";
+  }
+
+  // "Share my progress": the share sheet with this challenge's fells, ticked ones crossed out (needs story.js and fells-data.js)
+  function shareChallenge(key){
+    const c = CHALLENGES[key];
+    if(!c || typeof WWStory === "undefined") return;
+    const heights = {}; if(typeof FELLS_DATA !== "undefined") FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ heights[f.name] = f.m; }));
+    let names = CHALLENGE_FELLS.filter(f=> f.challenges.indexOf(key) !== -1).map(f=> f.name);
+    if(c.order){ names.sort((a, b)=> c.order.indexOf(a) - c.order.indexOf(b)); }
+    const items = names.map(n=> ({ name: n, m: heights[n] || 0, done: !!state[n] }));
+    const done = items.filter(i=> i.done).length;
+    WWStory.open({ kind: "challenge", title: c.label, filename: "wainwrights-" + key.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      data: ()=> ({ label: c.label, items, done, total: items.length, percent: items.length ? Math.round(done / items.length * 100) : 0 }) });
   }
 
   function linkHost(url){

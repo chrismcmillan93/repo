@@ -538,7 +538,7 @@
   function setupTeamStory(){
     const btn = document.getElementById("team-story-btn");
     if(!btn) return;
-    btn.onclick = ()=> WWStory.run(btn, async ()=>{
+    btn.onclick = ()=> WWStory.open({ kind: "team", title: currentTeam.name || "Team progress", filename: "wainwrights-team", data: async ()=>{
       const id = currentTeam.team_id;
       const [sum, mem] = await Promise.all([
         WW.sb.rpc("team_summary", { p_team_id: id }),
@@ -550,12 +550,12 @@
       if(!s) throw new Error("no team");
       const members = (mem.data || []).slice().sort((a,b)=> b.climbed_count - a.climbed_count)
         .map(m=> ({ name: m.display_name, climbed: m.climbed_count }));
-      return WWStory.teamCard({
+      return ({
         name: s.name, total: TOTAL, union: s.union_climbed_count,
         percent: Math.round((s.union_climbed_count / TOTAL) * 100),
         elevation: Number(s.total_elevation_m || 0), members: members
       });
-    }, "wainwrights-team.jpg", currentTeam.name || "Team progress");
+    } });
   }
 
   function setupTeamInviteCopy(){

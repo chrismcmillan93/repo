@@ -1724,3 +1724,20 @@
 .milestone-text strong{ color:var(--green-deep); }
 .milestone-track{ height:10px; border:1.5px solid var(--ink); background:var(--paper-deep); }
 .milestone-fill{ height:100%; background:var(--green); width:0; }
+
+/* share sheet for the Story cards */
+.story-sheet .terms-card{ max-height:92vh; overflow-y:auto; }
+.story-prev-wrap{ position:relative; text-align:center; min-height:120px; }
+.story-prev{ max-width:100%; max-height:46vh; border:1px solid var(--line-strong); transition:opacity .15s; }
+.story-wait{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; z-index:1; }
+.story-row{ margin:10px 0 0; }
+.story-row-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-bottom:4px; letter-spacing:.04em; }
+.story-sheet .map-modes{ display:flex; width:100%; }
+.story-sheet .map-mode{ flex:1 1 0; min-width:0; padding:8px 4px; font-size:11px; text-align:center; }
+.story-note{ margin:6px 0 0; }
+.story-photo-bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.story-keep{ margin:0; font-size:12px; }
+.story-msg{ min-height:1.2em; margin:8px 0 0; }
+.story-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.story-actions .btn{ flex:1 1 0; }
+.chal-host-row{ margin-top:10px; }

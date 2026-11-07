@@ -287,19 +287,20 @@
     el.style.display = "";
     if(btn){ btn.style.display = m.prev ? "" : "none"; btn.textContent = "Share my milestone card"; }
   }
+  const climbedNames = ()=> { const out = []; FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ if(state[f.name]) out.push(f.name); })); return out; };
   function shareMilestoneCard(){
-    const btn = document.getElementById("share-milestone-btn");
-    WWStory.run(btn, async ()=>{
+    WWStory.open({ kind: "milestone", title: "My milestones", filename: "wainwrights-milestone", data: async ()=>{
       const c = computeCounts(), m = milestoneInfo(c.climbed);
-      if(!m.prev) throw new Error("no milestone yet");
-      return WWStory.milestoneCard({
+      if(!m.prev) throw new Error("empty");
+      return ({
+        climbedNames: climbedNames(),
         title: c.climbed + (c.climbed === 1 ? " fell" : " fells") + " climbed",
         dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
         climbed: c.climbed, total: TOTAL, percent: c.percent, elevation: c.elevation,
         milestones: MILESTONES.map(n=> ({ n, label: n === 107 ? "Halfway (107)" : n === 214 ? "All 214" : n + " fells" })),
         next: m.next, nextLabel: m.next ? milestoneTitle(m.next) : "", toGo: m.toGo
       });
-    }, "wainwrights-milestone.jpg", "My Wainwrights milestone");
+    } });
   }
 
   function renderHero(){
@@ -832,6 +833,7 @@
     return '<div class="fell-info-main"><strong class="fell-info-name">' + escapeHtml(f.name) + '</strong>' +
       '<span class="fell-info-meta">' + escapeHtml(FELLS_DATA[ai].name) + ' &middot; ' + f.m + ' m / ' + f.ft + ' ft</span>' + status + '</div>' +
       '<div class="fell-info-actions"><button type="button" class="btn" data-info="list">Show in list</button>' +
+      (state[f.name] ? '<button type="button" class="btn" data-info="share">Share this fell</button>' : '') +
       '<button type="button" class="fell-info-close" data-info="close" aria-label="Close">&times;</button></div>';
   }
 
@@ -841,6 +843,7 @@
     el.innerHTML = fellInfoHtml(ai, fi);
     el.style.display = "flex";
     el.querySelector('[data-info="list"]').onclick = ()=> jumpToPeak(ai, fi);
+    const sb = el.querySelector('[data-info="share"]'); if(sb) sb.onclick = ()=> shareSummit(ai, fi);
     el.querySelector('[data-info="close"]').onclick = ()=>{ delete infoFell[el.id]; el.style.display = "none"; };
   }
 
@@ -1370,18 +1373,74 @@
   }
 
   function shareTodayCard(){
-    const btn = document.getElementById("share-today-btn");
-    WWStory.run(btn, async ()=>{
+    WWStory.open({ kind: "day", title: "Today's fells", filename: "wainwrights-today", data: async ()=>{
       const fells = await todaysTicks();
-      if(!fells.length) throw new Error("no ticks today");
+      if(!fells.length) throw new Error("empty");
       const c = computeCounts();
-      return WWStory.dayCard({
+      return ({
         dateLabel: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
         fells: fells.map(f=> ({ name: f.name, m: f.m, ticked_at: f.ticked_at })),
         climbed: c.climbed, total: TOTAL, percent: c.percent,
         gain: fells.reduce((n, f)=> n + f.m, 0)
       });
-    }, "wainwrights-today.jpg", "Fells I ticked today");
+    } });
+  }
+
+  // ---------- recap (week, month, quarter, 6 months, year) and the single-fell summit card ----------
+  const RECAP_PERIODS = [["week", "Week"], ["month", "Month"], ["quarter", "Quarter"], ["half", "6 months"], ["year", "Year"]];
+  const MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  function periodRange(period, offset){
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth(), sod = d=> new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    let start, end, kicker, buckets;
+    if(period === "week"){
+      const d = sod(now), dow = (d.getDay() + 6) % 7; start = new Date(d); start.setDate(d.getDate() - dow - 7 * offset); end = new Date(start); end.setDate(start.getDate() + 7);
+      kicker = offset ? "LAST WEEK" : "THIS WEEK"; buckets = ["M", "T", "W", "T", "F", "S", "S"].map((l, i)=> ({ label: l, from: new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), to: new Date(start.getFullYear(), start.getMonth(), start.getDate() + i + 1) }));
+    } else if(period === "month"){
+      start = new Date(y, m - offset, 1); end = new Date(y, m - offset + 1, 1); kicker = offset ? "LAST MONTH" : "THIS MONTH";
+      buckets = []; for(let d0 = 1, i = 0; d0 <= 31; d0 += 7, i++){ const from = new Date(start.getFullYear(), start.getMonth(), d0); if(from >= end) break; const to = new Date(start.getFullYear(), start.getMonth(), d0 + 7); buckets.push({ label: d0 + (d0 + 6 >= 28 && i > 2 ? "+" : "-" + (d0 + 6)), from, to: to > end ? end : to }); }
+      buckets.forEach((b, i)=>{ if(i === buckets.length - 1) b.label = b.from.getDate() + "+"; });
+    } else {
+      let months;
+      if(period === "quarter"){ const q = Math.floor(m / 3) * 3 - 3 * offset; start = new Date(y, q, 1); end = new Date(y, q + 3, 1); months = 3; kicker = offset ? "LAST QUARTER" : "THIS QUARTER"; }
+      else if(period === "half"){ start = new Date(y, m - 5 - 6 * offset, 1); end = new Date(y, m + 1 - 6 * offset, 1); months = 6; kicker = offset ? "THE 6 MONTHS BEFORE" : "LAST 6 MONTHS"; }
+      else { start = new Date(y - offset, 0, 1); end = new Date(y - offset + 1, 0, 1); months = 12; kicker = offset ? "LAST YEAR" : "THIS YEAR"; }
+      buckets = []; for(let i = 0; i < months; i++){ const from = new Date(start.getFullYear(), start.getMonth() + i, 1); buckets.push({ label: MON3[from.getMonth()].slice(0, months > 6 ? 1 : 3), from, to: new Date(from.getFullYear(), from.getMonth() + 1, 1) }); }
+    }
+    const last = new Date(Math.min(end.getTime() - 86400000, Date.now()));
+    const f = d=> d.getDate() + " " + MON3[d.getMonth()];
+    const range = f(start) + (start.getFullYear() !== last.getFullYear() ? " " + start.getFullYear() : "") + " - " + f(last) + " " + last.getFullYear();
+    return { start, end, kicker, buckets, range };
+  }
+  async function recapData(period, offset){
+    if(!WW.sb || !WW.currentUser) throw new Error("empty");
+    const { data, error } = await WW.sb.from(TABLE).select("item_id,ticked_at").eq("dashboard_id", DASHBOARD_ID).eq("user_id", WW.currentUser.id)
+      .eq("is_checked", true).not("ticked_at", "is", null).order("ticked_at", { ascending: true });
+    if(error) throw error;
+    const byName = {}; FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ byName[f.name] = f; }));
+    const ticks = (data || []).filter(r=> byName[r.item_id] && state[r.item_id]).map(r=> ({ f: byName[r.item_id], at: new Date(r.ticked_at) }));
+    const R = periodRange(period, offset);
+    const inP = ticks.filter(x=> x.at >= R.start && x.at < R.end);
+    if(!inP.length) throw new Error("empty");
+    const days = new Set(inP.map(x=> x.at.toDateString())).size;
+    const buckets = R.buckets.map(b=> ({ label: b.label, n: inP.filter(x=> x.at >= b.from && x.at < b.to).length }));
+    // weeks in a row with at least one tick, counting back from this week (or last week if this one is still empty)
+    const monday = d=>{ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
+    const weeks = new Set(ticks.map(x=> monday(x.at)));
+    let w = monday(new Date()); if(!weeks.has(w)) w -= 7 * 86400000; let streak = 0;
+    while(weeks.has(w)){ streak++; const d = new Date(w); d.setDate(d.getDate() - 7); w = d.getTime(); }
+    return { kicker: R.kicker, range: R.range, fells: inP.map(x=> ({ name: x.f.name, m: x.f.m })), days, elevation: inP.reduce((n, x)=> n + x.f.m, 0), streak, buckets };
+  }
+  function shareRecap(){
+    WWStory.open({ kind: "recap", title: "My recap", filename: "wainwrights-recap",
+      controls: [{ id: "period", label: "Period", options: RECAP_PERIODS, value: "week" }, { id: "when", label: "Which one", options: [["now", "This one"], ["prev", "The one before"]], value: "now" }],
+      data: ctl=> recapData(ctl.period, ctl.when === "prev" ? 1 : 0) });
+  }
+  function shareSummit(ai, fi){
+    const a = FELLS_DATA[ai], f = a.fells[fi], c = computeCounts();
+    WWStory.open({ kind: "summit", title: f.name, filename: "wainwrights-" + f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), data: ()=> ({
+      name: f.name, m: f.m, ft: f.ft, gr: f.gr, region: a.name.replace(/^The /, "The "),
+      tickedLabel: tickedAt[f.name] ? "TICKED " + new Date(tickedAt[f.name]).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase() : "",
+      climbed: c.climbed, total: TOTAL }) });
   }
 
   // ---------- profile / first-sign-in name prompt ----------
@@ -1453,6 +1512,7 @@
     document.getElementById("share-btn").onclick = shareProgressCard;
     document.getElementById("share-today-btn").onclick = shareTodayCard;
     const msb = document.getElementById("share-milestone-btn"); if(msb) msb.onclick = shareMilestoneCard;
+    const rsb = document.getElementById("share-recap-btn"); if(rsb) rsb.onclick = shareRecap;
     refreshTodayButton();
     subscribeRealtime(user.id);
 
