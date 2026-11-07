@@ -1692,3 +1692,7 @@
 .sk-hint{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint, #6b6b5f); }
 .sk-btns{ display:inline-flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden; }
 .sk-btns .map-mode{ padding:6px 12px; }
+
+.beta-strip{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 12px; background:var(--rust); color:#fff; padding:7px 12px; font-family:var(--font-mono); font-size:12px; line-height:1.3; text-align:center; }
+.beta-strip strong{ letter-spacing:.16em; }
+.beta-strip a{ color:#fff; text-decoration:underline; white-space:nowrap; }
