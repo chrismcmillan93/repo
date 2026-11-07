@@ -1,5 +1,8 @@
 # Saturday 31 Oct — plan
 
+> **Updated 7 Nov:** section 4 is now the plan for the weekend of 7–8 Nov (OS data, Azure front end, the
+> `walkinguphills.co.uk` domain, and the app's emails). Sections 1–3 are the original 31 Oct notes.
+
 ## 1. Finish setting up Lifting and the fell planner (~15 min)
 
 Both are already live (Fitness → Lifting tab; app.chris-mcmillan.co.uk/wainwrights/beta/planner.html).
@@ -174,52 +177,150 @@ Review this plan, then help me implement steps 1–3 on the beta branch.
   should work offline (last forecast cached) or just say "needs signal".
 - **Cache versioning.** Bump a version string on every deploy so the installed app picks up changes.
 
-## 4. Move the Wainwrights front end to Azure Static Web Apps
+## 4. Weekend 7–8 Nov: OS data, Azure front end, new domain, app emails
 
-Goal: host the Wainwrights site on Azure Static Web Apps (Free plan) instead of GitHub Pages, as the
-first step in building Azure experience. Backend stays on Supabase; nothing else in the repo moves.
+Goal: put the Wainwrights app on Azure Static Web Apps at its own address, send its emails from the new
+domain, and switch on the OS (Ordnance Survey) features that are built but waiting for keys. Backend stays on
+Supabase. Nothing else in the repo moves: the other apps stay on GitHub Pages at `app.chris-mcmillan.co.uk`.
 
-### Decisions
+### Decisions (settled 7 Nov)
 
-- **Domain: decide later.** Build and test on Azure's free `*.azurestaticapps.net` address. Production
-  stays on GitHub Pages (`app.chris-mcmillan.co.uk/wainwrights/`) until the domain is chosen, then
-  switch once. This avoids making users sign in again twice (once for the Azure address, again for
-  the final domain) and reinstalling the phone app twice.
-- **Beta: use Azure's preview addresses.** Each pull request gets its own preview URL (the Free plan
-  allows 3 at a time), replacing the `/beta/` folder on the Azure site.
-- [ ] **Order with the PWA work (section 3).** Keep every path in the PWA work relative, so it works
-      at `/wainwrights/beta/` today, on the Azure address, and on the final domain without changes.
+- **Address: `wainwrights.walkinguphills.co.uk`** (a subdomain, so DNS is a single CNAME and the root domain
+  stays free). The app folder becomes the site root: `/wainwrights/x` becomes `/x`, and the beta is `/beta/`.
+  Every path in the app is relative, so nothing inside it has to change.
+- **DNS is at GoDaddy.** Nothing has been done with the domain yet.
+- **Email: only the app's emails move.** Resend already sends the hike emails, the day-before reminders
+  and (as custom SMTP) the Supabase sign-in emails. No mailbox moves and no MX records change.
+  `walkinguphills.co.uk` is **not yet verified in Resend**.
+- **Front end: Azure Static Web Apps, Free plan.** Build and test on the free `*.azurestaticapps.net`
+  address first. No DNS change until the cutover.
+- **Old address keeps working indefinitely** through small redirect pages (see Cutover).
+- **Beta: stays at `/beta/` for now.** *Changed from the 31 Oct note*, which said to replace the `/beta/` folder
+  with Azure's per-pull-request preview addresses. The promote process (copy `beta/` up to production, see
+  `wainwrights/CLAUDE.md`) depends on that folder, so switching to previews is a separate piece of work, not a
+  weekend job. Previews can still be switched on as an extra. Revisit later.
+- **Keep every path relative** (PWA work, section 3), so it works at `/wainwrights/beta/` today, on the Azure
+  address, and on the final domain unchanged.
 
-### Steps
+### Order and realistic time
 
-1. Create a Static Web App in the Azure portal (Free plan, UK South or West Europe), linked to
-   `chrismcmillan93/repo`. Point it at the Wainwrights folder only, with no build step
-   (app location = the Wainwrights folder, no API, output location empty).
-2. Azure adds a GitHub Actions workflow to the repo. This is the first workflow in the repo — check it only
-   deploys the Wainwrights folder and only runs on changes to it.
-3. Add `staticwebapp.config.json`: security headers, a 404 page, and caching rules (short cache on
-   HTML and the service worker, long cache on icons and data).
-4. Test on the `*.azurestaticapps.net` address: sign-in, ticking fells, leaderboard, challenges,
-   planner. Add that address to Supabase's redirect URLs first, plus a wildcard for the preview
-   addresses (e.g. `https://<app-name>-*.azurestaticapps.net/**`), or sign-in links won't come back.
+Mostly waiting (DNS, certificate, deploys), not working. About **2.5–3.5 hours of hands-on time** in total.
 
-**Later, once the domain is chosen:**
+| When | Block | Hands-on | Waiting on |
+|---|---|---|---|
+| Fri night | Prep (below) | 20–30 min | nothing |
+| Sat | A. OS data | 45–60 min | fixing any car park field names once seen against a real response (15–30 min) |
+| Sat | B. Azure on its default address | 30–45 min | first deploy, testing |
+| Sat | C. Resend and GoDaddy records | 20–30 min | DNS verification, usually 10–60 min, sometimes hours. Do this early. |
+| Sun am | D. Cutover and tests | about 45 min | HTTPS certificate, usually 5–30 min |
+| Sun pm | Buffer, promote beta to production, docs | 15–30 min | |
 
-5. Add the custom domain in Azure and the DNS records at your domain provider; Azure issues the
-   certificate for free.
-6. **Supabase (walking-up-hills) → Authentication → URL configuration:** add the new site URL and
-   redirect URLs, or magic links will send people back to the old site. Move the auth emails to the
-   new domain at the same time (already on the list).
-7. Leave a redirect at the old GitHub Pages address (`/wainwrights/`), so bookmarks and links still
-   work. GitHub Pages can't do server redirects, so it's a small HTML page that forwards.
-8. Tell existing users they'll need to sign in once more — sign-ins are stored per web address, so
-   they don't carry over to a new domain.
+Don't cut over late at night. Do the email sender switch and the cutover on different days if time is tight.
 
-### Things to know
+### Friday night: prep
 
-- **Cost:** the Free plan covers this — custom domain, free certificate, preview environments.
+- [ ] Have these open: GoDaddy (DNS), Azure portal (a subscription you can create resources in), GitHub (admin on
+      the repo, to add a secret), OS Data Hub, Supabase (walking-up-hills), Resend.
+- [ ] Screenshot the current Supabase **Authentication → URL configuration** and **SMTP settings** (rollback).
+- [ ] At GoDaddy, lower TTLs on the existing records you may touch. GoDaddy's minimum is about 10 minutes.
+
+### A. OS data (Saturday)
+
+Built in `beta/` and waiting for credentials: OS map, Where am I? place names, car park finder, live hike pins.
+
+- [ ] **OS Data Hub:** create a project and add **OS Maps API, OS Names API and OS NGD API – Features**. Note the key
+      and secret. In dev mode the limit is 50 requests/minute per API, live mode 600.
+- [ ] **Supabase → walking-up-hills → Edge Functions → Secrets:** add `OS_API_KEY` and `OS_API_SECRET`. Set them in
+      the dashboard, never in chat.
+- [ ] **Claude:** deploy the `os-token` function (verify_jwt off) and test it.
+- [ ] **Live pins migration:** `wainwrights/supabase/migrations/20261106100000_wainwrights_hike_live_positions.sql`
+      is NOT applied. The Supabase connector's confirmation prompt timed out repeatedly. Paste it into the SQL
+      editor and run it, then ask Claude to verify.
+- [ ] **Check against real OS data:** map tiles, the place name in Where am I?, the heat map. Check the **car park
+      finder** against a real response: the field names (`name1_text`, `description`, polygon geometry) came from
+      the docs, not a live reply, so fix any that differ. Also check whether the OS plan includes NGD Features and
+      what the monthly limit is (Data Hub → API catalogue). If OS rejects it, car parks just stays unavailable.
+- [ ] **OS branding:** download the OS API logo from the OS brand portal. Claude adds it bottom-left on the map,
+      plus the error-report link (both are required by OS).
+
+### B. Azure front end (Saturday)
+
+- [ ] **You:** create a Static Web App in the Azure portal (Free plan, West Europe or UK South), linked to
+      `chrismcmillan93/repo`, app location = the `wainwrights` folder, no API, no build, output location empty.
+      Add the deployment token to GitHub as a secret.
+- [ ] **Claude:** write the workflow (the first one in the repo: it must only run on changes to `wainwrights/`, so
+      the other apps are unaffected) and `staticwebapp.config.json`:
+      - no-cache on `sw.js`, and short cache on HTML (or app updates stick);
+      - the `.webmanifest` content type;
+      - security headers (content-security policy later, not this weekend);
+      - a 404 page, and a `www` redirect if used.
+- [ ] **Supabase redirect URLs:** add the `*.azurestaticapps.net` address (and a wildcard for previews, e.g.
+      `https://<app-name>-*.azurestaticapps.net/**`) first, or sign-in links won't come back.
+- [ ] **Test on the Azure address:** sign-in, ticking fells, leaderboard, challenges, planner, install, offline,
+      emergency card. Done when it behaves like the current site.
+
+### C. Resend and GoDaddy records (Saturday)
+
+- [ ] In Resend, add the domain `walkinguphills.co.uk` (root). Resend shows the exact records: a DKIM TXT
+      (`resend._domainkey`) and an SPF TXT plus MX on its `send` subdomain.
+- [ ] Add them at GoDaddy. Enter only the name in the host field (e.g. `resend._domainkey`, `send`), not the full
+      domain, because GoDaddy appends it. Check for existing records at the same names first.
+- [ ] Add DMARC: TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:chris@chris-mcmillan.co.uk`. Tighten to `quarantine`
+      after about a week of clean reports.
+- [ ] Wait for **Verified** in Resend, then send test emails to Gmail, Outlook/Hotmail and iCloud. In the message
+      headers SPF, DKIM and DMARC should all pass. Check spam folders: Hotmail was filing the hike emails as spam
+      from the old sender.
+- [ ] **Don't switch the live sender yet.** That happens at the cutover, after the tests pass.
+
+### D. Cutover (Sunday morning)
+
+1. [ ] **Azure:** add `wainwrights.walkinguphills.co.uk` as the custom domain, and add the CNAME GoDaddy needs
+       (pointing at the `*.azurestaticapps.net` address Azure shows). The free certificate follows.
+2. [ ] **Supabase → Authentication → URL configuration:** add `https://wainwrights.walkinguphills.co.uk/**` to the
+       redirect URLs, then set it as the Site URL. **Keep the old `app.chris-mcmillan.co.uk/wainwrights/**` entry**
+       during the transition.
+3. [ ] **Sign-in emails:** in Supabase SMTP settings (already Resend), change only the sender address to
+       `login@walkinguphills.co.uk` once the domain is Verified. Leave the host and password alone.
+4. [ ] **Hike emails:** set `HIKE_FROM_EMAIL` to `Walking Up Hills <hikes@walkinguphills.co.uk>` and `SITE_URL` to
+       `https://wainwrights.walkinguphills.co.uk` (Supabase function secrets). Reply-To stays
+       `chris@chris-mcmillan.co.uk`, because nobody receives mail at the new domain.
+5. [ ] **Claude:** change the fallback links in `hike-notify` and `hike-reminders` (they still default to
+       `app.chris-mcmillan.co.uk/...`) and redeploy them. `SITE_URL` already covers the live behaviour.
+6. [ ] **Claude:** replace the old `/wainwrights/` pages with small redirect pages that **keep the query string**,
+       so old hike share links (`?t=...`) and installed apps land on the new address. GitHub Pages can't do
+       server redirects, so these are HTML pages that forward. The old `/wainwrights/beta/` goes to `/beta/`.
+7. [ ] **Tell people:** they sign in once more and reinstall the phone app (see risks).
+
+### Test checklist
+
+- [ ] Magic link round trip on the new domain, and the 6-digit code.
+- [ ] Open a hike share link, request a place, receive the emails; the links in them point at the new domain.
+- [ ] Install the app, go offline, open the emergency card; confirm a new version shows the update bar.
+- [ ] Old address and an old hike link both land on the right page on the new domain.
+- [ ] Pins and the heat map with two real accounts; Story images from a phone's share sheet.
+- [ ] Email: Gmail, Hotmail and iCloud again. A real reminder send is due 12 Dec for the 13 Dec hike.
+
+### Rollback
+
+- **DNS:** point the GoDaddy record back, or remove it. The old GitHub Pages site keeps running throughout, so
+  switching back is quick.
+- **Auth:** restore the Supabase URL configuration from the Friday screenshot.
+- **Email:** change `HIKE_FROM_EMAIL`, `SITE_URL` and the SMTP sender back.
+
+### Risks and things to know
+
+- **A new address is a new site to browsers:** everyone signs in again, installed copies need reinstalling, and
+  anything stored on the device (emergency-card details, the saved GPS fix) doesn't carry over.
+- **The OS plan may not include NGD Features:** car parks would stay unavailable.
+- **Cost:** the Free plan covers custom domain, certificate and previews.
 - **No build step still holds:** Azure just publishes the folder as it is.
-- **Supabase calls are unchanged:** the browser talks to Supabase directly, and the planner's Edge
-  Functions already accept calls from any site.
-- **Later (not today):** Azure Functions and Azure Maps for the planner, as already noted in the PWA
-  prompt.
+- **Supabase calls are unchanged:** the browser talks to Supabase directly, and the planner's Edge Functions
+  already accept calls from any site.
+- **Later (not this weekend):** Azure Functions and Azure Maps for the planner (as in the section 3 prompt),
+  a content-security policy, tightening DMARC, an Azure preview workflow in place of `/beta/`.
+
+### After the weekend
+
+- [ ] Promote beta to production: the car park finder and Story maps are still beta only (copy `beta/` up, re-apply the
+      three production differences, bump the production cache, as in `wainwrights/CLAUDE.md`).
+- [ ] Update `wainwrights/CLAUDE.md` with the new address, the Azure setup and the email setup.
