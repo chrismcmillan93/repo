@@ -18,6 +18,11 @@
   const OS_TILES = "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png";
   const OS_NAMES_NEAREST = "https://api.os.uk/search/names/v1/nearest";
   const OS_TERMS = "https://osdatahub.os.uk/support/legal/api-terms";
+  // Only these kinds of place are worth showing under "Where am I?". Without the filter OS answers with whatever is
+  // nearest, which in a village is a postcode and at Wasdale Head is "Copeland Forest (other landcover)".
+  // (Checked against real OS Names responses: summits, villages, valleys and suburbs come back sensibly.)
+  const PLACE_TYPES = ["Hamlet", "Village", "City", "Suburban_Area", "Other_Settlement", "Hill_Or_Mountain", "Valley",
+    "Inland_Water", "Waterfall", "Cirque_Or_Hollow", "Other_Landform", "Cliff_Or_Slope"];
   // Outdoor is OS OpenData up to zoom 16; 17+ is Premium data, so stop there
   // and let Leaflet scale the last level up if someone zooms further.
   const MAX_NATIVE_ZOOM = 16;
@@ -216,7 +221,7 @@
   async function nearestPlace(E, N){
     let t;
     try { t = await getToken(); } catch (e) { return null; }
-    const url = OS_NAMES_NEAREST + "?point=" + Math.round(E) + "," + Math.round(N) + "&radius=1000&format=JSON";
+    const url = OS_NAMES_NEAREST + "?point=" + Math.round(E) + "," + Math.round(N) + "&radius=1000&format=JSON&fq=" + encodeURIComponent(PLACE_TYPES.map(t => "LOCAL_TYPE:" + t).join(" "));
     try {
       const res = await fetch(url, { headers: { Authorization: "Bearer " + t } });
       if (!res.ok) return null;
