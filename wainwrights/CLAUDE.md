@@ -11,7 +11,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v8` / prefix `wainwrights-prod-` (beta:
+and `sw.js` uses the cache name `wainwrights-prod-v9` / prefix `wainwrights-prod-` (beta:
 `wainwrights-beta-v12` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
@@ -684,7 +684,7 @@ address turned up in the People list this way, created 2 Nov; not from any test)
   deletes and refreshes, delete from the hidden list, each server refusal's message). **Not run against a real account:** the delete function
   has not been called on live data.
 
-## Beta access: admins and invited people only (2026-11-07) — database live, pages in beta only
+## Beta access: admins and invited people only (2026-11-07) — database live, gate in beta, toggle in beta and production
 
 The beta site (`/wainwrights/beta/`, later `/beta/` on the new domain) now only opens for admins and for people an admin has let in. Production is
 unaffected.
@@ -701,8 +701,9 @@ unaffected.
 - **Offline / outage:** if the database can't be asked, a "yes" remembered on this device in the last 24 hours (`localStorage` `ww_beta_ok_<user id>`)
   still opens the installed beta; otherwise it stays closed with a Try again button. A definite "no" clears the remembered yes, so revoking takes effect
   on the next load while online. The 24 h offline window is the only way a revoked person could still get in.
-- **Admin toggle:** People tab (beta `admin.js`): "Give beta access" / "Remove beta access" per person (needs admin mode), a "beta access" badge, none on
-  admins (they always have it). **Not promoted yet:** until `admin.js` is copied to production, use `/wainwrights/beta/admin.html` for the toggle.
+- **Admin toggle:** People tab (`admin.js`): "Give beta access" / "Remove beta access" per person (needs admin mode), a "beta access" badge, none on
+  admins (they always have it). Promoted to production 2026-11-07 (only `admin.js` copied up; production cache `wainwrights-prod-v9`), so the toggle is on
+  both admin pages. The gate itself is still only in the beta `shared-auth.js`; production `shared-auth.js` has none.
 - **What this is not:** a gate on what the beta pages show, not data security. Beta shares the production database (sign-in and row-level security protect
   the data) and the beta files are still public static files anyone can fetch. Real server-side gating of the files would need Azure Static Web Apps'
   built-in sign-in and invitations after the Azure move (a possible later step; it would replace this check).
