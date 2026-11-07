@@ -109,6 +109,13 @@
     try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ at: Date.now(), parks, radiusM })); } catch (e) {}
   }
 
+  // Cache only, never the network: what a previous lookup (on the planner, say) saved on this device for this start, or null.
+  CarParks.cached = function(start){
+    const key = (start.key || "start") + "@" + start.lat.toFixed(4) + "," + start.lng.toFixed(4);
+    const hit = readCache(key);
+    return hit ? { parks: hit.parks, radiusM: hit.radiusM, fromCache: true } : null;
+  };
+
   CarParks.find = async function(start, opts){
     opts = opts || {};
     const key = (start.key || "start") + "@" + start.lat.toFixed(4) + "," + start.lng.toFixed(4);
