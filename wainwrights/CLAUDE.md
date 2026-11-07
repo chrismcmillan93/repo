@@ -243,7 +243,7 @@ the corrected function — never rewrite an applied migration, add another).
   real accounts or a real Resend send — do that before telling anyone.
 - **Custom hikes (`hike.html?new=1&custom=1`, button on the "my hikes" list):** the
   host names the hike, ticks the Wainwrights it includes from a searchable list
-  grouped by book (up to 30; `create_hike`'s cap was raised from 10 by
+  grouped by book (up to 50 since 2026-11-07; `create_hike`'s cap was raised from 10 to 30 by
   `20261031160000_wainwrights_hosted_hikes_custom_fell_cap.sql`, which rewrites the one
   check in the live function definition), and must give a meeting point as a
   Google Maps link with coordinates or "lat, lng" (short `maps.app.goo.gl` links
@@ -488,6 +488,44 @@ Tiles are only requested when someone opens a map; if OS or Leaflet is unavailab
   message), hike page (approved walker gets the meeting pin, a not-yet-approved visitor gets fells only and no directions links, Apple link and grid ref),
   create and edit pickers (opens on the right point, tap fills the box, second tap moves the pin, outside-box check). The earlier hike, co-host and car park test
   suites still pass. **Not tried on a real phone** (touch drag of the pin, tap accuracy) and not promoted to production.
+
+## 24 Peaks challenge and "Host this challenge" (2026-11-07) — beta
+
+- **24 Peaks** (`24_peaks`, https://www.lakedistrictpeaks.co.uk/24-peaks.html, run by Activus Outdoors): a two-day, 31-mile guided challenge, 24 peaks in 24 hours. Day 1 is
+  the Lake District 10 Peaks route (Red Pike (Buttermere), High Stile, High Crag, Green Gable, Great Gable, Lingmell, Scafell Pike, Great End, Esk Pike, Bowfell; start
+  Gatesgarth, Buttermere, target 12 h) and day 2 is 14 peaks (Red Screes, Dove Crag, Hart Crag, Fairfield, Seat Sandal, Dollywaggon Pike, Nethermost Pike, Helvellyn,
+  Helvellyn Lower Man, White Side, Raise, Stybarrow Dodd, Watson's Dodd, Great Dodd; start Kirkstone Pass, target 10 h). **Helvellyn Lower Man is not a Wainwright**, so 23 of
+  the 24 are in the app (the page says so). The site's "Whiteside" is the Helvellyn-range White Side. Added in `fells-data.js` (`challenges` arrays, used by the tracker's
+  fell pop-up), `challenges-data.js` (`CHALLENGE_FELLS`; seven fells that weren't on any challenge were added with their usual description) and the `CHALLENGES` label
+  maps in both `challenges.js` and `tracker.js`. `challenges.js` takes an optional `order` (route order) so the chips read day 1 then day 2. The page text was read from the
+  site on 2026-11-07 (this needed `www.lakedistrictpeaks.co.uk` added to the Claude Code environment's allowed hosts).
+- **Host this challenge:** a button on each challenge card with a `host` config (24 Peaks, 10in10, Challenge 5), same hand-off as the planner (`sessionStorage`
+  `ww_host_walk` -> `hike.html?new=1`), with the fells in route order. `hike.js` works out the highest fell for the forecast from the fell names when the hand-off has none, and
+  no longer prints "null mi / null m" when a challenge has no distance or ascent (only 24 Peaks has a distance, 31 mi, from the site; ascent isn't given so it's left blank, not
+  guessed). `walk_key` is `challenge-<key>`. The start point is a known planner base (Little Town for the Newlands challenges, Buttermere village for 24 Peaks) and the form says to move
+  the pin (day 1 really starts at Gatesgarth, further up the valley; the exact Gatesgarth coordinates weren't checked). **A hike has one start time**, so for the two-day challenge
+  the form tells the host to use it for day 1 and say in the meeting-point note when day 2 starts; ticking for everyone happens once, after the hike.
+- **Fell cap raised to 50 (2026-11-07):** migration `wainwrights_hike_fell_cap_50` rewrites `create_hike` (only the `between 1 and 30` became `between 1 and 50`; checked on the live database in a
+  rolled-back transaction: 45 and 50 fells accepted, 51 refused with `bad_walk`). The custom-hike form and `MAX_HOST_FELLS` in `challenges.js` match. **Bob Graham is therefore hostable**
+  (39 of its 42 fells are in the app; 66 mi, 8,200 m from its own blurb; start is the planner's Keswick base, the form says the round really starts at the Moot Hall, so move the pin).
+  Three Peaks still has no button (one Lake District fell). The snapshot size cap (6,000 characters) is still far above 50 fell names.
+- **Tested:** in headless Chromium against mocks (card, 23 chips in route order, links, Lower Man note, buttons on the right three cards, Bob Graham message, fell pop-up, hand-off
+  into the form, the `create_hike` call with the key, the 23 fells in order, Scafell Pike as the top fell and the 31 miles; 10in10 shows no distance); all 23 names exist in
+  `fell_heights`. Not promoted to production.
+
+## Car parks on the maps (2026-11-07) — beta
+
+The OpenStreetMap car park results (see the car park finder section) now also show on the maps, numbered like the list (`WWMaps.setParks` in `maptools.js`; markers are `.ww-num`).
+
+- **Planner walk cards:** the card's "Show map" includes any car parks already found for that walk, and if the map is already open when the lookup finishes they appear on it
+  straight away (`refreshMapParks` in `planner.js`). The list items are numbered to match.
+- **Host form meeting-point picker:** the planner's "Host this walk" hand-off now carries `search_key/search_lat/search_lng` (the walk's start pin, which is what the lookup was made around).
+  In "Pick on the map" the form shows the same car parks: straight away if the planner already looked them up (they are in this device's saved copy, read with `CarParks.cached`, which never
+  touches the network), otherwise behind a "Show car parks near the start" button (so nothing is looked up until tapped). Tap a numbered marker or a name in the list to put the pin on that
+  car park; the meeting-point note becomes its name only if the note was empty or still the pre-filled one (a note the host typed is kept). `hike.html` now loads `carparks.js`.
+  Not shown in "Edit details" (an existing hike no longer knows where the walk's search pin was) or the custom-hike form (no start pin).
+- **Tested:** headless Chromium with the mocked Overpass service (lookup then map, map then lookup, picker with no saved results and with saved results, tapping the list and the marker,
+  typed note kept, no lookup before tapping). Not promoted to production.
 
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 

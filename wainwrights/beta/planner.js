@@ -528,7 +528,7 @@
       if (p.operator) bits.push(p.operator);
       if (p.access) bits.push("access: " + p.access);
       return `<li>
-        <strong>${esc(p.name)}</strong> <span class="plan-cp-where">${esc(where)}</span>
+        <strong>${i + 1}. ${esc(p.name)}</strong> <span class="plan-cp-where">${esc(where)}</span>
         ${bits.length ? `<span class="plan-cp-bits">${esc(bits.join(" · "))}</span>` : ""}
         <span class="plan-cp-links"><a href="${mapsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a>
         <button type="button" class="hike-link" data-cp-host="${esc(w.id)}" data-cp-i="${i}">Host from here</button>
@@ -546,6 +546,11 @@
     if (w && box) box.innerHTML = carParksHtml(w);
   }
 
+  // If this walk's map is already open, put the car parks that were just found on it (numbered like the list).
+  function refreshMapParks(id){
+    const box = document.querySelector('[data-map-for="' + id + '"]'), s = cpState[id];
+    if (box && box.__map && s && s.parks && s.parks.length) WWMaps.setParks(box.__map, s.parks, { fit: true });
+  }
   async function findCarParks(id, force){
     const w = walks.find(x => x.id === id);
     if (!w || !window.CarParks) return;
@@ -553,6 +558,7 @@
     try {
       const r = await CarParks.find({ key: w.start.key, lat: w.start.lat, lng: w.start.lng }, { force: !!force });
       cpState[id] = { status: "ready", parks: r.parks, radiusM: r.radiusM };
+      refreshMapParks(id);
     } catch (err) {
       cpState[id] = { status: "error", code: (err && err.code) || "failed" };
     }
@@ -568,7 +574,8 @@
         id: w.id, label: w.label, miles: w.miles, ascent: w.ascent, fells: w.fells.map(f => f.name),
         top_name: w.top.name, top_m: w.top.m, top_lat: w.top.lat, top_lng: w.top.lng,
         start_name: s.name, start_lat: s.lat, start_lng: s.lng, url: w.url || null,
-        from_carpark: !!start   // true when hosting from a car park result: hike.html pre-fills the meeting point link
+        from_carpark: !!start,   // true when hosting from a car park result: hike.html pre-fills the meeting point link
+        search_key: w.start.key, search_lat: w.start.lat, search_lng: w.start.lng   // the pin the car parks were looked up around (the host form re-uses the saved results)
       }));
     } catch (err) { return; }
     window.location.href = "hike.html?new=1";
