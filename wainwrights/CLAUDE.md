@@ -10,7 +10,7 @@ certificate itself. Paths in the app are all relative, so nothing inside it know
 
 - **Deploys:** `.github/workflows/azure-static-web-apps-wainwrights.yml` (the only workflow in the repo) runs on pushes to
   `main` that touch `wainwrights/**`, with no build step. Secret: `AZURE_STATIC_WEB_APPS_API_TOKEN`. (The portal also created
-  `AZURE_STATIC_WEB_APPS_API_TOKEN_RED_SAND_0D5DCA410`; nothing uses it, delete it.) Other apps in the repo stay on GitHub Pages.
+  `AZURE_STATIC_WEB_APPS_API_TOKEN_RED_SAND_0D5DCA410`; nothing used it, and it was deleted 2026-11-07.) Other apps in the repo stay on GitHub Pages.
 - **Config:** `wainwrights/staticwebapp.config.json` (no-cache on everything except `/icons/*`, security headers, manifest
   type, 404 for `/supabase/*` and `/CLAUDE.md`, `404.html`). Known: the `/beta` to `/beta/` redirect rule doesn't fire, so a
   bare `/beta` serves the beta page with relative links resolving against `/`; normal links all use `/beta/`.
@@ -667,9 +667,8 @@ not retried for 60 s.
   `maxNativeZoom` is 16 and 17+ just scales up rather than touching Premium data), `OSMap.gridRef(lat, lng, digits)` (WGS84 to
   OSGB36 Helmert + transverse Mercator, no library; checked against all 214 `gr` values in `fells-data.js`: 211 identical to
   6 figures, 3 within 100 m, plus Ben Nevis), `OSMap.nearestFells`, and `OSMap.whereAmI()`.
-- **Attribution:** the map shows "Contains OS data © Crown copyright and database right <year>" plus a Terms link. **OS's branding
-  rules also want the OS API logo bottom-left and an error-reporting link; neither is in yet** (the logo zip is on
-  osdatahub.os.uk, which this environment couldn't reach). Add both before this goes to production.
+- **Attribution:** the map shows "Contains OS data © Crown copyright and database right <year>" plus a Terms link. OS's branding
+  rules also want the OS API logo bottom-left and an error-reporting link; both are now in (see "OS logo + error link" at the end).
 - **Tracker (`index.html`, `tracker.js`):** a Sketch / OS map toggle on the map card. The sketch `<svg id="fell-map">` stays in
   the page (hidden) because the Story share image is drawn from it. Fell markers on the OS map are circles sized by height,
   filled when ticked (`updateOsMarkers()` runs from `renderAll`), tap to jump to that fell in the list. The choice is remembered
@@ -705,8 +704,8 @@ not retried for 60 s.
   `3857`, path z/y/x) carry no Site layer at the free zoom levels 12-15 (only settlements, woodland, water, landcover, landform, roads, ornament,
   contours, buildings) and refuse zoom 16 and above as Premium. So the car park finder uses OpenStreetMap (below).
 - **Keep the OS project small.** The token the function hands to signed-in users can call every API in the project (OS lets you restrict APIs per project
-  but not data layers). Maps and Names are all the app needs: **remove OS Features API and OS NGD API – Tiles from the project** (added only for the
-  probes). The probe key is also saved as a network secret on the Claude Code environment: delete it in the environment settings when finished.
+  but not data layers). Maps and Names are all the app needs: the OS Features API and OS NGD API – Tiles were **removed from the project** (they were added only for the
+  probes; done 2026-11-07). The probe key that was saved as a network secret on the Claude Code environment has also been deleted.
 - **Built afterwards (see the next two sections):** the community heat map and the offline emergency card. `sw.js` is `wainwrights-beta-v10`; Leaflet is precached; tiles and `api.os.uk` are never cached or intercepted.
 
 ## Difficulty ratings: Effort and Technical (beta and production) — 2026-11-06
@@ -897,7 +896,7 @@ unaffected.
   Chromium for allowed, closed, unreachable, remembered-yes (fresh, stale, cleared by a "no"), signed-out, and production pages and the emergency card
   untouched; the admin toggle (badge, buttons, admin mode off refuses, calls and refresh).
 
-**OS logo + error link (2026-11-07).** `OSMap.createMap` adds OS's required logo (`beta/icons/os-logo.svg`, dark variant, bottom-left, links to OS) and a "Report a map error" attribution link. The error-report URL (`OS_ERROR_URL` in `osmap.js`) could not be opened from the build sandbox: confirm it loads. Promoted to production 2026-11-07 (prod cache v10).
+**OS logo + error link (2026-11-07).** `OSMap.createMap` adds OS's required logo (`beta/icons/os-logo.svg`, dark variant, bottom-left, links to OS) and a "Report a map error" attribution link. The error-report URL (`OS_ERROR_URL` in `osmap.js`) could not be opened from the build sandbox; it was checked by hand and loads (2026-11-07). Promoted to production 2026-11-07 (prod cache v10).
 
 ## OS map option on share cards (2026-11-07) — beta only
 
@@ -917,3 +916,5 @@ Milestone card, Poster layout: shows fells climbed as the big number, "N fells t
 Milestone Poster fix promoted to production 2026-11-07 (production cache v27).
 
 The fell-cap-50 change now has its own file, `supabase/migrations/20261107160000_wainwrights_hike_fell_cap_50.sql` (applied live earlier as `wainwrights_hike_fell_cap_50`; the file does nothing if the cap is already 50).
+
+**Housekeeping closed (2026-11-07).** Confirmed done by Chris: stray Azure secret deleted, OS probe key deleted from the Claude Code environment, "Report a map error" link checked, car-park lookup, phone and two-account checks. Nothing from the earlier "still to do" lists is outstanding; the only open follow-ups noted in this file are the "Later" and "Not built" items.
