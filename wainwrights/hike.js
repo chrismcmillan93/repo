@@ -694,27 +694,27 @@
     if (a === "copy") { try { await navigator.clipboard.writeText(hikeLink(token)); flash("Link copied."); } catch (er) { flash("Couldn't copy — select the link and copy it by hand.", true); } return; }
     if (a === "story-invite") {
       try { await navigator.clipboard.writeText(hikeLink(token)); } catch (er) { /* link is also on the page */ }
-      return WWStory.open({ kind: "invite", title: hike.title, filename: "wainwrights-hike-invite", data: async () => {
+      return WWStory.run(btn, async () => {
         const w = hike.walk || {}, d = new Date(hike.start_at);
-        return ({
+        return WWStory.inviteCard({
           title: hike.title, host: hike.host_name + (coNames().length ? " with " + coNames().join(", ") : ""), area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           start: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label
         });
-      } });
+      }, "wainwrights-hike-invite.jpg", hike.title);
     }
     if (a === "story") {
-      return WWStory.open({ kind: "hike", title: hike.title, filename: "wainwrights-hike", data: async () => {
+      return WWStory.run(btn, async () => {
         const people = await rpc("hike_story_people", { p_hike_id: hike.id });
         const w = hike.walk || {}, d = new Date(hike.start_at);
-        return ({
+        return WWStory.hikeCard({
           title: hike.title, past: hike.status === "completed" || d < new Date(),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label,
           people: (people || []).map(p => ({ name: p.display_name + (!p.is_host && coNames().includes(p.display_name) ? " · co-host" : ""), handle: p.instagram_handle }))
         });
-      } });
+      }, "wainwrights-hike.jpg", hike.title);
     }
     if (a === "ics") { downloadHikeIcs(hike); flash("Calendar entry downloaded. Open it to add it to your calendar."); return; }
     if (a === "share") { try { await navigator.share({ title: hike.title, text: "Join me on a hike: " + hike.title + " — " + fmtWhen(hike.start_at) + " · " + hike.area, url: hikeLink(token) }); } catch (er) {} return; }
