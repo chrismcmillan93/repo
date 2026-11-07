@@ -1663,3 +1663,7 @@
 .plan-cp-links{ display:inline-flex; gap:12px; align-items:baseline; }
 .plan-cp-grid{ flex:0 0 100%; font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
 .plan-cp-err{ color:var(--rust); }
+
+/* ---------- admin: delete user, unconfirmed sign-ups (beta) ---------- */
+.admin-danger{ border-color:var(--rust); color:var(--rust); }
+.admin-unconfirmed{ margin-top:18px; padding-top:12px; border-top:1px dashed var(--line-strong); }
