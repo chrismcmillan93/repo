@@ -579,6 +579,8 @@
   // and Poster layouts draw any model, and the Classic layout is each card's own design (the functions above, plus three new ones).
   // ======================================================================================
   const LAYOUTS = [["classic", "Classic"], ["map", "Map"], ["photo", "Photo"], ["poster", "Poster"]];
+  // layouts that make no sense for a card (the progress card's Poster just listed the regions)
+  const SKIP_LAYOUT = { progress: ["poster"] };
   const SIZE_LABELS = [["story", "Story 9:16"], ["post", "Post 4:5"], ["square", "Square"]];
   const THEME_LABELS = [["paper", "Paper"], ["dark", "Dark"], ["forest", "Forest"], ["contrast", "Bold"]];
 
@@ -621,7 +623,8 @@
     if(kind === "progress") return {
       kicker: "MY PROGRESS", title: d.climbed + (d.climbed === 1 ? " fell" : " fells") + " climbed", sub: d.dateLabel, big: { v: d.percent + "%", l: "COMPLETE" },
       stats: [{ v: d.climbed + " / " + d.total, l: "FELLS CLIMBED" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
-      rows: d.regions.map(r=> ({ left: r.name.replace(/^The /, ""), right: r.climbed + " / " + r.total })), map: { all: true, climbed: new Set(d.climbedNames || []) }
+      rows: d.regions.map(r=> ({ left: r.name.replace(/^The /, ""), right: r.climbed + " / " + r.total })), map: { all: true, climbed: new Set(d.climbedNames || []) },
+      regions: d.regions, maxRows: d.regions.length   // all the regions are shown (as rings on the Map layout, as rows on the Photo layout), never "+ n more"
     };
     if(kind === "challenge"){
       const items = d.items || [], todo = items.filter(i=> !i.done);
@@ -812,7 +815,7 @@
   function photoLayout(m){
     const { canvas, ctx } = photoBase();
     ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 16;
-    const rowsN = H > 1500 ? Math.min(5, (m.rows || []).length) : H > 1200 ? Math.min(3, (m.rows || []).length) : 0, rowH = 58, statsH = m.stats && H > 1000 ? 140 : 0;
+    const rowsN = H > 1500 ? Math.min(m.maxRows || 5, (m.rows || []).length) : H > 1200 ? Math.min(3, (m.rows || []).length) : 0, rowH = H > 1500 && m.maxRows > 5 ? 52 : 58, statsH = m.stats && H > 1000 ? 140 : 0;
     let size = 120, lines;
     ctx.textAlign = "left";
     for(;;){ ctx.font = "700 " + size + "px " + SERIF; lines = wrap(ctx, m.title, W - M * 2); if((lines.length <= 2 && lines.every(l=> ctx.measureText(l).width <= W - M * 2)) || size <= 56) break; size -= 6; }
@@ -866,7 +869,13 @@
   function mapLayout(m){
     const { canvas, ctx } = newCard();
     let y = heading(ctx, TOP, m.kicker, m.title, m.sub);
-    const statsH = m.stats && H > 1200 ? 150 : 0, rowsN = m.rows && H > 1500 ? Math.min(3, m.rows.length) : 0, rowsH = rowsN ? rowsN * 56 + 56 : 0;
+    const ringsH = m.regions && H > 1200 ? 190 : 0;
+    const statsH = m.stats && H > 1200 ? 150 : 0;
+    // as many list rows as fit under a decent-sized map (so a four-fell day shows all four, not "+ 1 more")
+    let rowsN = !ringsH && m.rows && H > 1500 ? Math.min(m.rows.length, 6) : 0;
+    const rowsHFor = n=> n ? n * 56 + 56 : 0;
+    while(rowsN > 0 && BOTTOM - y - statsH - rowsHFor(rowsN) - 10 < 460) rowsN--;
+    const rowsH = ringsH || rowsHFor(rowsN);
     const mh = BOTTOM - y - statsH - rowsH - 10;
     if(!m.map){
       list(ctx, y, m.rows || [], { maxRows: 14, maxRowH: 62 });
@@ -878,7 +887,8 @@
         y = next != null ? next : allMap(ctx, y, mh, {});
       }
       if(statsH) y = stats(ctx, y, m.stats);
-      if(rowsN) list(ctx, y, m.rows, { maxRows: rowsN, maxRowH: 56 });
+      if(ringsH) regionRings(ctx, y, m.regions);
+      else if(rowsN) list(ctx, y, m.rows, { maxRows: rowsN, maxRowH: 56 });
     }
     footer(ctx); return canvas;
   }
@@ -937,6 +947,8 @@
   // o = { kind, title, filename, data: object | (controls) => object | Promise, controls: [{ id, label, options: [[value, label]], value }] }
   async function open(o){
     const prefs = loadPrefs(), ctl = {};
+    const layoutList = LAYOUTS.filter(l=> (SKIP_LAYOUT[o.kind] || []).indexOf(l[0]) === -1);
+    if(!layoutList.some(l=> l[0] === prefs.layout)) prefs.layout = "classic";
     (o.controls || []).forEach(c=> { ctl[c.id] = c.value; });
     let photo = null, keepPhoto = false, token = 0, blob = null, url = null, data = null, closed = false;
     try{ const u = localStorage.getItem(PHOTO_KEY); if(u){ photo = await photoFromDataUrl(u); keepPhoto = !!photo; } }catch(e){}
@@ -957,7 +969,7 @@
       row.appendChild(grp); rows.appendChild(row); return row;
     }
     (o.controls || []).forEach(c=> chips(c.label, c.options, ()=> ctl[c.id], v=> { ctl[c.id] = v; }, "ctl"));
-    chips("Layout", LAYOUTS, ()=> prefs.layout, v=> { prefs.layout = v; syncPhotoRow(); }, "p");
+    chips("Layout", layoutList, ()=> prefs.layout, v=> { prefs.layout = v; syncPhotoRow(); }, "p");
     chips("Size", SIZE_LABELS, ()=> prefs.size, v=> { prefs.size = v; }, "p");
     chips("Colours", THEME_LABELS, ()=> prefs.theme, v=> { prefs.theme = v; }, "p");
     const themeNote = el("p", "chart-note story-note", "The Photo layout keeps its own colours.");
@@ -988,7 +1000,7 @@
       rmBtn.style.display = photo ? "" : "none"; addBtn.textContent = photo ? "Change photo" : "Add a photo"; keepLab.style.display = photo ? "" : "none";
     }
     async function refresh(refetch){
-      const my = ++token; wait.style.display = ""; img.style.opacity = "0.35"; shareBtn.disabled = saveBtn.disabled = true; msg.textContent = "";
+      const my = ++token; wait.style.display = ""; wait.textContent = "Making your card…"; img.style.opacity = "0.35"; shareBtn.disabled = saveBtn.disabled = true; msg.textContent = "";
       try{
         if(refetch || data == null) data = typeof o.data === "function" ? await o.data(Object.assign({}, ctl)) : o.data;
         if(my !== token) return;
@@ -998,7 +1010,9 @@
         shareBtn.disabled = saveBtn.disabled = false;
       }catch(err){
         console.error("Card failed", err); if(my !== token) return;
-        wait.style.display = "none"; msg.textContent = err && err.message === "empty" ? "There's nothing to show for that yet." : "Couldn't build that card. Try another option.";
+        // a card with nothing to show explains why, in the preview area (a blank box looks broken)
+        img.removeAttribute("src"); img.style.opacity = "1";
+        wait.style.display = ""; wait.textContent = err && err.message === "empty" ? (err.userMessage || "There's nothing to show for that yet.") : "Couldn't build that card. Try another option.";
       }
     }
     function changed(refetch){ try{ localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }catch(e){} syncPhotoRow(); refresh(!!refetch); }

@@ -1732,7 +1732,8 @@
 .story-sheet .terms-card{ max-height:92vh; overflow-y:auto; }
 .story-prev-wrap{ position:relative; text-align:center; min-height:120px; }
 .story-prev{ max-width:100%; max-height:46vh; border:1px solid var(--line-strong); transition:opacity .15s; }
-.story-wait{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; z-index:1; }
+.story-wait{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; padding:14px; text-align:center; z-index:1; }
+.story-prev-wrap{ min-height:150px; }
 .story-row{ margin:10px 0 0; }
 .story-row-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-bottom:4px; letter-spacing:.04em; }
 .story-sheet .map-modes{ display:flex; width:100%; }

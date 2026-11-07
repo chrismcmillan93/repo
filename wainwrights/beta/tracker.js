@@ -1195,16 +1195,26 @@
     const range = f(start) + (start.getFullYear() !== last.getFullYear() ? " " + start.getFullYear() : "") + " - " + f(last) + " " + last.getFullYear();
     return { start, end, kicker, buckets, range };
   }
-  async function recapData(period, offset){
-    if(!WW.sb || !WW.currentUser) throw new Error("empty");
+  // every tick of yours that has a date (only ticks made since 31 Oct 2026 do), oldest first
+  async function datedTicks(){
+    if(!WW.sb || !WW.currentUser) return [];
     const { data, error } = await WW.sb.from(TABLE).select("item_id,ticked_at").eq("dashboard_id", DASHBOARD_ID).eq("user_id", WW.currentUser.id)
       .eq("is_checked", true).not("ticked_at", "is", null).order("ticked_at", { ascending: true });
     if(error) throw error;
     const byName = {}; FELLS_DATA.forEach(a=> a.fells.forEach(f=>{ byName[f.name] = f; }));
-    const ticks = (data || []).filter(r=> byName[r.item_id] && state[r.item_id]).map(r=> ({ f: byName[r.item_id], at: new Date(r.ticked_at) }));
+    return (data || []).filter(r=> r.ticked_at && byName[r.item_id] && state[r.item_id]).map(r=> ({ f: byName[r.item_id], at: new Date(r.ticked_at) })).filter(x=> !isNaN(x.at));
+  }
+  const niceDay = d=> d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  async function recapData(period, offset){
+    const ticks = await datedTicks();
     const R = periodRange(period, offset);
     const inP = ticks.filter(x=> x.at >= R.start && x.at < R.end);
-    if(!inP.length) throw new Error("empty");
+    if(!inP.length){
+      const why = !ticks.length
+        ? "None of your ticks have a date yet, so there's nothing to recap. The date is recorded when you tick a fell (from 31 October 2026), so fells you tick from now on will appear here."
+        : "No dated ticks in this period. Your dated ticks run from " + niceDay(ticks[0].at) + " to " + niceDay(ticks[ticks.length - 1].at) + ", so try a longer period or \"The one before\".";
+      throw Object.assign(new Error("empty"), { userMessage: why });
+    }
     const days = new Set(inP.map(x=> x.at.toDateString())).size;
     const buckets = R.buckets.map(b=> ({ label: b.label, n: inP.filter(x=> x.at >= b.from && x.at < b.to).length }));
     // weeks in a row with at least one tick, counting back from this week (or last week if this one is still empty)
@@ -1214,9 +1224,15 @@
     while(weeks.has(w)){ streak++; const d = new Date(w); d.setDate(d.getDate() - 7); w = d.getTime(); }
     return { kicker: R.kicker, range: R.range, fells: inP.map(x=> ({ name: x.f.name, m: x.f.m })), days, elevation: inP.reduce((n, x)=> n + x.f.m, 0), streak, buckets };
   }
-  function shareRecap(){
+  async function shareRecap(){
+    // open on the shortest period that has anything in it, so the first card isn't empty
+    let start = "week";
+    try{
+      const ticks = await datedTicks();
+      start = RECAP_PERIODS.map(p=> p[0]).find(p=>{ const R = periodRange(p, 0); return ticks.some(x=> x.at >= R.start && x.at < R.end); }) || "year";
+    }catch(e){ /* fall back to the week */ }
     WWStory.open({ kind: "recap", title: "My recap", filename: "wainwrights-recap",
-      controls: [{ id: "period", label: "Period", options: RECAP_PERIODS, value: "week" }, { id: "when", label: "Which one", options: [["now", "This one"], ["prev", "The one before"]], value: "now" }],
+      controls: [{ id: "period", label: "Period", options: RECAP_PERIODS, value: start }, { id: "when", label: "Which one", options: [["now", "This one"], ["prev", "The one before"]], value: "now" }],
       data: ctl=> recapData(ctl.period, ctl.when === "prev" ? 1 : 0) });
   }
   function shareSummit(ai, fi){
