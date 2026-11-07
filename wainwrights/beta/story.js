@@ -86,6 +86,12 @@
     ctx.fillStyle = C.inkSoft;
     ctx.font = "700 26px " + MONO;
     spaced(ctx, "THE WAINWRIGHTS", W / 2, FOOT, 3);
+    siteUrl(ctx, C.inkSoft);
+  }
+  // the app's address, small and quiet under the name
+  function siteUrl(ctx, color){
+    ctx.save(); ctx.globalAlpha = 0.7; ctx.fillStyle = color; ctx.font = "400 21px " + MONO; ctx.textAlign = "center";
+    ctx.fillText("wainwrights.walkinguphills.co.uk", W / 2, FOOT + 34); ctx.restore();
   }
 
   // kicker + (wrapped) title; returns the next y
@@ -842,7 +848,7 @@
       y += 4;
       (m.rows || []).slice(0, rowsN).forEach(r=>{ ctx.fillStyle = "#ffffff"; ctx.font = "600 38px " + SERIF; ctx.textAlign = "left"; ctx.fillText(fit(ctx, r.left, W - M * 2 - 200), M, y + 40); if(r.right){ ctx.textAlign = "right"; ctx.fillStyle = "#e6d9b0"; ctx.font = "400 30px " + MONO; ctx.fillText(r.right, W - M, y + 38); } y += rowH; });
     }
-    ctx.shadowBlur = 0; ctx.textAlign = "center"; ctx.fillStyle = "#e6d9b0"; ctx.font = "700 26px " + MONO; spaced(ctx, "THE WAINWRIGHTS", W / 2, FOOT, 3);
+    ctx.shadowBlur = 0; ctx.textAlign = "center"; ctx.fillStyle = "#e6d9b0"; ctx.font = "700 26px " + MONO; spaced(ctx, "THE WAINWRIGHTS", W / 2, FOOT, 3); siteUrl(ctx, "#e6d9b0");
     return canvas;
   }
   function posterLayout(m){
