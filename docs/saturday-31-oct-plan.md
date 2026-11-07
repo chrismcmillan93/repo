@@ -320,3 +320,16 @@ Built in `beta/`: OS map, Where am I? place names, car park finder, live hike pi
 - [ ] Promote beta to production: the car park finder and Story maps are still beta only (copy `beta/` up, re-apply the
       three production differences, bump the production cache, as in `wainwrights/CLAUDE.md`).
 - [ ] Update `wainwrights/CLAUDE.md` with the new address, the Azure setup and the email setup.
+
+## 5. Move the other apps to Azure (one Static Web App and subdomain each), then make the repo private (planned, not started)
+
+Added 7 Nov. The repo is public because GitHub Pages needs that on the free plan. To make it private without taking
+down goals, usa, fitness and finance, each moves to its own Azure Static Web App and subdomain
+(`goals.chris-mcmillan.co.uk`, and so on) first, one at a time. Full plan:
+[azure-migration-plan.md](azure-migration-plan.md).
+
+- [ ] **Do not start yet.** First decide the subdomain names and find where DNS for `chris-mcmillan.co.uk` lives.
+- [ ] Order: Finance, Goals, then USA and Fitness. **Naples and Thailand are not migrating** (see the plan: this blocks going private until you choose to retire them, keep the repo public, or take GitHub Pro).
+- [ ] Per app: config + workflow, code fixes (cross-links, service worker), CNAME, Supabase redirect URL, forwarding
+      script for the old address, tell users to sign in and reinstall.
+- [ ] Last: a small legacy redirect app for `app.chris-mcmillan.co.uk`, turn off Pages, delete `CNAME`, make the repo private.
