@@ -11,7 +11,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v7` / prefix `wainwrights-prod-` (beta:
+and `sw.js` uses the cache name `wainwrights-prod-v8` / prefix `wainwrights-prod-` (beta:
 `wainwrights-beta-v11` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
@@ -648,7 +648,7 @@ outside range dropped, a hostile name, grid refs, re-render, Host from here, sav
 no-OS-access messages) and a canvas render of every card type, viewed by eye, plus unit checks of the route ordering and tick-order rule. All the
 earlier suites still pass. Not tested against real OS responses or on a phone's share sheet.
 
-## Admin: confirmed-only People view and delete user (2026-11-07) — database live, page in beta only
+## Admin: confirmed-only People view and delete user (2026-11-07) — database live, page in beta and production
 
 Typing an email into the sign-in box creates an auth user immediately, even if the link is never clicked (an offensive, never-confirmed
 address turned up in the People list this way, created 2 Nov; not from any test). So:
@@ -673,9 +673,8 @@ address turned up in the People list this way, created 2 Nov; not from any test)
 - **Page flow:** "Delete user…" on every person except admins; needs admin mode on; a question that spells out who goes and what goes with
   them (fells, hosted hikes), then they must type the person's email (checked in the page and again by the database), then a reason for
   the log. Server refusals show plain messages.
-- **Production:** the production `admin.js` is untouched (promote when wanted: copy `beta/admin.js` and the new rules at the end of `beta/shared.css`
-  up, bump the production cache). Until then the production admin page already shows the confirmed-only list (that is the database), but has
-  no delete button and no unconfirmed list. Use `/wainwrights/beta/admin.html` for those.
+- **Production:** promoted 2026-11-07 (`admin.js` copied up and the two admin rules appended to `shared.css`; nothing else, so the car park finder and
+  Story maps are still beta only; production cache `wainwrights-prod-v8`). The page also lives at `/wainwrights/beta/admin.html`.
 - **Tested:** both migrations on a scratch Postgres 16 with stand-ins that copy the live foreign-key rules, including the two non-cascading ones
   (29 checks: confirmed-only list and counts, every refusal leaves everything in place, the unconfirmed junk account and a real walker with
   data deleted case-insensitively and everything of theirs gone, completed-hike host and plain team member deletable, host and team admin
