@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   if (!key || !from) {
     return json({ error: "not_configured", message: "RESEND_API_KEY / HIKE_FROM_EMAIL secrets are not set yet." }, 503);
   }
-  const site = (Deno.env.get("SITE_URL") ?? "https://app.chris-mcmillan.co.uk/wainwrights/beta").replace(/\/$/, "");
+  const site = (Deno.env.get("SITE_URL") ?? "https://wainwrights.walkinguphills.co.uk").replace(/\/$/, "");
   const link = `${site}/hike.html?t=${encodeURIComponent(hike.share_token)}`;
 
   const since = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();

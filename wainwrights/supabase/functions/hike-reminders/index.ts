@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   const key = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("HIKE_FROM_EMAIL");
   if (!key || !from) return json({ error: "not_configured" }, 503);
-  const site = (Deno.env.get("SITE_URL") ?? "https://app.chris-mcmillan.co.uk/wainwrights").replace(/\/$/, "");
+  const site = (Deno.env.get("SITE_URL") ?? "https://wainwrights.walkinguphills.co.uk").replace(/\/$/, "");
 
   const since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
   const { data: claimed, error: claimErr } = await admin.from("hike_notifications")
