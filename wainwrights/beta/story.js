@@ -309,6 +309,7 @@
     const scale = Math.min(availW / spanU, availH / spanV);
     const ox = x0 + w / 2, oy = y + padTop + availH / 2;
     const px = p=> ({ x: ox + (p.u - cu) * scale, y: oy + (p.v - cv) * scale });
+    osLayer(ctx, { x0, y, w, h, ox, oy, cu, cv, scale, k });   // optional OS map underneath (see "OS map backdrop")
 
     // the other fells nearby, as quiet dots for context
     const others = [];
@@ -416,6 +417,10 @@
     return toBlob(canvas);
   }
 
+  // the bottom list of the hike card: who hiked, or the fells with their heights (the person sharing picks)
+  const hikeRows = d=> d.show === "fells" && d.fellRows
+    ? d.fellRows.map(f=> ({ left: f.name, right: f.m ? f.m + "m" : "" }))
+    : d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" }));
   async function hikeCard(d){
     await ensureFonts();
     const { canvas, ctx } = newCard();
@@ -434,7 +439,7 @@
       fl.forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
       y += 14;
     }
-    list(ctx, y, d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" })), { maxRows: 12 });
+    list(ctx, y, hikeRows(d), { maxRows: 12 });
     footer(ctx);
     return toBlob(canvas);
   }
@@ -599,7 +604,7 @@
       if(d.miles) bits.push({ v: String(d.miles), l: "MILES" });
       if(d.ascent) bits.push({ v: String(d.ascent), l: "METRES UP" });
       return { kicker: d.past ? "WE WALKED" : "WALKING TOGETHER", title: d.title, sub: d.dateLabel, big: { v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" },
-        stats: bits, rows: d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" })), map: { fells: d.fells, hint: startHint(d.label) } };
+        stats: bits, rows: hikeRows(d), rowsAre: d.show === "fells" ? "fells" : "people", map: { fells: d.fells, hint: startHint(d.label) } };
     }
     if(kind === "invite"){
       const bits = [{ v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" }];
@@ -612,7 +617,7 @@
     if(kind === "team") return {
       kicker: "TEAM PROGRESS", title: d.name, sub: plural(d.members.length, "member", "members"), big: { v: String(d.union), l: "FELLS (TEAM)" },
       stats: [{ v: d.union + " / " + d.total, l: "FELLS (TEAM)" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
-      rows: d.members.map(m=> ({ left: m.name, right: m.climbed + " / " + d.total })), map: null
+      rows: d.members.map(m=> ({ left: m.name, right: m.climbed + " / " + d.total })), rowsAre: "people", map: null
     };
     if(kind === "milestone"){
       const rows = (d.milestones || []).map(m=> ({ left: m.label, right: d.climbed >= m.n ? "done" : (m.n - d.climbed) + " to go" }));
@@ -642,7 +647,7 @@
       const top = d.fells.slice().sort((a, b)=> b.m - a.m);
       return { kicker: d.kicker, title: plural(d.fells.length, "fell", "fells"), sub: d.range, big: { v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" },
         stats: [{ v: String(d.days), l: d.days === 1 ? "DAY OUT" : "DAYS OUT" }, { v: d.elevation.toLocaleString() + "m", l: "SUMMITS" }, { v: String(d.streak), l: d.streak === 1 ? "WEEK IN A ROW" : "WEEKS IN A ROW" }],
-        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), map: { fells: d.fells } };
+        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), rowsAre: "fells", map: { fells: d.fells } };
     }
     throw new Error("unknown card " + kind);
   }
@@ -710,6 +715,7 @@
     const ox = x0 + w / 2 - ((minU + maxU) / 2) * scale, oy = y + h / 2 - ((minV + maxV) / 2) * scale;
     const Q = f=> { const p = P(f); return { x: ox + p.u * scale, y: oy + p.v * scale }; };
     ctx.save(); ctx.beginPath(); ctx.rect(x0 + 2, y + 2, w - 4, h - 4); ctx.clip();
+    osLayer(ctx, { x0, y, w, h, ox, oy, cu: 0, cv: 0, scale, k });   // optional OS map underneath
     const hiSet = new Set((o.fells || []).map(n=> typeof n === "string" ? n : n.name));
     names.forEach(n=>{
       const q = Q(idx[n]), done = o.climbed && o.climbed.has(n), isHi = hiSet.has(n);
@@ -788,7 +794,7 @@
     const tall = H > 1500;
     y = bars(ctx, y, tall ? 500 : Math.max(300, Math.min(420, BOTTOM - y - 330)), d.buckets);
     y = stats(ctx, y, m.stats);
-    if(m.rows.length && BOTTOM - y > 200){ ctx.textAlign = "center"; ctx.fillStyle = C.green; ctx.font = "700 24px " + MONO; spaced(ctx, "HIGHEST", W / 2, y + 14, 4); list(ctx, y + 30, m.rows, { maxRows: tall ? 4 : 2, maxRowH: 54 }); }
+    if(m.rows.length && BOTTOM - y > 200){ ctx.textAlign = "center"; ctx.fillStyle = C.green; ctx.font = "700 24px " + MONO; spaced(ctx, "HIGHEST", W / 2, y + 14, 4); list(ctx, y + 30, m.rows, { maxRows: tall ? 6 : 3, maxRowH: 54 }); }
     footer(ctx); return canvas;
   }
   const CLASSIC_NEW = { challenge: classicChallenge, summit: classicSummit, recap: classicRecap, progress: classicProgress };
@@ -848,9 +854,11 @@
     if(showTitle){ for(;;){ ctx.font = "700 " + ts + "px " + SERIF; tl = wrap(ctx, m.title, IW); if(tl.length <= 2 || ts <= 40) break; ts -= 6; } tl = tl.slice(0, 2); }
     ctx.font = "italic 500 42px " + SERIF;
     const names = (m.rows || []).map(r=> r.left).filter(n=> !/^(Hosted by|Area|Places left|Starts)$/.test(n)).slice(0, 8);
-    const nl = names.length && H > 1200 ? wrap(ctx, names.join("  ·  "), IW).slice(0, H > 1500 ? 4 : 2) : [];
+    const stacked = !!m.rowsAre && (m.rows || []).length && H > 1200;   // people (or a hike's fells with heights) stack one per line
+    const stackRows = stacked ? (m.rows || []).slice(0, H > 1500 ? 6 : 3) : [];
+    const nl = !stacked && names.length && H > 1200 ? wrap(ctx, names.join("  ·  "), IW).slice(0, H > 1500 ? 4 : 2) : [];
     const statsH = m.stats && H > 1000 ? 130 : 0;
-    const total = 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + statsH;
+    const total = 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + (stackRows.length ? stackRows.length * 54 + 30 : 0) + statsH;
     let y = TOP + Math.max(0, (BOTTOM - TOP - total) / 2 - 30);
     ctx.textAlign = "left"; ctx.fillStyle = C.green; ctx.font = "700 30px " + MONO; spaced(ctx, m.kicker, 90, y + 30, 4, "left");
     ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.fillText(fit(ctx, m.sub || "", IW), 90, y + 80);
@@ -859,6 +867,15 @@
     ctx.fillStyle = C.inkSoft; ctx.font = "400 34px " + MONO; spaced(ctx, m.big.l, 90, y + 56, 4, "left");
     y += 100; ctx.fillStyle = C.green; ctx.fillRect(90, y, 220, 10); y += 20;
     if(showTitle){ y += ts * 0.9; ctx.fillStyle = C.ink; tl.forEach(l=>{ ctx.font = "700 " + ts + "px " + SERIF; ctx.fillText(fit(ctx, l, IW), 90, y); y += ts * 1.15; }); y += 10; }
+    if(stackRows.length){
+      y += 34;
+      stackRows.forEach(r=>{
+        ctx.textAlign = "left"; ctx.fillStyle = C.ink; ctx.font = "600 38px " + SERIF; ctx.fillText(fit(ctx, r.left, IW - 260), 90, y);
+        if(r.right){ ctx.textAlign = "right"; ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.fillText(r.right, W - 90, y - 4); }
+        y += 54;
+      });
+      ctx.textAlign = "left"; y += 4;
+    }
     if(nl.length){ y += 36; ctx.fillStyle = C.inkSoft; ctx.font = "italic 500 42px " + SERIF; nl.forEach(l=>{ ctx.fillText(l, 90, y); y += 56; }); y += 6; }
     if(statsH){
       y += 30; const cw = IW / m.stats.length;
@@ -893,20 +910,96 @@
     footer(ctx); return canvas;
   }
 
+  // ---- OS map backdrop (optional) ----
+  // An extra "Map" choice in the share sheet: OS Outdoor tiles drawn under the fells instead of the plain drawn map. Only OS OpenData is used
+  // (Open Zoomstack, zoom 7 to 16: free to everyone under the Open Government Licence, so a picture of it may be shared) and every map panel carries
+  // "Contains OS data (c) Crown copyright and database right <year>" on the image itself, as the OS API terms require for copies of the data.
+  // How it works: a first, discarded pass records where each map panel sits and how it is scaled; the tiles that cover those panels are fetched
+  // (with the signed-in user's OS token, never more than 16 per panel); then the card is drawn again with the tiles under the markers.
+  let OSCAP = null, OSLAYERS = null, OSIDX = 0, OSFAILED = false;
+  const osTiles = new Map();   // "z/x/y" -> ImageBitmap, kept while the page is open so flipping options doesn't refetch
+  function osLayer(ctx, g){
+    if(OSCAP){ OSCAP.push(g); return; }
+    if(OSLAYERS){ const layer = OSLAYERS[OSIDX++]; if(layer) drawOSLayer(ctx, g, layer); }
+  }
+  const gLng = (g, x)=> (g.cu + (x - g.ox) / g.scale) / g.k, gLat = (g, y)=> -(g.cv + (y - g.oy) / g.scale);
+  const gX = (g, lng)=> g.ox + (lng * g.k - g.cu) * g.scale, gY = (g, lat)=> g.oy + (-lat - g.cv) * g.scale;
+  const tileXY = (z, lat, lng)=> { const n = 2 ** z, r = lat * D2R; return { x: (lng + 180) / 360 * n, y: (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n }; };
+  const tileLng = (z, x)=> x / 2 ** z * 360 - 180;
+  const tileLat = (z, y)=> { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
+  function osPlan(g){
+    const west = gLng(g, g.x0), east = gLng(g, g.x0 + g.w), north = gLat(g, g.y), south = gLat(g, g.y + g.h);
+    let z = Math.min(16, Math.max(7, Math.round(Math.log2(g.scale * g.k * 360 / 256))));
+    for(;; z--){
+      const a = tileXY(z, north, west), b = tileXY(z, south, east);
+      const x0 = Math.floor(a.x), x1 = Math.floor(b.x), y0 = Math.floor(a.y), y1 = Math.floor(b.y);
+      if((x1 - x0 + 1) * (y1 - y0 + 1) <= 16 || z <= 7) return { z, x0, x1, y0, y1 };
+    }
+  }
+  async function osTile(z, x, y, retried){
+    const key = z + "/" + x + "/" + y;
+    if(osTiles.has(key)) return osTiles.get(key);
+    const t = await OSMap.getToken(!!retried);
+    const res = await fetch("https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/" + key + ".png", { headers: { Authorization: "Bearer " + t } });
+    if(res.status === 401 && !retried) return osTile(z, x, y, true);
+    if(!res.ok) throw new Error("tile_" + res.status);
+    const bmp = await createImageBitmap(await res.blob());
+    osTiles.set(key, bmp);
+    return bmp;
+  }
+  async function buildOSLayers(caps){
+    const layers = []; let loaded = 0;
+    for(const g of caps){
+      const p = osPlan(g), todo = [];
+      for(let ty = p.y0; ty <= p.y1; ty++) for(let tx = p.x0; tx <= p.x1; tx++) todo.push({ x: tx, y: ty, img: null });
+      let next = 0;
+      await Promise.all(Array.from({ length: 5 }, async ()=>{
+        while(next < todo.length){ const t = todo[next++]; try{ t.img = await osTile(p.z, t.x, t.y); loaded++; }catch(e){ /* a missing tile just leaves the paper colour */ } }
+      }));
+      layers.push({ z: p.z, tiles: todo });
+    }
+    if(!loaded) throw new Error("os_unavailable");
+    return layers;
+  }
+  function drawOSLayer(ctx, g, L){
+    L.tiles.forEach(t=>{
+      if(!t.img) return;
+      const x0 = gX(g, tileLng(L.z, t.x)), x1 = gX(g, tileLng(L.z, t.x + 1)), y0 = gY(g, tileLat(L.z, t.y)), y1 = gY(g, tileLat(L.z, t.y + 1));
+      ctx.drawImage(t.img, x0, y0, x1 - x0 + 0.7, y1 - y0 + 0.7);
+    });
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(g.x0, g.y, g.w, g.h);   // a light wash so the markers and labels stay readable
+    const txt = "Contains OS data \u00a9 Crown copyright and database right " + new Date().getFullYear();
+    ctx.save(); ctx.font = "600 21px " + MONO; const tw = ctx.measureText(txt).width;
+    ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.fillRect(g.x0 + 8, g.y + 8, tw + 22, 36);
+    ctx.fillStyle = "#1f2a22"; ctx.textAlign = "left"; ctx.fillText(txt, g.x0 + 19, g.y + 33); ctx.restore();
+  }
+
   // ---- render (one at a time) ----
   let renderQueue = Promise.resolve();
+  async function drawCard(kind, data, style){
+    const layout = (style && style.layout) || "classic";
+    if(layout === "classic"){
+      if(CLASSIC_OLD[kind]) return CLASSIC_OLD[kind](data);
+      const m = modelFor(kind, data);
+      return toBlob(CLASSIC_NEW[kind](m, data));
+    }
+    const m = modelFor(kind, data);
+    return toBlob(layout === "map" ? mapLayout(m) : layout === "photo" ? photoLayout(m) : posterLayout(m));
+  }
   function renderCard(kind, data, style, photo){
     const job = renderQueue.then(async ()=>{
       await ensureFonts();
-      setStyle(style); PHOTO = photo || null;
+      setStyle(style); PHOTO = photo || null; OSFAILED = false; OSCAP = OSLAYERS = null;
       const layout = (style && style.layout) || "classic";
-      if(layout === "classic"){
-        if(CLASSIC_OLD[kind]) return CLASSIC_OLD[kind](data);
-        const m = modelFor(kind, data);
-        return toBlob(CLASSIC_NEW[kind](m, data));
+      if(style && style.mapStyle === "os" && window.OSMap && (layout === "classic" || layout === "map")){
+        try{
+          OSCAP = []; await drawCard(kind, data, style);          // first pass: just notes where the map panels are
+          const caps = OSCAP; OSCAP = null;
+          if(caps.length){ OSLAYERS = await buildOSLayers(caps); OSIDX = 0; }
+        }catch(e){ console.warn("OS map unavailable for this card", e); OSCAP = OSLAYERS = null; OSFAILED = true; }
       }
-      const m = modelFor(kind, data);
-      return toBlob(layout === "map" ? mapLayout(m) : layout === "photo" ? photoLayout(m) : posterLayout(m));
+      try{ return await drawCard(kind, data, style); }
+      finally{ OSCAP = OSLAYERS = null; }
     });
     renderQueue = job.catch(()=>{});
     return job;
@@ -939,7 +1032,7 @@
   function loadPrefs(){
     let p = {}; try{ p = JSON.parse(localStorage.getItem(PREF_KEY) || "{}") || {}; }catch(e){}
     const ok = (list, v, d)=> list.some(x=> x[0] === v) ? v : d;
-    return { layout: ok(LAYOUTS, p.layout, "classic"), size: ok(SIZE_LABELS, p.size, "story"), theme: ok(THEME_LABELS, p.theme, "paper") };
+    return { layout: ok(LAYOUTS, p.layout, "classic"), size: ok(SIZE_LABELS, p.size, "story"), theme: ok(THEME_LABELS, p.theme, "paper"), mapStyle: p.mapStyle === "os" ? "os" : "drawn" };
   }
   const el = (tag, cls, html)=>{ const e = document.createElement(tag); if(cls) e.className = cls; if(html != null) e.innerHTML = html; return e; };
   const escH = s=> String(s).replace(/[&<>"']/g, c=> ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -973,6 +1066,11 @@
     chips("Size", SIZE_LABELS, ()=> prefs.size, v=> { prefs.size = v; }, "p");
     chips("Colours", THEME_LABELS, ()=> prefs.theme, v=> { prefs.theme = v; }, "p");
     const themeNote = el("p", "chart-note story-note", "The Photo layout keeps its own colours.");
+    // optional: an Ordnance Survey map under the fells (only where OS maps are loaded and the card has a map)
+    const hasMap = o.kind !== "team" && !!window.OSMap;
+    const mapRow = hasMap ? chips("Map", [["drawn", "Drawn"], ["os", "OS map"]], ()=> prefs.mapStyle, v=> { prefs.mapStyle = v; }, "p") : null;
+    const mapNote = hasMap ? el("p", "chart-note story-note", "The OS map is Ordnance Survey data (Open Government Licence) and is credited on the card. It shows on the Classic and Map layouts, and needs a connection.") : null;
+    if(mapNote) rows.appendChild(mapNote);
     // photo row
     const prow = el("div", "story-row"); prow.appendChild(el("div", "story-row-label", "Your photo"));
     const pbar = el("div", "story-photo-bar");
@@ -997,6 +1095,7 @@
       const photoUsed = prefs.layout === "photo" || o.kind === "summit";
       prow.style.display = photoUsed ? "" : "none";
       themeNote.style.display = prefs.layout === "photo" ? "" : "none";
+      if(mapRow){ const show = prefs.layout === "classic" || prefs.layout === "map"; mapRow.style.display = show ? "" : "none"; mapNote.style.display = show && prefs.mapStyle === "os" ? "" : "none"; }
       rmBtn.style.display = photo ? "" : "none"; addBtn.textContent = photo ? "Change photo" : "Add a photo"; keepLab.style.display = photo ? "" : "none";
     }
     async function refresh(refetch){
@@ -1008,6 +1107,7 @@
         if(my !== token || closed) return;
         blob = b; if(url) URL.revokeObjectURL(url); url = URL.createObjectURL(b); img.src = url; img.style.opacity = "1"; wait.style.display = "none";
         shareBtn.disabled = saveBtn.disabled = false;
+        if(OSFAILED && prefs.mapStyle === "os" && (prefs.layout === "classic" || prefs.layout === "map")) msg.textContent = "The OS map isn't available right now, so this card uses the drawn map.";
       }catch(err){
         console.error("Card failed", err); if(my !== token) return;
         // a card with nothing to show explains why, in the preview area (a blank box looks broken)

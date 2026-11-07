@@ -697,7 +697,7 @@
       return WWStory.open({ kind: "invite", title: hike.title, filename: "wainwrights-hike-invite", data: async () => {
         const w = hike.walk || {}, d = new Date(hike.start_at);
         return ({
-          title: hike.title, host: hike.host_name + (coNames().length ? " with " + coNames().join(", ") : ""), area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
+          title: hike.title, host: hike.host_name, area: hike.area, spaces: hike.spaces, left: Math.max(0, hike.spaces - hike.approved_count),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           start: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label
@@ -705,14 +705,20 @@
       } });
     }
     if (a === "story") {
-      return WWStory.open({ kind: "hike", title: hike.title, filename: "wainwrights-hike", data: async () => {
-        const people = await rpc("hike_story_people", { p_hike_id: hike.id });
+      let peopleCache = null;   // asked for once, however many times the person flips the toggle
+      return WWStory.open({ kind: "hike", title: hike.title, filename: "wainwrights-hike",
+        controls: [{ id: "list", label: "Show", options: [["people", "Who hiked"], ["fells", "Fells and heights"]], value: "people" }],
+        data: async (ctl) => {
+        const people = peopleCache || (peopleCache = await rpc("hike_story_people", { p_hike_id: hike.id }));
         const w = hike.walk || {}, d = new Date(hike.start_at);
+        const heights = {}; FELLS_DATA.forEach(b => b.fells.forEach(f => { heights[f.name] = f.m; }));
         return ({
+          show: ctl && ctl.list === "fells" ? "fells" : "people",
+          fellRows: (w.fells || []).map(n => ({ name: n, m: heights[n] || 0 })).sort((a, b) => b.m - a.m),
           title: hike.title, past: hike.status === "completed" || d < new Date(),
           dateLabel: d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).toUpperCase(),
           fells: w.fells || [], miles: w.miles || null, ascent: w.ascent || null, label: w.label,
-          people: (people || []).map(p => ({ name: p.display_name + (!p.is_host && coNames().includes(p.display_name) ? " · co-host" : ""), handle: p.instagram_handle }))
+          people: (people || []).map(p => ({ name: p.display_name, handle: p.instagram_handle }))
         });
       } });
     }

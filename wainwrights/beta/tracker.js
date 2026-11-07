@@ -1212,7 +1212,7 @@
     if(!inP.length){
       const why = !ticks.length
         ? "None of your ticks have a date yet, so there's nothing to recap. The date is recorded when you tick a fell (from 31 October 2026), so fells you tick from now on will appear here."
-        : "No dated ticks in this period. Your dated ticks run from " + niceDay(ticks[0].at) + " to " + niceDay(ticks[ticks.length - 1].at) + ", so try a longer period or \"The one before\".";
+        : "No dated ticks in this period. Your dated ticks run from " + niceDay(ticks[0].at) + " to " + niceDay(ticks[ticks.length - 1].at) + ", so try a longer period.";
       throw Object.assign(new Error("empty"), { userMessage: why });
     }
     const days = new Set(inP.map(x=> x.at.toDateString())).size;
@@ -1232,8 +1232,8 @@
       start = RECAP_PERIODS.map(p=> p[0]).find(p=>{ const R = periodRange(p, 0); return ticks.some(x=> x.at >= R.start && x.at < R.end); }) || "year";
     }catch(e){ /* fall back to the week */ }
     WWStory.open({ kind: "recap", title: "My recap", filename: "wainwrights-recap",
-      controls: [{ id: "period", label: "Period", options: RECAP_PERIODS, value: start }, { id: "when", label: "Which one", options: [["now", "This one"], ["prev", "The one before"]], value: "now" }],
-      data: ctl=> recapData(ctl.period, ctl.when === "prev" ? 1 : 0) });
+      controls: [{ id: "period", label: "Period", options: RECAP_PERIODS, value: start }],
+      data: ctl=> recapData(ctl.period, 0) });
   }
   function shareSummit(ai, fi){
     const a = FELLS_DATA[ai], f = a.fells[fi], c = computeCounts();
