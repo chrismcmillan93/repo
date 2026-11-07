@@ -723,3 +723,5 @@ unaffected.
   applied live and checked (admin true, an ordinary account false, signed-out false, 15 people listed, 0 with beta yet); every beta page in headless
   Chromium for allowed, closed, unreachable, remembered-yes (fresh, stale, cleared by a "no"), signed-out, and production pages and the emergency card
   untouched; the admin toggle (badge, buttons, admin mode off refuses, calls and refresh).
+
+**OS logo + error link (2026-11-07).** `OSMap.createMap` adds OS's required logo (`beta/icons/os-logo.svg`, dark variant, bottom-left, links to OS) and a "Report a map error" attribution link. The error-report URL (`OS_ERROR_URL` in `osmap.js`) could not be opened from the build sandbox: confirm it loads. Not yet promoted to production.

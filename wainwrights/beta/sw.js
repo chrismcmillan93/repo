@@ -18,12 +18,12 @@
 // - Same-origin cache keys drop the query string and fragment, so a hike's secret
 //   share token (hike.html?t=...) or an auth code is never written to Cache Storage.
 // - A page load with nothing cached and no network shows offline.html.
-const CACHE = "wainwrights-beta-v13";
+const CACHE = "wainwrights-beta-v14";
 const SHELL = [
   "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html", "admin.html", "admin.js",
   "shared.css", "shared-auth.js", "pwa.js", "fells-data.js", "story.js", "tracker.js",
   "leaderboard.js", "challenges-data.js", "challenges.js", "planner-walks.js", "planner.js", "hike.js", "osmap.js", "hike-live.js", "difficulty.js", "heat.js", "emergency.html", "emergency.js", "carparks.js",
-  "offline.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"
+  "offline.html", "manifest.webmanifest", "icons/icon.svg", "icons/os-logo.svg", "icons/icon-192.png", "icons/icon-512.png"
 ];
 const SUPABASE_JS = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 const LEAFLET_JS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";

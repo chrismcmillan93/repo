@@ -1669,3 +1669,6 @@
 .admin-unconfirmed{ margin-top:18px; padding-top:12px; border-top:1px dashed var(--line-strong); }
 .plan-cp-bits{ flex:0 0 100%; font-size:12.5px; color:var(--ink-soft); }
 .plan-cp-credit{ white-space:nowrap; }
+
+.os-logo{ display:block; background:rgba(255,255,255,.85); padding:3px 5px; border-radius:4px; line-height:0; margin:0 0 4px 4px !important; }
+.os-logo img{ display:block; }
