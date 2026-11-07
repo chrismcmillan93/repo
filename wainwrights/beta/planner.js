@@ -566,7 +566,8 @@
       sessionStorage.setItem("ww_host_walk", JSON.stringify({
         id: w.id, label: w.label, miles: w.miles, ascent: w.ascent, fells: w.fells.map(f => f.name),
         top_name: w.top.name, top_m: w.top.m, top_lat: w.top.lat, top_lng: w.top.lng,
-        start_name: s.name, start_lat: s.lat, start_lng: s.lng, url: w.url || null
+        start_name: s.name, start_lat: s.lat, start_lng: s.lng, url: w.url || null,
+        from_carpark: !!start   // true when hosting from a car park result: hike.html pre-fills the meeting point link
       }));
     } catch (err) { return; }
     window.location.href = "hike.html?new=1";

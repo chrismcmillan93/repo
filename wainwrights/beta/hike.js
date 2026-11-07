@@ -91,6 +91,8 @@
   }
   const $ = id => document.getElementById(id);
   const fmtWhen = iso => new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  // A plain Google Maps pin link (parsePoint can read the coordinates back out of it).
+  const pinLink = (lat, lng) => `https://www.google.com/maps/search/?api=1&query=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
   const mapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&travelmode=driving`;
   const localISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hikeLink = t => location.origin + location.pathname.replace(/[^/]*$/, "") + "hike.html?t=" + encodeURIComponent(t);
@@ -299,7 +301,10 @@
         <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}" required></label>
         <label>Places (not counting you)<input class="lock-input" id="n-spaces" type="number" min="1" max="20" value="4"></label>
         <label>Meeting point note (only approved walkers see this)<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park, by the toilets" value="${esc(walk.start_name || "")}"></label>
-        <label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>
+        ${walk.from_carpark && walk.start_lat != null && walk.start_lng != null
+          ? `<label>Meeting point (the car park you picked: change the link if you want a different spot)<input class="lock-input" id="n-point" value="${esc(pinLink(walk.start_lat, walk.start_lng))}"></label>
+        <p class="chart-note" id="n-point-open"><a class="plan-maps" id="n-point-link" href="${esc(pinLink(walk.start_lat, walk.start_lng))}" target="_blank" rel="noopener">Open this meeting point in Google Maps ↗</a></p>`
+          : `<label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>`}
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
@@ -311,6 +316,15 @@
         <p class="chart-note">Your display name is shown to people who open the link. Anyone with the link can ask to join; you approve each person.</p>
       </form>`;
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(walk)); });
+    // keep the "Open in Google Maps" link in step with whatever is in the meeting point box
+    const pointBox = $("n-point"), pointLink = $("n-point-link");
+    if (pointBox && pointLink) {
+      pointBox.addEventListener("input", () => {
+        const p = parsePoint(pointBox.value);
+        $("n-point-open").style.display = p && p !== "bad" ? "" : "none";
+        if (p && p !== "bad") pointLink.href = pinLink(p.lat, p.lng);
+      });
+    }
   }
 
   async function createHike(walk){
