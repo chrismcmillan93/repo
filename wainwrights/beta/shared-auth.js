@@ -171,6 +171,19 @@
     const codeForm = document.getElementById("code-form");
     const codeInput = document.getElementById("auth-code");
     const codeBtn = document.getElementById("code-submit");
+    // "Paste code" button: reads the clipboard and fills in the digits (only where the browser allows it)
+    if(navigator.clipboard && navigator.clipboard.readText && codeInput && !document.getElementById("code-paste")){
+      const pasteBtn = document.createElement("button");
+      pasteBtn.type = "button"; pasteBtn.id = "code-paste"; pasteBtn.className = "lock-retry"; pasteBtn.textContent = "Paste code";
+      codeInput.insertAdjacentElement("afterend", pasteBtn);
+      pasteBtn.addEventListener("click", async function(){
+        try{
+          const m = String(await navigator.clipboard.readText()).match(/\d{6,10}/);
+          if(m){ codeInput.value = m[0]; codeInput.focus(); }
+          else { pasteBtn.textContent = "No code found"; setTimeout(function(){ pasteBtn.textContent = "Paste code"; }, 2000); }
+        }catch(e){ pasteBtn.textContent = "Paste not allowed"; setTimeout(function(){ pasteBtn.textContent = "Paste code"; }, 2000); }
+      });
+    }
 
     let pendingEmail = "";
 
