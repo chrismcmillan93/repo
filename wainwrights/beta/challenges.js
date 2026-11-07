@@ -14,7 +14,12 @@
     bob_graham: {
       label: "Bob Graham Round",
       blurb: "A gruelling 24-hour fell-running challenge tracing 42 Lakeland summits — 66 miles and around 8,200m of ascent — starting and finishing at Keswick's Moot Hall. First completed by Bob Graham in 1932.",
-      url: "https://www.bobgrahamclub.org.uk/"
+      url: "https://www.bobgrahamclub.org.uk/",
+      host: {
+        start: { name: "Keswick (the round starts and finishes at the Moot Hall: check the pin), Keswick", lat: 54.5975, lng: -3.1395 },
+        miles: 66, ascent: 8200,
+        note: "The Bob Graham Round is a 24-hour run or walk over 42 summits. The app tracks the 39 that are Wainwrights, so ticking after the hike covers those 39. Use the start time for the Moot Hall start and say in the meeting point note who is supporting where."
+      }
     },
     "10in10": {
       label: "10in10 Challenge",
@@ -41,7 +46,7 @@
     }
   };
 
-  const MAX_HOST_FELLS = 30;   // a hosted hike can include up to 30 fells (create_hike)
+  const MAX_HOST_FELLS = 50;   // a hosted hike can include up to 50 fells (create_hike)
   const escapeHtml = WW.escapeHtml;
 
   // state: { "<fell name>": true|false } — only for the fells that belong to a challenge

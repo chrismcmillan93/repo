@@ -1714,3 +1714,10 @@
 .ww-pin.is-meet span{ background:var(--rust); }
 .hike-pick-cap{ margin:6px 2px 0; }
 .hike-pick-cap.is-bad{ color:var(--rust); }
+
+.ww-num{ background:none; border:0; }
+.ww-num b{ display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--green-deep); color:#fff; font:700 12px var(--font-mono); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.5); }
+.hike-parks{ margin-top:8px; }
+.hike-parks-list{ list-style:none; margin:6px 0 0; padding:0; }
+.hike-parks-list li{ margin:4px 0; font-size:13px; line-height:1.35; }
+.hike-parks-list .hike-link{ text-align:left; }

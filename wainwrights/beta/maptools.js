@@ -29,6 +29,8 @@
 
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pin = cls => L.divIcon({ className: "ww-pin " + cls, html: "<span></span>", iconSize: [26, 34], iconAnchor: [13, 34], tooltipAnchor: [0, -30] });
+  const numPin = (n, cls) => L.divIcon({ className: "ww-num " + (cls || ""), html: "<b>" + n + "</b>", iconSize: [26, 26], iconAnchor: [13, 13], tooltipAnchor: [0, -14] });
+  const parkTip = p => esc(p.name) + (p.fee === "pay" ? " · pay" : p.fee === "free" ? " · free" : "") + (p.distM != null ? " · " + (p.distM < 1000 ? Math.round(p.distM / 10) * 10 + " m" : (p.distM / 1000).toFixed(1) + " km") + " from the start" : "");
   const note = (el, msg) => { el.classList.remove("os-map"); el.innerHTML = '<p class="map-note">' + esc(msg) + "</p>"; };
 
   async function baseMap(el){
@@ -38,6 +40,24 @@
     if (!map) { note(el, "The OS map isn't available right now."); return null; }
     return map;
   }
+
+  // Numbered car park markers (replaces any shown before). onPick(park, index) makes them tappable; fit zooms to include them.
+  T.setParks = function(map, parks, o){
+    o = o || {};
+    if (!map) return;
+    if (map.__parks) map.removeLayer(map.__parks);
+    const g = L.layerGroup();
+    (parks || []).forEach((p, i) => {
+      const mk = L.marker([p.lat, p.lng], { icon: numPin(i + 1, "is-park"), zIndexOffset: 500 }).bindTooltip(parkTip(p));
+      if (o.onPick) mk.on("click", () => o.onPick(p, i));
+      g.addLayer(mk);
+    });
+    g.addTo(map);
+    map.__parks = g;
+    if (o.fit && parks && parks.length) {
+      map.fitBounds((map.__pts || []).concat(parks.map(p => [p.lat, p.lng])), { padding: [30, 30], maxZoom: 16 });
+    }
+  };
 
   T.view = async function(el, o){
     o = o || {};
@@ -51,10 +71,7 @@
         .bindTooltip(esc(f.name) + (f.m ? " · " + f.m + " m" : "") + (done ? " · climbed" : "")).addTo(map);
       pts.push([f.lat, f.lng]);
     });
-    (o.parks || []).forEach(p => {
-      L.marker([p.lat, p.lng], { icon: pin("is-park") }).bindTooltip("Car park: " + esc(p.name)).addTo(map);
-      pts.push([p.lat, p.lng]);
-    });
+    (o.parks || []).forEach(p => pts.push([p.lat, p.lng]));
     if (o.start) {
       L.marker([o.start.lat, o.start.lng], { icon: pin("is-start") }).bindTooltip("Start (approximate): " + esc(o.start.name || "parking")).addTo(map);
       pts.push([o.start.lat, o.start.lng]);
@@ -66,6 +83,8 @@
     if (pts.length > 1) map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
     else if (pts.length === 1) map.setView(pts[0], 14);
     else map.setView(CENTRE, 10);
+    map.__pts = pts;
+    if (o.parks && o.parks.length) T.setParks(map, o.parks, {});
     return map;
   };
 
@@ -94,6 +113,12 @@
       const pts = (o.fells || []).filter(f => f && f.lat != null).map(f => [f.lat, f.lng]);
       if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 }); else map.setView(CENTRE, 10);
     }
-    return { map, point: () => (marker ? marker.getLatLng() : null) };
+    map.__pts = (o.fells || []).filter(f => f && f.lat != null).map(f => [f.lat, f.lng]);
+    return {
+      map,
+      point: () => (marker ? marker.getLatLng() : null),
+      moveTo: (lat, lng) => { set(lat, lng); map.panTo([lat, lng]); },
+      setParks: (parks, onPick) => T.setParks(map, parks, { onPick, fit: true })
+    };
   };
 })();
