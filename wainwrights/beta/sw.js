@@ -18,6 +18,20 @@
 // - Same-origin cache keys drop the query string and fragment, so a hike's secret
 //   share token (hike.html?t=...) or an auth code is never written to Cache Storage.
 // - A page load with nothing cached and no network shows offline.html.
+// Moved to https://wainwrights.walkinguphills.co.uk. On the OLD address (app.chris-mcmillan.co.uk, same files via GitHub Pages) this worker only retires itself:
+// it takes over at once, deletes every cache, unregisters, and reloads open pages from the network, where the forwarding script in each page's head sends
+// them to the new address. It does nothing on the new domain. (An installed copy would otherwise keep serving its cached pages from this old address.)
+const RETIRED = self.location.hostname === "app.chris-mcmillan.co.uk";
+const on = (type, fn) => { if (!RETIRED) self.addEventListener(type, fn); };
+if (RETIRED) {
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", event => event.waitUntil((async () => {
+    for (const k of await caches.keys()) await caches.delete(k);
+    const open = await self.clients.matchAll({ type: "window" });
+    await self.registration.unregister();
+    open.forEach(c => { try { c.navigate(c.url); } catch (e) { /* page forwards itself on its next load */ } });
+  })()));
+}
 const CACHE = "wainwrights-beta-v40";
 const SHELL = [
   "./", "index.html", "leaderboard.html", "challenges.html", "planner.html", "hike.html", "admin.html", "admin.js",
@@ -45,7 +59,7 @@ async function notifyUpdate(){
   all.forEach(c => c.postMessage({ type: "update-ready" }));
 }
 
-self.addEventListener("install", event => {
+on("install", event => {
   event.waitUntil(
     caches.open(CACHE)
       .then(c => Promise.all([
@@ -63,7 +77,7 @@ self.addEventListener("install", event => {
   );
 });
 
-self.addEventListener("activate", event => {
+on("activate", event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     const old = keys.filter(k => k.startsWith("wainwrights-beta-") && k !== CACHE);
@@ -107,7 +121,7 @@ async function checkShell(){
   if (changed) await notifyUpdate();
 }
 
-self.addEventListener("fetch", event => {
+on("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
   const sameOrigin = req.url.startsWith(self.registration.scope);
