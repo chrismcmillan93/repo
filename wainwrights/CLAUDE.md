@@ -12,7 +12,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
 and `sw.js` uses the cache name `wainwrights-prod-v8` / prefix `wainwrights-prod-` (beta:
-`wainwrights-beta-v11` / `wainwrights-beta-`). `beta/` is kept as the working area for the
+`wainwrights-beta-v12` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
 files now also exist in `wainwrights/`. The `SITE_URL` secret for `hike-notify`
@@ -615,7 +615,7 @@ Where am I? sheet and the live hike card. Promoted to production 2026-11-06.
 
 ## Car park finder and Story route maps (beta only, not promoted) — 2026-11-06
 
-Two more features built in `beta/` only. `sw.js` is `wainwrights-beta-v11` (`carparks.js` added to SHELL). Production is still
+Two more features built in `beta/` only. `sw.js` was `wainwrights-beta-v11` (`carparks.js` added to SHELL); now v12 (see the beta access section). Production is still
 `wainwrights-prod-v7` and has neither.
 
 **Car park finder (planner walk cards).** A "Find car parks near the start" button on every walk card (`beta/carparks.js`, UI in `planner.js`).
@@ -683,3 +683,33 @@ address turned up in the People list this way, created 2 Nov; not from any test)
   backend (confirmed-only list, hidden list incl. hostile names as text, admin mode off refuses before asking, wrong email refused, right email
   deletes and refreshes, delete from the hidden list, each server refusal's message). **Not run against a real account:** the delete function
   has not been called on live data.
+
+## Beta access: admins and invited people only (2026-11-07) — database live, pages in beta only
+
+The beta site (`/wainwrights/beta/`, later `/beta/` on the new domain) now only opens for admins and for people an admin has let in. Production is
+unaffected.
+
+- **Database** (migration `20261107110000_wainwrights_beta_access.sql`, applied): table `beta_access` (user, granted_by, granted_at, `revoked_at`;
+  RLS on, no client access). `am_i_beta()` is true for any admin (no row needed) or anyone with a row where `revoked_at is null`; false when signed out.
+  `admin_set_beta_access(user, on)` is admin-only; "off" is a soft revoke (keeps the row, sets `revoked_at`) and turning back on clears it; both write to
+  `admin_log` (`beta_access_on` / `beta_access_off`). `admin_list_people()` now also returns `beta_access`. Deleting a user removes their row (cascade).
+- **The gate** is in `beta/shared-auth.js`, decided **by path** (`/beta/` in the URL), so promoting that file to production leaves production alone
+  (checked: production pages never ask). After sign-in the beta page shows "Checking beta access…", asks `am_i_beta()` and either opens the app or shows
+  "The beta is invited-only" with a link back to the main app (`../`) and Sign out. The page's own startup never runs when closed (no data requests).
+  Signed-out visitors see the normal sign-in screen. Covers every beta page that uses sign-in (tracker, leaderboard, challenges, planner, hikes, admin).
+  **Not gated on purpose:** `emergency.html` (no sign-in by design, it must work on a hill with no signal) and `offline.html`.
+- **Offline / outage:** if the database can't be asked, a "yes" remembered on this device in the last 24 hours (`localStorage` `ww_beta_ok_<user id>`)
+  still opens the installed beta; otherwise it stays closed with a Try again button. A definite "no" clears the remembered yes, so revoking takes effect
+  on the next load while online. The 24 h offline window is the only way a revoked person could still get in.
+- **Admin toggle:** People tab (beta `admin.js`): "Give beta access" / "Remove beta access" per person (needs admin mode), a "beta access" badge, none on
+  admins (they always have it). **Not promoted yet:** until `admin.js` is copied to production, use `/wainwrights/beta/admin.html` for the toggle.
+- **What this is not:** a gate on what the beta pages show, not data security. Beta shares the production database (sign-in and row-level security protect
+  the data) and the beta files are still public static files anyone can fetch. Real server-side gating of the files would need Azure Static Web Apps'
+  built-in sign-in and invitations after the Azure move (a possible later step; it would replace this check).
+- **Rollout note:** installed beta apps serve their saved files first, so the gate reaches them on the next launch after the "New version ready" bar
+  (cache `wainwrights-beta-v12`). People already signed in to the beta lose access at that point unless an admin has switched them on.
+- **Tested:** migration on a scratch Postgres 16 (25 checks: admin always allowed, stranger and signed-out refused, non-admin can't grant even to
+  themselves, grant / revoke / re-grant / idempotent, soft revoke, log entries with the admin's id, cascade on delete, table and anon access closed);
+  applied live and checked (admin true, an ordinary account false, signed-out false, 15 people listed, 0 with beta yet); every beta page in headless
+  Chromium for allowed, closed, unreachable, remembered-yes (fresh, stale, cleared by a "no"), signed-out, and production pages and the emergency card
+  untouched; the admin toggle (badge, buttons, admin mode off refuses, calls and refresh).
