@@ -416,6 +416,10 @@
     return toBlob(canvas);
   }
 
+  // the bottom list of the hike card: who hiked, or the fells with their heights (the person sharing picks)
+  const hikeRows = d=> d.show === "fells" && d.fellRows
+    ? d.fellRows.map(f=> ({ left: f.name, right: f.m ? f.m + "m" : "" }))
+    : d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" }));
   async function hikeCard(d){
     await ensureFonts();
     const { canvas, ctx } = newCard();
@@ -434,7 +438,7 @@
       fl.forEach(l=>{ ctx.fillText(l, W / 2, y); y += 44; });
       y += 14;
     }
-    list(ctx, y, d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" })), { maxRows: 12 });
+    list(ctx, y, hikeRows(d), { maxRows: 12 });
     footer(ctx);
     return toBlob(canvas);
   }
@@ -599,7 +603,7 @@
       if(d.miles) bits.push({ v: String(d.miles), l: "MILES" });
       if(d.ascent) bits.push({ v: String(d.ascent), l: "METRES UP" });
       return { kicker: d.past ? "WE WALKED" : "WALKING TOGETHER", title: d.title, sub: d.dateLabel, big: { v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" },
-        stats: bits, rows: d.people.map(p=> ({ left: p.name, right: p.handle ? "@" + p.handle : "" })), map: { fells: d.fells, hint: startHint(d.label) } };
+        stats: bits, rows: hikeRows(d), rowsAre: d.show === "fells" ? "fells" : "people", map: { fells: d.fells, hint: startHint(d.label) } };
     }
     if(kind === "invite"){
       const bits = [{ v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" }];
@@ -612,7 +616,7 @@
     if(kind === "team") return {
       kicker: "TEAM PROGRESS", title: d.name, sub: plural(d.members.length, "member", "members"), big: { v: String(d.union), l: "FELLS (TEAM)" },
       stats: [{ v: d.union + " / " + d.total, l: "FELLS (TEAM)" }, { v: d.percent + "%", l: "COMPLETE" }, { v: d.elevation.toLocaleString() + "m", l: "ELEVATION" }],
-      rows: d.members.map(m=> ({ left: m.name, right: m.climbed + " / " + d.total })), map: null
+      rows: d.members.map(m=> ({ left: m.name, right: m.climbed + " / " + d.total })), rowsAre: "people", map: null
     };
     if(kind === "milestone"){
       const rows = (d.milestones || []).map(m=> ({ left: m.label, right: d.climbed >= m.n ? "done" : (m.n - d.climbed) + " to go" }));
@@ -848,9 +852,11 @@
     if(showTitle){ for(;;){ ctx.font = "700 " + ts + "px " + SERIF; tl = wrap(ctx, m.title, IW); if(tl.length <= 2 || ts <= 40) break; ts -= 6; } tl = tl.slice(0, 2); }
     ctx.font = "italic 500 42px " + SERIF;
     const names = (m.rows || []).map(r=> r.left).filter(n=> !/^(Hosted by|Area|Places left|Starts)$/.test(n)).slice(0, 8);
-    const nl = names.length && H > 1200 ? wrap(ctx, names.join("  ·  "), IW).slice(0, H > 1500 ? 4 : 2) : [];
+    const stacked = !!m.rowsAre && (m.rows || []).length && H > 1200;   // people (or a hike's fells with heights) stack one per line
+    const stackRows = stacked ? (m.rows || []).slice(0, H > 1500 ? 6 : 3) : [];
+    const nl = !stacked && names.length && H > 1200 ? wrap(ctx, names.join("  ·  "), IW).slice(0, H > 1500 ? 4 : 2) : [];
     const statsH = m.stats && H > 1000 ? 130 : 0;
-    const total = 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + statsH;
+    const total = 90 + size * 0.82 + 110 + (showTitle ? tl.length * ts * 1.15 + 20 : 0) + (nl.length ? nl.length * 56 + 20 : 0) + (stackRows.length ? stackRows.length * 54 + 30 : 0) + statsH;
     let y = TOP + Math.max(0, (BOTTOM - TOP - total) / 2 - 30);
     ctx.textAlign = "left"; ctx.fillStyle = C.green; ctx.font = "700 30px " + MONO; spaced(ctx, m.kicker, 90, y + 30, 4, "left");
     ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.fillText(fit(ctx, m.sub || "", IW), 90, y + 80);
@@ -859,6 +865,15 @@
     ctx.fillStyle = C.inkSoft; ctx.font = "400 34px " + MONO; spaced(ctx, m.big.l, 90, y + 56, 4, "left");
     y += 100; ctx.fillStyle = C.green; ctx.fillRect(90, y, 220, 10); y += 20;
     if(showTitle){ y += ts * 0.9; ctx.fillStyle = C.ink; tl.forEach(l=>{ ctx.font = "700 " + ts + "px " + SERIF; ctx.fillText(fit(ctx, l, IW), 90, y); y += ts * 1.15; }); y += 10; }
+    if(stackRows.length){
+      y += 34;
+      stackRows.forEach(r=>{
+        ctx.textAlign = "left"; ctx.fillStyle = C.ink; ctx.font = "600 38px " + SERIF; ctx.fillText(fit(ctx, r.left, IW - 260), 90, y);
+        if(r.right){ ctx.textAlign = "right"; ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.fillText(r.right, W - 90, y - 4); }
+        y += 54;
+      });
+      ctx.textAlign = "left"; y += 4;
+    }
     if(nl.length){ y += 36; ctx.fillStyle = C.inkSoft; ctx.font = "italic 500 42px " + SERIF; nl.forEach(l=>{ ctx.fillText(l, 90, y); y += 56; }); y += 6; }
     if(statsH){
       y += 30; const cw = IW / m.stats.length;
