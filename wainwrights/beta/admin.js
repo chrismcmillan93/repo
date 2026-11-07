@@ -7,7 +7,7 @@
   const esc = WW.escapeHtml;
   const root = $("admin-root");
   const TABS = [["hikes", "Hikes"], ["people", "People"], ["teams", "Teams"], ["reports", "Reports"], ["words", "Word filter"], ["log", "Log"]];
-  let tab = "hikes", showDismissed = false, peopleFilter = "", overview = null, cache = {};
+  let tab = "hikes", showDismissed = false, peopleFilter = "", overview = null, cache = {}, showUnconfirmed = false;
 
   const IG_RE = /^[a-z0-9._]{1,30}$/;
   const igLink = h => (h && IG_RE.test(h))
@@ -16,7 +16,11 @@
   const hikeHref = t => "hike.html?t=" + encodeURIComponent(t);
   const ERR = {
     not_admin: "You're not an admin.", not_found: "That no longer exists.", already_cancelled: "That hike is already cancelled.",
-    cannot_suspend_admin: "You can't suspend an admin.", bad_word: "Use letters only, 2 to 40 long.", bad_mode: "Pick how the word should match."
+    cannot_suspend_admin: "You can't suspend an admin.",
+    cannot_delete_self: "You can't delete your own account.", cannot_delete_admin: "You can't delete an admin. Remove their admin row in the database first.",
+    email_mismatch: "That email address didn't match, so nothing was deleted.",
+    hosts_open_hikes: "They host an open hike. Cancel or delete that hike first (Hikes tab), so the people going are told.",
+    admin_of_team: "They run a team. Delete the team first (Teams tab).", bad_word: "Use letters only, 2 to 40 long.", bad_mode: "Pick how the word should match."
   };
   // Admin mode: changes only work after switching it on here, and it switches itself off after 15 minutes
   // without a change. This is a guard against slips, not security: the database checks admin rights itself.
@@ -65,7 +69,7 @@
   // ---------- views ----------
   function shell(inner){
     const o = overview;
-    const counts = o ? `<p class="chart-note">${o.users} people · ${o.leaderboard_entries} on the leaderboard · ${o.teams} teams · ${o.hikes_total} hikes (${o.hikes_open} open) · <strong>${o.open_reports} open report${o.open_reports === 1 ? "" : "s"}</strong> · ${o.suspended} suspended</p>` : "";
+    const counts = o ? `<p class="chart-note">${o.users} people${o.unconfirmed ? ` (+${o.unconfirmed} unconfirmed sign-up${o.unconfirmed === 1 ? "" : "s"} hidden)` : ""} · ${o.leaderboard_entries} on the leaderboard · ${o.teams} teams · ${o.hikes_total} hikes (${o.hikes_open} open) · <strong>${o.open_reports} open report${o.open_reports === 1 ? "" : "s"}</strong> · ${o.suspended} suspended</p>` : "";
     return `<div id="admin-mode"></div><div id="admin-msg" style="display:none;"></div>${counts}
       <div class="admin-tabs" role="tablist">${TABS.map(([k, l]) => `<button type="button" class="btn admin-tab${k === tab ? " is-active" : ""}" data-act="tab" data-tab="${k}">${l}${k === "reports" && o && o.open_reports ? " (" + o.open_reports + ")" : ""}</button>`).join("")}</div>
       <div id="admin-body">${inner}</div>`;
@@ -107,7 +111,22 @@
         <button type="button" class="btn hike-small" data-act="clear-handle" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Clear Instagram</button>
         ${p.on_leaderboard ? `<button type="button" class="btn hike-small" data-act="remove-board" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Remove from leaderboard…</button>` : ""}
         ${p.is_admin ? "" : p.suspended ? `<button type="button" class="btn hike-small" data-act="unsuspend" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Unsuspend</button>` : `<button type="button" class="btn hike-small" data-act="suspend" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}">Suspend…</button>`}
-      </div></div>`).join("") : '<p class="chart-note">Nobody matches.</p>');
+        ${p.is_admin ? "" : `<button type="button" class="btn hike-small admin-danger" data-act="delete-user" data-id="${esc(p.user_id)}" data-name="${esc(p.name || "")}" data-email="${esc(p.email || "")}" data-fells="${Number(p.fells) || 0}" data-hosted="${Number(p.hikes_hosted) || 0}">Delete user…</button>`}
+      </div></div>`).join("") : '<p class="chart-note">Nobody matches.</p>') + unconfirmedHtml();
+  }
+  // Accounts that never confirmed their email are left out of the list above. They can be shown here, and deleted.
+  function unconfirmedHtml(){
+    const n = overview && overview.unconfirmed;
+    if (!n && !showUnconfirmed) return "";
+    const list = cache.unconfirmed;
+    const body = !showUnconfirmed ? "" : list === undefined ? '<p class="chart-note">Loading…</p>'
+      : !list.length ? '<p class="chart-note">None.</p>'
+      : list.map(u => `<div class="plan-card admin-item">
+          <p class="plan-meta"><strong>${esc(u.email || "no email")}</strong></p>
+          <p class="chart-note">Signed up ${esc(fmt(u.created_at))} · confirmation email sent ${esc(fmt(u.confirmation_sent_at))} · never confirmed</p>
+          <div class="hike-actions"><button type="button" class="btn hike-small admin-danger" data-act="delete-user" data-id="${esc(u.user_id)}" data-name="" data-email="${esc(u.email || "")}" data-fells="0" data-hosted="0">Delete…</button></div></div>`).join("");
+    return `<div class="admin-unconfirmed"><button type="button" class="btn hike-small" data-act="toggle-unconfirmed">${showUnconfirmed ? "Hide" : "Show"} ${n || ""} unconfirmed sign-up${n === 1 ? "" : "s"}</button>
+      <p class="chart-note">People who typed an email into the sign-in box but never clicked the link. Hidden from the list above.</p>${body}</div>`;
   }
   function teamsHtml(list){
     if (!list.length) return '<p class="chart-note">No teams.</p>';
@@ -155,7 +174,7 @@
     try {
       let inner = "";
       if (tab === "hikes") { cache.hikes = await rpc("admin_list_hikes"); inner = hikesHtml(cache.hikes); }
-      else if (tab === "people") { cache.people = await rpc("admin_list_people"); inner = peopleHtml(cache.people); }
+      else if (tab === "people") { cache.people = await rpc("admin_list_people"); if (showUnconfirmed) cache.unconfirmed = await rpc("admin_list_unconfirmed"); inner = peopleHtml(cache.people); }
       else if (tab === "teams") { inner = teamsHtml(await rpc("admin_list_teams")); }
       else if (tab === "reports") { inner = reportsHtml(await rpc("admin_list_reports", { p_include_dismissed: showDismissed })); }
       else if (tab === "words") { inner = wordsHtml(await rpc("admin_word_lists")); }
@@ -185,6 +204,12 @@
       if (!box) return;
       if (box.dataset.open === "1") { box.innerHTML = ""; box.dataset.open = ""; return; }
       return guard(btn, async () => { box.innerHTML = peopleOfHikeHtml(id, await rpc("admin_hike_people", { p_hike_id: id })); box.dataset.open = "1"; });
+    }
+    if (a === "toggle-unconfirmed") {
+      showUnconfirmed = !showUnconfirmed;
+      if (!showUnconfirmed) { $("admin-body").innerHTML = peopleHtml(cache.people || []); return; }
+      cache.unconfirmed = undefined; $("admin-body").innerHTML = peopleHtml(cache.people || []);
+      return guard(btn, async () => { cache.unconfirmed = await rpc("admin_list_unconfirmed"); $("admin-body").innerHTML = peopleHtml(cache.people || []); });
     }
     // everything below changes something
     if (!modeOn()) { flash(NEED_MODE, true); return; }
@@ -219,6 +244,16 @@
     }
     if (a === "unsuspend") {
       return guard(btn, async () => { await rpc("admin_set_suspended", { p_user_id: id, p_suspended: false, p_reason: null }); flash(name + " unsuspended."); await refresh(); });
+    }
+    if (a === "delete-user") {
+      const email = btn.dataset.email || "", fells = Number(btn.dataset.fells) || 0, hosted = Number(btn.dataset.hosted) || 0;
+      const who = (btn.dataset.name ? btn.dataset.name + " " : "") + "(" + (email || "no email") + ")";
+      const typed = ask(`PERMANENTLY delete ${who}?\n\nThis removes their account and everything of theirs: ${fells} ticked fell${fells === 1 ? "" : "s"}, leaderboard entry, hike requests, team membership${hosted ? `, and the ${hosted} hike${hosted === 1 ? "" : "s"} they hosted` : ""}. It can't be undone. (Suspend instead if you might want them back.)\n\nType their email address to confirm:`, "");
+      if (typed === null) return;
+      if (typed.toLowerCase() !== email.toLowerCase()) { flash("That didn't match their email address, so nothing was deleted.", true); return; }
+      const reason = ask("Reason (kept in the log):", "");
+      if (reason === null) return;
+      return guard(btn, async () => { await rpc("admin_delete_user", { p_user_id: id, p_confirm_email: typed, p_reason: reason }); flash((email || "User") + " deleted."); await refresh(); });
     }
     if (a === "delete-team") {
       if (!window.confirm(`Delete the team "${name}" and its memberships? This can't be undone.`)) return;

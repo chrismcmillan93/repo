@@ -11,7 +11,7 @@ Instagram Story sharing, direct AllTrails links and the installable app are live
 **Three deliberate differences** (keep them when promoting again, i.e. copy, then
 re-apply): production's `leaderboard.html` has no "beta" badge on the heading;
 `manifest.webmanifest` is named "The Wainwrights" (beta: "The Wainwrights (beta)");
-and `sw.js` uses the cache name `wainwrights-prod-v7` / prefix `wainwrights-prod-` (beta:
+and `sw.js` uses the cache name `wainwrights-prod-v8` / prefix `wainwrights-prod-` (beta:
 `wainwrights-beta-v11` / `wainwrights-beta-`). `beta/` is kept as the working area for the
 next round of changes. The section headings
 below say `beta/...` because that is where each feature was built; the same
@@ -647,3 +647,39 @@ meeting point). `tracker.js` now attaches `ticked_at` to each of today's fells; 
 outside range dropped, a hostile name, grid refs, re-render, Host from here, saved-copy reuse, widening to 4 km, site-1 fallback, 403/429/500/404 and
 no-OS-access messages) and a canvas render of every card type, viewed by eye, plus unit checks of the route ordering and tick-order rule. All the
 earlier suites still pass. Not tested against real OS responses or on a phone's share sheet.
+
+## Admin: confirmed-only People view and delete user (2026-11-07) — database live, page in beta and production
+
+Typing an email into the sign-in box creates an auth user immediately, even if the link is never clicked (an offensive, never-confirmed
+address turned up in the People list this way, created 2 Nov; not from any test). So:
+
+- **People list shows confirmed accounts only.** Migration `20261107100000_wainwrights_admin_confirmed_users.sql` (applied, live for
+  both the production and beta admin pages at once): `admin_list_people()` and the "people" count in `admin_overview()` filter on
+  `auth.users.email_confirmed_at is not null`; `admin_overview()` also returns `unconfirmed`. New `admin_list_unconfirmed()` (email, created,
+  confirmation sent; newest 200). Same signatures as before (`create or replace`), so no overloads.
+- **Unconfirmed sign-ups are one click away, not gone.** The People tab (beta `admin.js`) shows "Show N unconfirmed sign-ups" under the list
+  (read-only, so it works with admin mode off) with a Delete button on each, so junk can still be cleaned up. The header says
+  "N people (+M unconfirmed sign-ups hidden)".
+- **Delete user** (`admin_delete_user(p_user_id, p_confirm_email, p_reason)`, migration `20261107100100_wainwrights_admin_delete_user.sql`,
+  applied): permanent, admins only. Deletes the `auth.users` row; everything of theirs that cascades goes with it (ticks, leaderboard entry,
+  profile, planner location, notifications, their requests on others' hikes, reports they filed, **and any hikes they hosted** with those
+  hikes' requests and tick records; other people's own ticks stay). `team_members` and `teams.admin_user_id` do **not** cascade (no `on delete`
+  on those foreign keys), so it deletes their team memberships explicitly and refuses if they run a team. Refusals (all enforced in the
+  database): `cannot_delete_self`, `cannot_delete_admin`, `email_mismatch` (the typed email must equal theirs, case-insensitive),
+  `hosts_open_hikes` (cancel or delete the hike first so people going are told), `admin_of_team` (delete the team first), `not_found`,
+  `not_admin`. Anon cannot call it. Writes an `admin_log` row (`delete_user`) with a snapshot: email, confirmed or not, created and last
+  sign-in, name, fells, whether on the leaderboard, hikes hosted, hike requests, team memberships, whether suspended, reason. **The log keeps the
+  email address** (admin-only table) so a repeat can be recognised; delete that log row by hand if someone ever asks for erasure.
+- **Page flow:** "Delete user…" on every person except admins; needs admin mode on; a question that spells out who goes and what goes with
+  them (fells, hosted hikes), then they must type the person's email (checked in the page and again by the database), then a reason for
+  the log. Server refusals show plain messages.
+- **Production:** promoted 2026-11-07 (`admin.js` copied up and the two admin rules appended to `shared.css`; nothing else, so the car park finder and
+  Story maps are still beta only; production cache `wainwrights-prod-v8`). The page also lives at `/wainwrights/beta/admin.html`.
+- **Tested:** both migrations on a scratch Postgres 16 with stand-ins that copy the live foreign-key rules, including the two non-cascading ones
+  (29 checks: confirmed-only list and counts, every refusal leaves everything in place, the unconfirmed junk account and a real walker with
+  data deleted case-insensitively and everything of theirs gone, completed-hike host and plain team member deletable, host and team admin
+  deletable once the hike is cancelled or the team deleted, the log snapshot, non-admin and anon refused); applied to the live database and checked
+  (15 confirmed listed, 2 unconfirmed hidden, correct execute rights, no new security warnings); the page in headless Chromium against a mocked
+  backend (confirmed-only list, hidden list incl. hostile names as text, admin mode off refuses before asking, wrong email refused, right email
+  deletes and refreshes, delete from the hidden list, each server refusal's message). **Not run against a real account:** the delete function
+  has not been called on live data.
