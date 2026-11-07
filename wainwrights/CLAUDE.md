@@ -1,5 +1,41 @@
 # Wainwrights tracker (`/wainwrights`)
 
+## Address and hosting (moved 2026-11-07)
+
+**The live app is now `https://wainwrights.walkinguphills.co.uk`** on **Azure Static Web Apps** (Free plan; app
+`wainwrights-tracker-app`, resource group `wainwrights-tracker-app_group`, default host
+`red-sand-0d5dca410.3.azurestaticapps.net`). The `wainwrights/` folder is the site root, so `/wainwrights/x` became `/x`
+and the beta is `/beta/`. DNS is a single CNAME at GoDaddy (`wainwrights` to the default host); Azure issues and renews the
+certificate itself. Paths in the app are all relative, so nothing inside it knows the address.
+
+- **Deploys:** `.github/workflows/azure-static-web-apps-wainwrights.yml` (the only workflow in the repo) runs on pushes to
+  `main` that touch `wainwrights/**`, with no build step. Secret: `AZURE_STATIC_WEB_APPS_API_TOKEN`. (The portal also created
+  `AZURE_STATIC_WEB_APPS_API_TOKEN_RED_SAND_0D5DCA410`; nothing uses it, delete it.) Other apps in the repo stay on GitHub Pages.
+- **Config:** `wainwrights/staticwebapp.config.json` (no-cache on everything except `/icons/*`, security headers, manifest
+  type, 404 for `/supabase/*` and `/CLAUDE.md`, `404.html`). Known: the `/beta` to `/beta/` redirect rule doesn't fire, so a
+  bare `/beta` serves the beta page with relative links resolving against `/`; normal links all use `/beta/`.
+- **Old address:** `app.chris-mcmillan.co.uk/wainwrights/...` is still served by GitHub Pages from the same files. Every page
+  has an inline script in its head that, only when the hostname is `app.chris-mcmillan.co.uk`, forwards to the same path on
+  the new domain keeping `?query` and `#hash` (so old hike share links and magic-link returns land correctly). It does nothing
+  on the new domain, so there is no loop. **Keep it in every page when promoting beta to production** (it is in `beta/` too).
+  Installed copies on the old address update on their next online launch and then forward.
+- **A new address is a new site to browsers:** everyone signs in once more and reinstalls the phone app; the emergency-card
+  details and saved GPS fix on a device don't carry over.
+- **Supabase (walking-up-hills):** Site URL and redirect URLs include the new domain (old and `*.azurestaticapps.net`
+  entries kept). Function secret `SITE_URL` is `https://wainwrights.walkinguphills.co.uk`; the fallback in `hike-notify` and
+  `hike-reminders` is the same address (`hike-reminders` redeployed as v8; the live `hike-notify` still has the old fallback
+  until it is next deployed from the repo, harmless while `SITE_URL` is set).
+- **Email:** Resend sends from `walkinguphills.co.uk` (domain verified at GoDaddy: DKIM, SPF, MX on `send`, DMARC). The sender
+  is `info@walkinguphills.co.uk` (a real mailbox, so replies are read) for both the hike emails (`HIKE_FROM_EMAIL`) and the
+  Supabase sign-in emails (custom SMTP, sender address only).
+- **Beta:** stays a folder (`/beta/`), invited-only by the path-based gate in `beta/shared-auth.js`; its sign-in card shows a
+  BETA badge. A separate beta app was considered and rejected for now (one sign-in, same promote process).
+- **Rollback:** point or remove the GoDaddy CNAME; restore Supabase URL configuration and `SITE_URL`; the old GitHub Pages
+  copy keeps running throughout.
+- **Later:** content-security policy, tightening DMARC from `p=none`, Azure PR previews, Azure Functions/Maps for the planner.
+
+The text below was written before this move; where it names `app.chris-mcmillan.co.uk/wainwrights`, read the new address.
+
 Production is `wainwrights/` (served from `main`); work happens in
 `wainwrights/beta/` and is not copied to production until Chris says so.
 
