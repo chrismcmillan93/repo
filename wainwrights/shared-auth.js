@@ -6,6 +6,14 @@
   // Redirect back to whichever page the person signed in from, not always the home page.
   const REDIRECT_URL = window.location.origin + window.location.pathname;
 
+  // Beta gate. The beta copy of the app (anything served from a /beta/ path) is only for admins and for people an
+  // admin has let in (public.am_i_beta, switched per person in the Admin page). It is decided by the path, so this
+  // file can be copied up to production unchanged and do nothing there.
+  // This controls what the beta PAGES show. It is not data security: beta shares the production database (sign-in and
+  // row-level security protect that), and the beta files themselves are still public static files.
+  const IS_BETA = /\/beta(\/|$)/.test(window.location.pathname);
+  const BETA_OK_PREFIX = "ww_beta_ok_", BETA_OK_MS = 24 * 3600 * 1000;
+
   window.WW = window.WW || {};
   const WW = window.WW;
 
@@ -69,12 +77,74 @@
     }
   }
 
+  // ---- beta gate ----
+  const gate = { uid: null, state: null };   // state: "checking" | "ok" | "closed"
+
+  function showGate(html){
+    let el = document.getElementById("beta-gate");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "beta-gate";
+      el.className = "lock-screen";
+      el.style.cssText = "position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:#e8e2d0;";
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '<div class="lock-card">' + html + "</div>";
+    return el;
+  }
+  function hideGate(){ const el = document.getElementById("beta-gate"); if(el) el.remove(); }
+
+  function showClosed(user, why){
+    document.getElementById("app-content").style.display = "none";
+    document.getElementById("auth-screen").style.display = "none";
+    const email = WW.escapeHtml(user.email || "");
+    let el;
+    if(why === "unreachable"){
+      el = showGate('<h1 class="lock-title">The Wainwrights beta</h1><p class="lock-sub">Couldn\'t check your beta access. Check your connection and try again.</p>' +
+        '<button type="button" class="btn lock-btn" id="beta-retry">Try again</button> <a class="lock-retry" href="../">Open the main app</a>');
+    } else {
+      el = showGate('<h1 class="lock-title">The beta is invited-only</h1><p class="lock-sub">This is the test version of The Wainwrights, and it\'s only open to people Chris has let in. You\'re signed in as ' + email + '.</p>' +
+        '<a class="btn lock-btn" href="../">Open the main app</a> <button type="button" class="lock-retry" id="beta-signout">Sign out</button>');
+    }
+    const retry = el.querySelector("#beta-retry"), out = el.querySelector("#beta-signout");
+    if(retry) retry.addEventListener("click", function(){ window.location.reload(); });
+    if(out) out.addEventListener("click", function(){ Promise.resolve(WW.sb.auth.signOut()).then(function(){ window.location.reload(); }, function(){ window.location.reload(); }); });
+  }
+
+  // true / false from the database. If it can't be asked (offline, outage), a yes from the last 24 hours on this device
+  // still counts so the installed beta keeps working in the hills; otherwise it stays closed.
+  async function betaAllowed(user){
+    const key = BETA_OK_PREFIX + user.id;
+    try {
+      const r = await WW.sb.rpc("am_i_beta");
+      if(r.error) throw r.error;
+      if(r.data === true){ try { localStorage.setItem(key, String(Date.now())); } catch(e) {} return { ok: true }; }
+      try { localStorage.removeItem(key); } catch(e) {}
+      return { ok: false, why: "closed" };
+    } catch(e) {
+      let t = 0;
+      try { t = Number(localStorage.getItem(key)) || 0; } catch(er) {}
+      return t && Date.now() - t < BETA_OK_MS ? { ok: true } : { ok: false, why: "unreachable" };
+    }
+  }
+
+  async function gateBeta(user){
+    if(gate.uid === user.id && gate.state === "checking") return;     // already being checked
+    if(gate.uid !== user.id){ gate.uid = user.id; gate.state = "checking"; showGate('<h1 class="lock-title">The Wainwrights beta</h1><p class="lock-sub">Checking beta access…</p>'); }
+    const res = await betaAllowed(user);
+    if(!WW.currentUser || WW.currentUser.id !== user.id) return;       // signed out or switched while we asked
+    if(res.ok){ gate.state = "ok"; hideGate(); showApp(user); }
+    else { gate.state = "closed"; showClosed(user, res.why); }
+  }
+
   function handleSession(session){
     if(session && session.user){
       WW.currentUser = session.user;
-      showApp(session.user);
+      if(IS_BETA) gateBeta(session.user); else showApp(session.user);
     } else {
       WW.currentUser = null;
+      gate.uid = null; gate.state = null;
+      hideGate();
       showAuthScreen();
     }
   }
