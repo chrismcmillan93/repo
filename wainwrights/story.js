@@ -503,5 +503,61 @@
     }
   }
 
-  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, share, run, _test: { routeOrder, resolveFells, flatten, tickOrderIsReal } };
+  // milestones: your real count up top, then every milestone as a checklist (passed ones crossed out, the next one boxed) with the countdown.
+  // d = { title, dateLabel, climbed, total, percent, elevation, milestones: [{ n, label }], next, nextLabel, toGo }
+  async function milestoneCard(d){
+    await ensureFonts();
+    const { canvas, ctx } = newCard();
+    let y = heading(ctx, TOP, "MILESTONES", d.title, d.dateLabel);
+    // ring: share of the 214 done, percent inside
+    const cx = W / 2, R = 150, LW = 38, cy = y + R + 30;
+    ctx.lineWidth = LW; ctx.lineCap = "round";
+    ctx.strokeStyle = C.paperDeep; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    const frac = Math.max(0.004, Math.min(1, d.climbed / d.total));
+    ctx.strokeStyle = C.green; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+    ctx.lineCap = "butt";
+    ctx.textAlign = "center"; ctx.fillStyle = C.greenDeep;
+    ctx.font = "700 112px " + SERIF; ctx.fillText(d.percent + "%", cx, cy + 36);
+    ctx.fillStyle = C.inkSoft; ctx.font = "400 22px " + MONO; spaced(ctx, "COMPLETE", cx, cy + 78, 3);
+    y = cy + R + LW / 2 + 52;
+    ctx.fillStyle = C.inkSoft; ctx.font = "400 28px " + MONO; ctx.textAlign = "center";
+    ctx.fillText((d.total - d.climbed) + " to go  ·  " + d.elevation.toLocaleString() + "m climbed", W / 2, y);
+    y += 40;
+    // the checklist panel
+    const items = d.milestones || [], cols = 2, rows = Math.ceil(items.length / cols), rowH = 74, headH = 104;
+    const ph = headH + rows * rowH + 22;
+    panel(ctx, y, ph);
+    ctx.textAlign = "left"; ctx.fillStyle = C.green; ctx.font = "700 26px " + MONO;
+    spaced(ctx, d.next ? "NEXT UP" : "WAINWRIGHT COMPLETE", M + 8, y + 50, 4, "left");
+    if(d.next){
+      ctx.textAlign = "right"; ctx.font = "700 34px " + MONO; ctx.fillStyle = C.green;
+      ctx.fillText(d.toGo + (d.toGo === 1 ? " fell to go" : " fells to go"), W - M - 8, y + 52);
+    }
+    const colW = (W - (M - 16) * 2 - 32) / cols, x0 = M - 16 + 16;
+    items.forEach((m, i)=>{
+      const col = Math.floor(i / rows), row = i % rows;
+      const x = x0 + col * colW, ry = y + headH + row * rowH;
+      const passed = d.climbed >= m.n, isNext = d.next === m.n;
+      if(isNext){ ctx.strokeStyle = C.green; ctx.lineWidth = 4; ctx.strokeRect(x - 4, ry - 6, colW - 20, rowH - 8); }
+      // tick for passed, empty circle otherwise
+      const tx = x + 26, ty = ry + rowH / 2 - 8;
+      ctx.lineWidth = 3.5; ctx.strokeStyle = passed ? C.green : C.inkFaint;
+      ctx.beginPath(); ctx.arc(tx, ty, 17, 0, Math.PI * 2); ctx.stroke();
+      if(passed){ ctx.beginPath(); ctx.moveTo(tx - 8, ty + 1); ctx.lineTo(tx - 2, ty + 8); ctx.lineTo(tx + 9, ty - 7); ctx.stroke(); }
+      ctx.textAlign = "left";
+      ctx.font = (isNext ? "700 " : "600 ") + "40px " + SERIF;
+      ctx.fillStyle = passed ? C.inkFaint : isNext ? C.greenDeep : C.ink;
+      const label = m.label, lx = x + 62, ly = ry + rowH / 2 + 4;
+      ctx.fillText(label, lx, ly);
+      if(passed){   // crossed out
+        const w = ctx.measureText(label).width;
+        ctx.strokeStyle = C.inkSoft; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(lx - 4, ly - 13); ctx.lineTo(lx + w + 4, ly - 13); ctx.stroke();
+      }
+    });
+    footer(ctx);
+    return toBlob(canvas);
+  }
+
+  window.WWStory = { dayCard, hikeCard, teamCard, inviteCard, milestoneCard, share, run, _test: { routeOrder, resolveFells, flatten, tickOrderIsReal } };
 })();
