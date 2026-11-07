@@ -1681,3 +1681,9 @@
 
 .os-logo{ display:block; background:rgba(255,255,255,.85); padding:3px 5px; border-radius:4px; line-height:0; margin:0 0 4px 4px !important; }
 .os-logo img{ display:block; }
+
+/* BETA badge + note on the beta sign-in card and the beta access gate */
+.beta-badge{ display:inline-block; font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.14em; color:#fff; background:var(--rust); padding:3px 10px; border-radius:999px; margin:0 0 12px; }
+.lock-icon + .beta-badge{ display:block; width:max-content; margin:0 auto 12px; }
+.beta-note{ font-size:12px; line-height:1.4; color:var(--rust); margin:0 0 14px; }
+.beta-note a{ color:inherit; text-decoration:underline; }

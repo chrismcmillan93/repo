@@ -89,8 +89,20 @@
       el.style.cssText = "position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:#e8e2d0;";
       document.body.appendChild(el);
     }
-    el.innerHTML = '<div class="lock-card">' + html + "</div>";
+    el.innerHTML = '<div class="lock-card"><div class="beta-badge">BETA</div>' + html + "</div>";
     return el;
+  }
+
+  // Make it obvious this is the test copy: a BETA badge and note on the sign-in card, and "(beta)" in the tab title.
+  function markBetaAuthScreen(){
+    if(!/beta/i.test(document.title)) document.title += " (beta)";
+    const card = document.querySelector("#auth-screen .lock-card");
+    if(!card || card.querySelector(".beta-badge")) return;
+    const icon = card.querySelector(".lock-icon");
+    const badge = '<div class="beta-badge">BETA</div>';
+    if(icon) icon.insertAdjacentHTML("afterend", badge); else card.insertAdjacentHTML("afterbegin", badge);
+    const title = card.querySelector(".lock-title");
+    if(title) title.insertAdjacentHTML("afterend", '<p class="beta-note">Test version for invited testers. Things may change or break. <a href="../">Open the main app</a></p>');
   }
   function hideGate(){ const el = document.getElementById("beta-gate"); if(el) el.remove(); }
 
@@ -268,6 +280,7 @@
   async function bootstrap(){
     setupAuthForm();
     setupLogout();
+    if(IS_BETA) markBetaAuthScreen();
 
     if(!WW.sb){
       document.getElementById("auth-sub").textContent = "Supabase isn't available right now — try reloading.";
