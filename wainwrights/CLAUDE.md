@@ -489,6 +489,28 @@ Tiles are only requested when someone opens a map; if OS or Leaflet is unavailab
   create and edit pickers (opens on the right point, tap fills the box, second tap moves the pin, outside-box check). The earlier hike, co-host and car park test
   suites still pass. **Not tried on a real phone** (touch drag of the pin, tap accuracy) and not promoted to production.
 
+## 24 Peaks challenge and "Host this challenge" (2026-11-07) — beta
+
+- **24 Peaks** (`24_peaks`, https://www.lakedistrictpeaks.co.uk/24-peaks.html, run by Activus Outdoors): a two-day, 31-mile guided challenge, 24 peaks in 24 hours. Day 1 is
+  the Lake District 10 Peaks route (Red Pike (Buttermere), High Stile, High Crag, Green Gable, Great Gable, Lingmell, Scafell Pike, Great End, Esk Pike, Bowfell; start
+  Gatesgarth, Buttermere, target 12 h) and day 2 is 14 peaks (Red Screes, Dove Crag, Hart Crag, Fairfield, Seat Sandal, Dollywaggon Pike, Nethermost Pike, Helvellyn,
+  Helvellyn Lower Man, White Side, Raise, Stybarrow Dodd, Watson's Dodd, Great Dodd; start Kirkstone Pass, target 10 h). **Helvellyn Lower Man is not a Wainwright**, so 23 of
+  the 24 are in the app (the page says so). The site's "Whiteside" is the Helvellyn-range White Side. Added in `fells-data.js` (`challenges` arrays, used by the tracker's
+  fell pop-up), `challenges-data.js` (`CHALLENGE_FELLS`; seven fells that weren't on any challenge were added with their usual description) and the `CHALLENGES` label
+  maps in both `challenges.js` and `tracker.js`. `challenges.js` takes an optional `order` (route order) so the chips read day 1 then day 2. The page text was read from the
+  site on 2026-11-07 (this needed `www.lakedistrictpeaks.co.uk` added to the Claude Code environment's allowed hosts).
+- **Host this challenge:** a button on each challenge card with a `host` config (24 Peaks, 10in10, Challenge 5), same hand-off as the planner (`sessionStorage`
+  `ww_host_walk` -> `hike.html?new=1`), with the fells in route order. `hike.js` works out the highest fell for the forecast from the fell names when the hand-off has none, and
+  no longer prints "null mi / null m" when a challenge has no distance or ascent (only 24 Peaks has a distance, 31 mi, from the site; ascent isn't given so it's left blank, not
+  guessed). `walk_key` is `challenge-<key>`. The start point is a known planner base (Little Town for the Newlands challenges, Buttermere village for 24 Peaks) and the form says to move
+  the pin (day 1 really starts at Gatesgarth, further up the valley; the exact Gatesgarth coordinates weren't checked). **A hike has one start time**, so for the two-day challenge
+  the form tells the host to use it for day 1 and say in the meeting-point note when day 2 starts; ticking for everyone happens once, after the hike.
+- **Not hostable:** Bob Graham (39 of its 42 fells are in the app, over the 30-fell cap in `create_hike`; the card says so) and Three Peaks (one Lake District fell). Raising the cap
+  means rewriting `create_hike` in a new migration.
+- **Tested:** in headless Chromium against mocks (card, 23 chips in route order, links, Lower Man note, buttons on the right three cards, Bob Graham message, fell pop-up, hand-off
+  into the form, the `create_hike` call with the key, the 23 fells in order, Scafell Pike as the top fell and the 31 miles; 10in10 shows no distance); all 23 names exist in
+  `fell_heights`. Not promoted to production.
+
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 
 "Sort by" under the planner controls: Best match (the default scored ranking),

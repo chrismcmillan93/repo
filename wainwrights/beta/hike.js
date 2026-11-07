@@ -310,7 +310,8 @@
       <div class="section-heading"><h2>Host this walk</h2><div class="rule"></div></div>
       <div id="hike-msg" style="display:none;"></div>
       <form id="hike-new" class="plan-card hike-form">
-        <p class="plan-meta"><strong>${esc(walk.label)}</strong> · ${walk.miles} mi · ${walk.ascent} m · ${walk.fells.length} fell${walk.fells.length === 1 ? "" : "s"}</p>
+        <p class="plan-meta"><strong>${esc(walk.label)}</strong> · ${walk.miles != null ? walk.miles + " mi · " : ""}${walk.ascent != null ? walk.ascent + " m · " : ""}${walk.fells.length} fell${walk.fells.length === 1 ? "" : "s"}</p>
+        ${walk.note ? `<p class="chart-note">${esc(walk.note)}</p>` : ""}
         <label>Title<input class="lock-input" id="n-title" maxlength="80" value="${esc(walk.label)}"></label>
         <label>Area (shown to anyone with the link)<input class="lock-input" id="n-area" maxlength="60" value="${esc(area)}"></label>
         <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}" required></label>
@@ -368,9 +369,14 @@
     } else {
       lat = walk.start_lat; lng = walk.start_lng;
       if (pt) { lat = pt.lat; lng = pt.lng; }
+      // a walk handed over from the Challenges page has no highest-fell fields: work them out from the fell names
+      const byNameW = {}; FELLS_DATA.forEach(b => b.fells.forEach(f => { byNameW[f.name] = f; }));
+      const topW = walk.top_name ? null : walk.fells.map(n => byNameW[n]).filter(Boolean).reduce((a, f) => (!a || f.m > a.m ? f : a), null);
       snapshot = {
-        label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells, top_name: walk.top_name, top_m: walk.top_m,
-        top_lat: walk.top_lat, top_lng: walk.top_lng, start_name: walk.start_name, url: walk.url || null
+        label: walk.label, miles: walk.miles, ascent: walk.ascent, fells: walk.fells,
+        top_name: walk.top_name || (topW && topW.name), top_m: walk.top_m != null ? walk.top_m : (topW && topW.m),
+        top_lat: walk.top_lat != null ? walk.top_lat : (topW && topW.lat), top_lng: walk.top_lng != null ? walk.top_lng : (topW && topW.lng),
+        start_name: walk.start_name, url: walk.url || null
       };
     }
     const wa = $("n-wa").value.trim();

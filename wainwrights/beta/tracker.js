@@ -134,6 +134,11 @@
       label: "Challenge 5",
       blurb: "A shorter, family-friendly version of 10in10 — 5 peaks in the Newlands Valley, also in aid of the MS Society.",
       url: "https://www.10in10.org.uk/events/challenge-5/"
+    },
+    "24_peaks": {
+      label: "Lake District 24 Peaks",
+      blurb: "A two-day, 31-mile guided challenge: 24 peaks in 24 hours. Day 1 (10 peaks, target 12 hours) runs from Gatesgarth in Buttermere over the Buttermere ridge, the Gables, Scafell Pike and Bowfell to Great Langdale; day 2 (14 peaks, target 10 hours) starts at Kirkstone Pass and runs over Fairfield, Seat Sandal and the Helvellyn range to the Dodds. Run by Activus Outdoors. Helvellyn Lower Man isn't a separate Wainwright, so 23 of the 24 peaks are counted here.",
+      url: "https://www.lakedistrictpeaks.co.uk/24-peaks.html"
     }
   };
 
