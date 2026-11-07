@@ -1687,3 +1687,8 @@
 .lock-icon + .beta-badge{ display:block; width:max-content; margin:0 auto 12px; }
 .beta-note{ font-size:12px; line-height:1.4; color:var(--rust); margin:0 0 14px; }
 .beta-note a{ color:inherit; text-decoration:underline; }
+
+.sk-zoom{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin:0 2px 6px; }
+.sk-hint{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint, #6b6b5f); }
+.sk-btns{ display:inline-flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden; }
+.sk-btns .map-mode{ padding:6px 12px; }
