@@ -106,6 +106,7 @@
   const appleUrl = (lat, lng) => `https://maps.apple.com/?daddr=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&dirflg=d`;
   const pickHtml = inputId => `<div class="hike-pick"><button type="button" class="btn hike-small" data-action="pick-point" data-for="${inputId}" aria-expanded="false">Pick on the map</button>
     <div class="hike-pick-box" id="pick-${inputId}" hidden><div class="hike-pick-map"></div><p class="chart-note hike-pick-cap">Tap the map where people should meet (drag the pin to adjust). Put it on the car park or lay-by itself, because navigation apps route to the nearest road.</p><div class="hike-parks" data-parks-for="${inputId}"></div></div></div>`;
+  let pickStart = null;      // the walk's start point (lat, lng, name), drawn on the create form's picker
   let pickSearch = null;     // where car parks are looked up from the create form's picker: { key, lat, lng } (the walk's start pin)
   let pickFellNames = [];   // the walk's fells (or a function returning them), shown as context on the picker
   const localISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -291,7 +292,7 @@
       document.querySelectorAll(".fell-opt").forEach(l => { l.style.display = !q || l.dataset.name.includes(q) || l.querySelector("input").checked ? "" : "none"; });
       document.querySelectorAll(".fell-book").forEach(d => { d.open = !!q; });
     });
-    pickSearch = null;
+    pickSearch = null; pickStart = null;
     pickFellNames = () => Array.from(document.querySelectorAll(".f-pick:checked")).map(i => i.value);   // the fells ticked so far
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(null)); });
   }
@@ -336,6 +337,7 @@
         <p class="chart-note">Your display name is shown to people who open the link. Anyone with the link can ask to join; you approve each person.</p>
       </form>`;
     pickFellNames = walk.fells || [];
+    pickStart = walk.start_lat != null && walk.start_lng != null ? { lat: Number(walk.start_lat), lng: Number(walk.start_lng), name: walk.start_name || "" } : null;
     pickSearch = walk.search_lat != null ? { key: walk.search_key || "start", lat: Number(walk.search_lat), lng: Number(walk.search_lng) }
       : walk.start_lat != null ? { key: "start", lat: Number(walk.start_lat), lng: Number(walk.start_lng) } : null;
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(walk)); });
@@ -667,9 +669,11 @@
       };
       box.__pick = await WWMaps.pick(box.querySelector(".hike-pick-map"), {
         lat: cur && cur !== "bad" ? cur.lat : null, lng: cur && cur !== "bad" ? cur.lng : null, fells: WWMaps.fells(names),
+        start: hike && hike.walk ? null : pickStart,
         onChange: (lat, lng) => { input.value = lat.toFixed(5) + ", " + lng.toFixed(5); input.dispatchEvent(new Event("input", { bubbles: true })); show(lat, lng); }
       });
       if (cur && cur !== "bad") show(cur.lat, cur.lng);
+      else if (!(hike && hike.walk) && pickStart) cap.textContent = "The blue pin is the walk's start: it's used as the meeting point unless you pick another. Tap the blue pin or anywhere on the map to set it.";
       box.__autoNote = $("n-note") ? $("n-note").value : "";
       if (inputId === "n-point" && pickSearch && window.CarParks) setupParks(box);
       delete box.dataset.busy;

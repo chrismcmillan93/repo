@@ -107,13 +107,20 @@
       if (f && f.lat != null) L.circleMarker([f.lat, f.lng], { radius: 5, weight: 2, color: "#1f3d2b", fillColor: "#fff", fillOpacity: 0.9 }).bindTooltip(esc(f.name)).addTo(map);
     });
     map.on("click", e => set(e.latlng.lat, e.latlng.lng));
+    // the walk's own start point (blue pin): tap it to use it as the meeting point
+    const startPt = o.start && o.start.lat != null && !isNaN(o.start.lat) ? [Number(o.start.lat), Number(o.start.lng)] : null;
+    if (startPt) {
+      L.marker(startPt, { icon: pin("is-start"), zIndexOffset: 200 }).bindTooltip("Walk start: " + esc(o.start.name || "parking") + " (tap to use it)")
+        .on("click", () => set(startPt[0], startPt[1])).addTo(map);
+    }
     const have = o.lat != null && o.lng != null && !isNaN(o.lat) && !isNaN(o.lng);
     if (have) { set(o.lat, o.lng, true); map.setView([o.lat, o.lng], 15); }
     else {
       const pts = (o.fells || []).filter(f => f && f.lat != null).map(f => [f.lat, f.lng]);
-      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 }); else map.setView(CENTRE, 10);
+      if (startPt) pts.push(startPt);
+      if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40], maxZoom: 14 }); else if (pts.length === 1) map.setView(pts[0], 14); else map.setView(CENTRE, 10);
     }
-    map.__pts = (o.fells || []).filter(f => f && f.lat != null).map(f => [f.lat, f.lng]);
+    map.__pts = (o.fells || []).filter(f => f && f.lat != null).map(f => [f.lat, f.lng]).concat(startPt ? [startPt] : []);
     return {
       map,
       point: () => (marker ? marker.getLatLng() : null),
