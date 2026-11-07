@@ -647,7 +647,7 @@
       const top = d.fells.slice().sort((a, b)=> b.m - a.m);
       return { kicker: d.kicker, title: plural(d.fells.length, "fell", "fells"), sub: d.range, big: { v: String(d.fells.length), l: d.fells.length === 1 ? "FELL" : "FELLS" },
         stats: [{ v: String(d.days), l: d.days === 1 ? "DAY OUT" : "DAYS OUT" }, { v: d.elevation.toLocaleString() + "m", l: "SUMMITS" }, { v: String(d.streak), l: d.streak === 1 ? "WEEK IN A ROW" : "WEEKS IN A ROW" }],
-        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), rowsAre: "fells", map: { fells: d.fells } };
+        rows: top.slice(0, 6).map(f=> ({ left: f.name, right: f.m + "m" })), rowsAre: "fells", map: null };
     }
     throw new Error("unknown card " + kind);
   }
@@ -1067,7 +1067,7 @@
     chips("Colours", THEME_LABELS, ()=> prefs.theme, v=> { prefs.theme = v; }, "p");
     const themeNote = el("p", "chart-note story-note", "The Photo layout keeps its own colours.");
     // optional: an Ordnance Survey map under the fells (only where OS maps are loaded and the card has a map)
-    const hasMap = o.kind !== "team" && !!window.OSMap;
+    const hasMap = o.kind !== "team" && o.kind !== "recap" && !!window.OSMap;
     const mapRow = hasMap ? chips("Map", [["drawn", "Drawn"], ["os", "OS map"]], ()=> prefs.mapStyle, v=> { prefs.mapStyle = v; }, "p") : null;
     const mapNote = hasMap ? el("p", "chart-note story-note", "The OS map is Ordnance Survey data (Open Government Licence) and is credited on the card. It shows on the Classic and Map layouts, and needs a connection.") : null;
     if(mapNote) rows.appendChild(mapNote);
