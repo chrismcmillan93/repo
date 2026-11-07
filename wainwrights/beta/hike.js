@@ -103,6 +103,10 @@
   // A plain Google Maps pin link (parsePoint can read the coordinates back out of it).
   const pinLink = (lat, lng) => `https://www.google.com/maps/search/?api=1&query=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
   const mapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&travelmode=driving`;
+  const appleUrl = (lat, lng) => `https://maps.apple.com/?daddr=${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}&dirflg=d`;
+  const pickHtml = inputId => `<div class="hike-pick"><button type="button" class="btn hike-small" data-action="pick-point" data-for="${inputId}" aria-expanded="false">Pick on the map</button>
+    <div class="hike-pick-box" id="pick-${inputId}" hidden><div class="hike-pick-map"></div><p class="chart-note hike-pick-cap">Tap the map where people should meet (drag the pin to adjust). Put it on the car park or lay-by itself, because navigation apps route to the nearest road.</p></div></div>`;
+  let pickFellNames = [];   // the walk's fells (or a function returning them), shown as context on the picker
   const localISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const hikeLink = t => location.origin + location.pathname.replace(/[^/]*$/, "") + "hike.html?t=" + encodeURIComponent(t);
 
@@ -259,6 +263,7 @@
         <label>Start<input class="lock-input" id="n-when" type="datetime-local" min="${min}"></label>
         <label>Places (not counting you)<input class="lock-input" id="n-spaces" type="number" min="1" max="20" value="4"></label>
         <label>Meeting point — Google Maps link or "lat, lng" (required; in Google Maps press and hold the car park, then copy the coordinates). Only approved walkers see it.<input class="lock-input" id="n-point" placeholder="54.5436, -2.9490"></label>
+        ${pickHtml("n-point")}
         <label>Meeting point note<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park"></label>
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
@@ -285,6 +290,7 @@
       document.querySelectorAll(".fell-opt").forEach(l => { l.style.display = !q || l.dataset.name.includes(q) || l.querySelector("input").checked ? "" : "none"; });
       document.querySelectorAll(".fell-book").forEach(d => { d.open = !!q; });
     });
+    pickFellNames = () => Array.from(document.querySelectorAll(".f-pick:checked")).map(i => i.value);   // the fells ticked so far
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(null)); });
   }
 
@@ -312,8 +318,10 @@
         <label>Meeting point note (only approved walkers see this)<input class="lock-input" id="n-note" maxlength="300" placeholder="e.g. far end of the main car park, by the toilets" value="${esc(walk.start_name || "")}"></label>
         ${walk.from_carpark && walk.start_lat != null && walk.start_lng != null
           ? `<label>Meeting point (the car park you picked: change the link if you want a different spot)<input class="lock-input" id="n-point" value="${esc(pinLink(walk.start_lat, walk.start_lng))}"></label>
+        ${pickHtml("n-point")}
         <p class="chart-note" id="n-point-open"><a class="plan-maps" id="n-point-link" href="${esc(pinLink(walk.start_lat, walk.start_lng))}" target="_blank" rel="noopener">Open this meeting point in Google Maps ↗</a></p>`
-          : `<label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>`}
+          : `<label>Different meeting point? Paste a Google Maps link or "lat, lng" (otherwise the walk's parking spot is used)<input class="lock-input" id="n-point" placeholder="optional"></label>
+        ${pickHtml("n-point")}`}
         <label>Your contact for approved walkers (phone or WhatsApp)<input class="lock-input" id="n-contact" maxlength="120" placeholder="optional, strongly recommended"></label>
         <label>WhatsApp group invite link for approved walkers (optional — in WhatsApp: group info → Invite via link → Copy link)<input class="lock-input" id="n-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..."></label>
         <label>Turnaround time (turn back at this time wherever you are)<input class="lock-input" id="n-turn" type="time"></label>
@@ -324,6 +332,7 @@
         <div class="share-row"><button class="btn" type="submit" id="n-submit">Create hike</button></div>
         <p class="chart-note">Your display name is shown to people who open the link. Anyone with the link can ask to join; you approve each person.</p>
       </form>`;
+    pickFellNames = walk.fells || [];
     $("hike-new").addEventListener("submit", e => { e.preventDefault(); guard($("n-submit"), () => createHike(walk)); });
     // keep the "Open in Google Maps" link in step with whatever is in the meeting point box
     const pointBox = $("n-point"), pointLink = $("n-point-link");
@@ -442,7 +451,8 @@
     const detail = priv ? `
       <div class="hike-private">
         <h3 class="hike-sub">Meeting point</h3>
-        <p><a class="plan-maps" href="${mapsUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions to the meeting point in Google Maps ↗</a></p>
+        <p><a class="plan-maps" href="${mapsUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions to the meeting point in Google Maps ↗</a><br><a class="plan-maps" href="${appleUrl(priv.meet_lat, priv.meet_lng)}" target="_blank" rel="noopener">Directions in Apple Maps ↗</a></p>
+        ${window.OSMap ? `<p class="chart-note">Grid reference ${esc(OSMap.gridRef(Number(priv.meet_lat), Number(priv.meet_lng), 8))}</p>` : ""}
         ${priv.meet_note ? `<p>${esc(priv.meet_note)}</p>` : ""}
         ${priv.host_contact ? `<p><strong>Host contact:</strong> ${esc(priv.host_contact)}</p>` : ""}
         ${priv.whatsapp_url && waOk(priv.whatsapp_url) ? `<p><a class="btn" href="${esc(priv.whatsapp_url)}" target="_blank" rel="noopener noreferrer">Join the WhatsApp chat ↗</a></p>` : ""}
@@ -467,6 +477,7 @@
         <div id="hike-weather">${weatherHtml()}</div>
         ${kit}
         ${detail}
+        <div class="hike-mapwrap"><button type="button" class="btn hike-small" data-action="show-map" aria-expanded="false">Show map</button><div id="hike-map" hidden></div></div>
       </article>
       <div id="hike-live"></div>
       ${body}
@@ -591,6 +602,7 @@
         <label>Places<input class="lock-input" id="e-spaces" type="number" min="1" max="20" value="${h.spaces}"></label>
         <label>Meeting point note<input class="lock-input" id="e-note" maxlength="300" value="${esc(p.meet_note || "")}"></label>
         <label>Meeting point (Google Maps link or "lat, lng")<input class="lock-input" id="e-point" value="${esc(p.meet_lat != null ? Number(p.meet_lat).toFixed(5) + ", " + Number(p.meet_lng).toFixed(5) : "")}"></label>
+        ${pickHtml("e-point")}
         <label>${can("host_contact") ? "Your contact" : "Host's contact (only the host can change this)"}<input class="lock-input" id="e-contact" maxlength="120" value="${esc(p.host_contact || "")}" ${can("host_contact") ? "" : "disabled"}></label>
         <label>WhatsApp group invite link (only approved walkers see it; clear to remove)<input class="lock-input" id="e-wa" type="url" maxlength="200" placeholder="https://chat.whatsapp.com/..." value="${esc(p.whatsapp_url || "")}"></label>
         <label>Turnaround time<input class="lock-input" id="e-turn" type="time" value="${esc(h.turnaround_time || "")}"></label>
@@ -615,6 +627,42 @@
     const a = btn.dataset.action, uid = btn.dataset.uid;
     if (a === "open-cancel") { const d = $("hike-cancel"); if (d) { d.open = true; d.scrollIntoView({ block: "center" }); } return; }
     if (a === "open-report") { $("hike-report").innerHTML = `<div class="plan-card hike-form"><label>What's wrong with this hike?<textarea class="lock-input hike-text" id="rep-reason" rows="3" maxlength="500"></textarea></label><div class="share-row"><button class="btn" data-action="send-report">Send report</button></div></div>`; return; }
+    if (a === "show-map") {
+      const box = $("hike-map");
+      if (!box.hidden) { box.hidden = true; btn.textContent = "Show map"; btn.setAttribute("aria-expanded", "false"); return; }
+      box.hidden = false; btn.textContent = "Hide map"; btn.setAttribute("aria-expanded", "true");
+      if (box.__map) { box.__map.invalidateSize(); return; }
+      if (box.dataset.busy) return;
+      box.dataset.busy = "1";
+      const pv = hike.private;
+      box.__map = await WWMaps.view(box, { fells: WWMaps.fells((hike.walk || {}).fells), meet: pv && pv.meet_lat != null ? { lat: Number(pv.meet_lat), lng: Number(pv.meet_lng) } : null });
+      delete box.dataset.busy;
+      return;
+    }
+    if (a === "pick-point") {
+      const inputId = btn.dataset.for, input = $(inputId), box = $("pick-" + inputId);
+      if (!input || !box) return;
+      if (!box.hidden) { box.hidden = true; btn.textContent = "Pick on the map"; btn.setAttribute("aria-expanded", "false"); return; }
+      box.hidden = false; btn.textContent = "Close the map"; btn.setAttribute("aria-expanded", "true");
+      if (box.__pick) { box.__pick.map.invalidateSize(); return; }
+      if (box.dataset.busy) return;
+      box.dataset.busy = "1";
+      const cur = parsePoint(input.value), cap = box.querySelector(".hike-pick-cap");
+      const names = hike && hike.walk ? hike.walk.fells : (typeof pickFellNames === "function" ? pickFellNames() : pickFellNames);
+      const show = (lat, lng) => {
+        const out = !WWMaps.inBox(lat, lng);
+        cap.className = "chart-note hike-pick-cap" + (out ? " is-bad" : "");
+        cap.textContent = out ? "That's outside the Lake District, where hikes can meet. Move the pin."
+          : "Pin at " + (window.OSMap ? "grid reference " + OSMap.gridRef(lat, lng, 8) + " · " : "") + lat.toFixed(5) + ", " + lng.toFixed(5) + ". Drag it to adjust.";
+      };
+      box.__pick = await WWMaps.pick(box.querySelector(".hike-pick-map"), {
+        lat: cur && cur !== "bad" ? cur.lat : null, lng: cur && cur !== "bad" ? cur.lng : null, fells: WWMaps.fells(names),
+        onChange: (lat, lng) => { input.value = lat.toFixed(5) + ", " + lng.toFixed(5); input.dispatchEvent(new Event("input", { bubbles: true })); show(lat, lng); }
+      });
+      if (cur && cur !== "bad") show(cur.lat, cur.lng);
+      delete box.dataset.busy;
+      return;
+    }
     if (a === "copy") { try { await navigator.clipboard.writeText(hikeLink(token)); flash("Link copied."); } catch (er) { flash("Couldn't copy — select the link and copy it by hand.", true); } return; }
     if (a === "story-invite") {
       try { await navigator.clipboard.writeText(hikeLink(token)); } catch (er) { /* link is also on the page */ }
