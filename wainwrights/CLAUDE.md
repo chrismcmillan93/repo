@@ -468,6 +468,27 @@ A host can make any **approved** attendee a co-host and pick one of three levels
   `set_hike_cohost`); the page in headless Chromium against mocks (host, full, standard, approvals-only, plain walker, tick form, role change
   calls the function and reloads). **Not tried with two real accounts through the page.**
 
+## OS maps on the planner and hike pages, and the meeting-point picker (2026-11-07) — beta
+
+`beta/maptools.js` (`WWMaps`, on top of `OSMap.createMap`; needs Leaflet and a signed-in user, in `sw.js` SHELL, beta cache v27) adds three things.
+Tiles are only requested when someone opens a map; if OS or Leaflet is unavailable the box says so and nothing else breaks.
+
+- **Planner walk cards:** a "Show map" button opens an OS map on the card: the walk's fells (filled = climbed), the start pin (labelled approximate) and any
+  car parks already found for that walk. `planner.html` now loads Leaflet (same pinned version and SRI as `index.html`).
+- **Hike page:** a "Show map" button under the details. Everyone with the link sees the fells; the **meeting pin is added only when the page already has the
+  private details** (host and approved walkers), so nothing leaks before approval. The directions block also has an **Apple Maps** link and the **grid reference**
+  of the meeting point next to the Google Maps one (both built from the stored coordinates, same visibility as before).
+- **Meeting-point picker** (create form, planner-walk form and "Edit details"): "Pick on the map" opens a map with a movable pin (tap to place, drag to adjust,
+  the walk's fells shown for context, opens on the existing point if there is one). It just writes `lat, lng` into the existing meeting-point box (and fires
+  `input`), so everything downstream is unchanged: still stored as plain coordinates, Google Maps directions link built by the page, same server checks. The caption
+  shows the pin's grid reference and warns if it is outside the Lake District box the database allows (53.8–55.2 N, 3.8–2.2 W). Navigation apps route to the nearest
+  road, so the form tells hosts to put the pin on the car park or lay-by itself.
+- **Gotcha:** `FELLS_DATA` is a top-level `const` (not a `window` property), so `maptools.js` reads it by name, lazily.
+- **Tested** in headless Chromium against mocks: planner (no tiles until asked, token-only tile requests, fell and start markers, hide/show, OS-unavailable
+  message), hike page (approved walker gets the meeting pin, a not-yet-approved visitor gets fells only and no directions links, Apple link and grid ref),
+  create and edit pickers (opens on the right point, tap fills the box, second tap moves the pin, outside-box check). The earlier hike, co-host and car park test
+  suites still pass. **Not tried on a real phone** (touch drag of the pin, tap accuracy) and not promoted to production.
+
 ## Planner sorting (`beta/planner.js`) — 2026-10-31
 
 "Sort by" under the planner controls: Best match (the default scored ranking),

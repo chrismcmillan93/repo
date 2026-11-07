@@ -453,6 +453,7 @@
         <a class="plan-maps" href="${mapsUrl(w.start)}" target="_blank" rel="noopener">Directions to parking in Google Maps ↗</a>
         ${startNoteHtml(w)}
         <div class="plan-cp" data-cp-for="${esc(w.id)}">${carParksHtml(w)}</div>
+        <div class="plan-mapwrap"><button type="button" class="btn plan-showmap" data-show-map="${esc(w.id)}" aria-expanded="false">Show map</button><div class="plan-map" data-map-for="${esc(w.id)}" hidden></div></div>
         <div class="chal-fell-list">${fellChips}</div>
         ${w.url ? `<a class="chal-link" href="${esc(w.url)}" target="_blank" rel="noopener">${w.alltrails ? "View route on AllTrails ↗" : "Route details ↗"}</a>` : ""}${w.guideUrl ? ` <a class="chal-link plan-guide" href="${esc(w.guideUrl)}" target="_blank" rel="noopener">Route guide ↗</a>` : ""}
         <div><button type="button" class="btn plan-host" data-host-walk="${esc(w.id)}">Host this walk</button></div>
@@ -573,7 +574,28 @@
     window.location.href = "hike.html?new=1";
   }
 
+  // "Show map": an OS map of the walk on its card: the start pin, the fells (filled = climbed), and any car parks already found.
+  async function toggleMap(btn){
+    const id = btn.dataset.showMap;
+    const box = document.querySelector('[data-map-for="' + id + '"]');
+    const w = walks.find(x => x.id === id);
+    if (!box || !w) return;
+    if (!box.hidden) { box.hidden = true; btn.textContent = "Show map"; btn.setAttribute("aria-expanded", "false"); return; }
+    box.hidden = false; btn.textContent = "Hide map"; btn.setAttribute("aria-expanded", "true");
+    if (box.__map) { box.__map.invalidateSize(); return; }
+    if (box.dataset.busy) return;
+    box.dataset.busy = "1";
+    const s = cpState[id];
+    box.__map = await WWMaps.view(box, {
+      fells: w.fells, start: w.start, climbed: climbed,
+      parks: s && s.parks ? s.parks.map(p => ({ lat: p.lat, lng: p.lng, name: p.name })) : []
+    });
+    delete box.dataset.busy;
+  }
+
   document.getElementById("planner-results").addEventListener("click", (e) => {
+    const sm = e.target.closest("[data-show-map]");
+    if (sm) { toggleMap(sm); return; }
     const find = e.target.closest("[data-find-carparks]");
     if (find) { const st = cpState[find.dataset.findCarparks]; findCarParks(find.dataset.findCarparks, !!(st && st.status === "error")); return; }   // "Try again" skips the saved copy
     const cp = e.target.closest("[data-cp-host]");

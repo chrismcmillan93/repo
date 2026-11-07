@@ -1701,3 +1701,16 @@
 .hike-cohost{ display:flex; align-items:center; gap:8px; margin-top:6px; }
 .hike-cohost-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint, #6b6b5f); }
 .hike-cohost-select{ max-width:240px; padding:6px 8px; font-size:13px; }
+
+.os-map-small{ height:300px; min-height:240px; }
+.plan-mapwrap, .hike-mapwrap, .hike-pick{ margin:8px 0; }
+.plan-map, .hike-pick-map{ margin-top:8px; }
+.plan-map[hidden], #hike-map[hidden], .hike-pick-box[hidden]{ display:none; }
+#hike-map{ margin-top:8px; }
+.ww-pin{ background:none; border:0; }
+.ww-pin span{ display:block; width:20px; height:20px; margin:0 3px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.5); background:var(--rust); }
+.ww-pin.is-start span{ background:#35557a; }
+.ww-pin.is-park span{ background:#555; }
+.ww-pin.is-meet span{ background:var(--rust); }
+.hike-pick-cap{ margin:6px 2px 0; }
+.hike-pick-cap.is-bad{ color:var(--rust); }
