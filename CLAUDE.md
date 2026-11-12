@@ -2,11 +2,18 @@
 
 `app.chris-mcmillan.co.uk` — a plain GitHub Pages site (see `CNAME`). `main` is served
 directly, with no build step. Each top-level directory is an independent app: `naples`,
-`thailand`, `goals`, `wainwrights`, `finance`, `fitness`, `usa`. They're hand-written
+`thailand`, `goals`, `wainwrights`, `finance`, `fitness`, `usa`, `life`. They're hand-written
 HTML/CSS/JS that load `@supabase/supabase-js@2` from a CDN `<script>` tag and talk to
 Supabase straight from the browser with the anon key — there is no Next.js, no bundler,
 no package.json anywhere in this repo, and none should be added without discussing it
 first (a static-hosting deploy and a framework build step are two different projects).
+
+## Life app (`/life`)
+
+The combined "one app" for goals, to-dos, lists, career, health and events, meant to
+replace `goals/` and `fitness/` over time (both are left running and untouched). Own
+schema **`life`**; it also reads and writes the `fitness` schema directly so the two apps
+always agree. Everything about it is in **`life/CLAUDE.md`** — read that before touching it.
 
 ## USA trip planner (`/usa`)
 
