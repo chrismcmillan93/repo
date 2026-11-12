@@ -3,9 +3,10 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
-import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct } from '../lib.js';
+import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct, weekCommitments } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
+import { commitRow, commitFormHtml, commitActs } from './shared.js';
 
 const AREAS = ['Health', 'Career', 'Money', 'Learning', 'Relationships', 'Home', 'Personal'];
 const LEVELS = [['year', 'This year'], ['quarter', 'This quarter'], ['month', 'This month']];
@@ -19,7 +20,7 @@ export async function render(root, params){
     await syncFit(weekStart, goals);
     const [steps, commits, tasks] = await Promise.all([
       store.steps.list((q) => q.order('due_date', { nullsFirst: false }).order('sort_order')),
-      store.commitments.list((q) => q.eq('week_start', weekStart)),
+      weekCommitments(weekStart),
       store.tasks.list((q) => q.not('goal_id', 'is', null).or(`status.eq.open,and(status.eq.done,done_on.eq.${today})`))
     ]);
     d = { goals, steps, commits, tasks };
@@ -63,8 +64,9 @@ export async function render(root, params){
         ${LEVELS.map(rung).join('')}
         <div class="rung"><div class="lv">Add a step</div><div class="body"><form class="add wrapf" data-act="addstep"><input class="field" name="title" required placeholder="What has to be true?" aria-label="Step">
           <select class="field" name="level" aria-label="Level">${options(LEVELS, 'month')}</select><input class="field" type="date" name="due_date" aria-label="Due date"><button class="btn">Add</button></form></div></div>
-        <div class="rung live"><div class="lv">This week</div><div class="body">${cs.length ? cs.map((c) => `<span class="mini"><span style="flex:1;min-width:0">${esc(c.title)}</span><b>${c.done_count}/${c.target_count}</b></span>`).join('') + bar(keptPct(cs))
-          : `<span>${pill('No commitment set', 'bad')} A goal with nothing this week does not move.</span>`}<div class="btns"><a class="btn sm" href="#/week">${cs.length ? 'Open the week' : 'Set one'}</a></div></div></div>
+        <div class="rung live"><div class="lv">Commit</div><div class="body">${cs.length ? cs.map((c) => commitRow(c)).join('') + bar(keptPct(cs))
+          : `<span>${pill('No commitment set', 'bad')} A goal with nothing to do this week does not move.</span>`}
+          <p class="sub">Add a commitment</p>${commitFormHtml({ goalId: g.id })}</div></div>
         <div class="rung live"><div class="lv">Today</div><div class="body">${ts.length ? ts.map((t) => `<label class="mini ${t.status === 'done' ? 'done' : ''}"><input type="checkbox" data-act="task" data-id="${t.id}" ${t.status === 'done' ? 'checked' : ''}><span>${esc(t.title)}</span></label>`).join('') : '<span class="hint">Nothing planned for today.</span>'}
           <form class="add" data-act="addtask"><input class="field" name="title" required placeholder="Add today's action" aria-label="Add today's action"><button class="btn">Add</button></form></div></div>
       </div>
@@ -86,6 +88,7 @@ export async function render(root, params){
   const refresh = async () => { await load(); draw(); };
   const num = (v) => (v === '' || v == null ? null : Number(v));
   wire(root, {
+    ...commitActs({ find: (id) => d.commits.find((c) => c.id === id), refresh: () => refresh(), weekStart: () => weekStart }),
     pick(n){ sel = n.dataset.id; mode = 'view'; draw(); },
     new(){ mode = 'new'; draw(); },
     edit(){ mode = 'edit'; draw(); },

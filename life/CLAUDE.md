@@ -127,6 +127,38 @@ foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps a
     and `select` on `fitness.plan_days`, `pick_sessions`, `races` only.
   - iPhone: push only works in the installed Home Screen app (iOS 16.4+).
 
+## Recurring commitments with a cadence (2026-11-13)
+
+A commitment has a **cadence**: daily, weekly or monthly (`life.commitments.cadence`), and
+can **repeat** via a rule in `life.commitment_rules` (title, goal, cadence, `per_period`,
+`start_date`). Migration `life_recurring_commitments`.
+
+- **Weekly**: N times a week, resets each Monday (`week_start` = that Monday).
+- **Daily**: N a day, stored as one weekly row with `target_count = N x 7`, so "1 chapter a
+  day" shows as 7 for the week and a missed day can be made up later (cap is the weekly
+  total). `paceInfo()` says how far behind: only days *before* today count, so nothing is
+  "behind" at 7am; "do N today" = what earlier days were short by plus today's share. Today
+  nudges when 2+ behind.
+- **Monthly**: N a month, **`week_start` holds the first day of the month**. It shows on
+  Week, Goals and Today for every week that touches the month, with days left (amber in
+  the last 7). It is **left out of the weekly kept %** (`keptPct()` ignores monthly) and
+  counted separately ("1 of 2 monthly done"). Reviews list them under "Monthly commitments".
+- **How repeating works**: `lib.js ensureRecurring()` creates the row for the current period
+  and any missed since the rule began (up to 8 weeks / 5 months back, so a gap is a real 0,
+  not a hole in the history). It runs from `weekCommitments(ws)` (used by Today, Goals,
+  Week, To-dos), is remembered for 30 s, and inserts with `ignoreDuplicates` against the
+  unique index `(user_id, rule_id, week_start)`, so two screens loading together can't double
+  up. Always read a week's commitments through `weekCommitments()`, never `eq('week_start')`
+  directly, or monthly rows and not-yet-created repeats are missed.
+- **UI** (`views/shared.js`): `commitRow()`, `commitFormHtml()` (how many, every day/week/
+  month, "Repeat automatically", goal) and `commitActs()` (inc/dec/delete/repeat/add), used by
+  Week (the form, plus a "Repeating" panel to change the number or Stop), a goal's own page
+  (goal fixed), and Today (read and tick only). Existing one-off commitments get a "Repeat"
+  button. **Changing the number** applies to this period onwards (`setRuleCount`), past
+  periods keep what they had. **Stopping** deletes the rule only; everything done stays
+  (`commitments.rule_id` is `on delete set null`).
+- Health-fed commitments (`source = fit_*`) are unchanged: weekly, one per week, no stepper.
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

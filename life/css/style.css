@@ -235,3 +235,8 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .adh i { min-width: 0 }
 .postprev { display: flex; gap: 8px; overflow-x: auto; max-width: 100% }
 .postprev canvas { height: 300px; width: auto; max-width: none; border-radius: 6px; flex: none }
+
+/* commitments */
+.check { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 7px 0; white-space: nowrap }
+.step .field { flex: none }
+.step { flex-wrap: wrap; justify-content: flex-end }
