@@ -8,7 +8,7 @@ import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, format
   resolveSessionsForDay } from '../utils.js';
 import { planChipsHtml, planLinesHtml, planWeekHtml } from '../planDay.js';
 import { mountCalendar } from '../calendar.js';
-import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, adjustEnabled } from '../nutrition.js';
+import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, adjustEnabled, pickDayKey, dayTotalsLine } from '../nutrition.js';
 import { buildShoppingList, buildPrepTasks, shoppingListHtml, prepTasksHtml } from '../weekLists.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { dateBounds } from './today.js';
@@ -211,7 +211,8 @@ export async function render(main){
     const nday = inNutritionPlan(nut, d) ? buildDay(nut, {
       date: d, weight: weightInfo.weight, enabled: adjustEnabled(),
       miles: planDay && planDay.kind === 'long' && planDay.distance_miles != null ? Number(planDay.distance_miles) : null,
-      isRaceDay: !!planDay && planDay.type === 'race'
+      isRaceDay: !!planDay && planDay.type === 'race',
+      key: pickDayKey(dayPicks, dayPickNames) || undefined
     }) : null;
     nDays.push({ date: d, day: nday });
     const food = nday ? `${nday.totals.kcal} kcal · ${Math.round(nday.totals.protein_g)}g protein`
@@ -233,6 +234,7 @@ export async function render(main){
         ${swappedFrom ? `<div class="week-day-swapnote">⇄ Swapped: showing ${escapeHtml(formatDayLabel(swappedFrom))}'s session</div>` : ''}
         ${training.detail ? `<div class="week-day-plan">${training.detail}</div>` : ''}
         ${mealsListHtml(meals)}
+        ${nday ? `<div class="plan-day-totals week-day-totals"><span class="plan-day-totals-label">Day total</span><span class="plan-day-totals-figures">${dayTotalsLine(nday.totals)}</span></div>` : ''}
       </li>`;
   }).join('');
 

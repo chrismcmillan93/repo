@@ -13,7 +13,7 @@ import { qs, qsa, escapeHtml, formatDateFull, statusLabel, startOfWeek, endOfWee
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { planChipsHtml, planLinesHtml, planModeHelpHtml, planWeekHtml } from '../planDay.js';
 import { sessionOptions, pickTitle } from '../sessionChoices.js';
-import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, sessionFacts, describeScaling, adjustEnabled, setAdjustEnabled } from '../nutrition.js';
+import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, sessionFacts, pickDayKey, dayTotalsLine, describeScaling, adjustEnabled, setAdjustEnabled } from '../nutrition.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
@@ -68,7 +68,9 @@ async function applyNutrition(bundle){
   if (!inNutritionPlan(nut, state.currentDate)) return;
   const weightInfo = await effectiveWeight(userId(), state.currentDate);
   const { miles, isRaceDay } = sessionFacts(bundle);
-  const day = buildDay(nut, { date: state.currentDate, weight: weightInfo.weight, enabled: adjustEnabled(), miles, isRaceDay });
+  const pickKey = pickDayKey(bundle.picks, bundle.pick_sessions);
+  const day = buildDay(nut, { date: state.currentDate, weight: weightInfo.weight, enabled: adjustEnabled(), miles, isRaceDay, key: pickKey || undefined });
+  day.fromPick = !!pickKey;
   bundle.day_type = day.key;
   bundle.meals = day.meals;
   bundle.target = { kcal_target: day.totals.kcal, protein_floor_g: Number(nut.plan.protein_floor_g) };
@@ -77,7 +79,8 @@ async function applyNutrition(bundle){
 
 function nutritionNoteHtml(){
   if (!nutritionInfo) return '';
-  return `<p class="nutrition-note">${escapeHtml(describeScaling(nutritionInfo.day, nutritionInfo.weightInfo))}</p>
+  const d = nutritionInfo.day;
+  return `${d.fromPick ? `<p class="nutrition-note">Meals follow your training pick: ${escapeHtml(d.label)}.</p>` : ''}<p class="nutrition-note">${escapeHtml(describeScaling(d, nutritionInfo.weightInfo))}</p>
     <label class="nutrition-toggle"><input type="checkbox" id="adjustToggle" ${adjustEnabled() ? 'checked' : ''}> Adjust to my weight</label>`;
 }
 
@@ -367,6 +370,11 @@ function sessionPanelHtml(session, checks){
   </section>`;
 }
 
+function dayTotalsOf(meals){
+  const sum = (k) => meals.reduce((s, m) => s + (Number(m[k]) || 0), 0);
+  return { kcal: Math.round(sum('kcal')), protein_g: sum('protein_g'), carbs_g: sum('carbs_g'), fat_g: sum('fat_g') };
+}
+
 function renderMealsAndTraining(main, bundle){
   const checks = bundle.checks || {};
   const picks = bundle.picks || { weights: false, cardio: false };
@@ -375,6 +383,7 @@ function renderMealsAndTraining(main, bundle){
         <h2 class="panel-title">Meals</h2>
         ${nutritionNoteHtml()}
         <ul class="tick-list">${(bundle.meals || []).map((m, i) => mealRowHtml(m, bundle.day_type, !!checks[`meal:${bundle.day_type}:${m.slot_order}`], i + 1)).join('')}</ul>
+        ${bundle.meals && bundle.meals.length ? `<div class="plan-day-totals" id="dayTotals"><span class="plan-day-totals-label">Day total</span><span class="plan-day-totals-figures">${dayTotalsLine(dayTotalsOf(bundle.meals))}</span></div>` : ''}
       </section>`
     : '';
 
@@ -457,6 +466,7 @@ function wirePicker(main, bundle){
         if (next.weights || next.cardio) bundle.sessions = pickSessions(next, bundle.pick_sessions);
         else if (plannedSessions) bundle.sessions = plannedSessions;
       }
+      await applyNutrition(bundle);
       renderHeader(main, bundle);
       renderMealsAndTraining(main, bundle);
       computeTotals(main, bundle);
@@ -473,6 +483,7 @@ function wirePicker(main, bundle){
         else await db.pickSessions.remove(userId(), state.currentDate, [kind]);
         bundle.pick_sessions = { ...(bundle.pick_sessions || {}), [kind]: value || null };
         bundle.sessions = pickSessions(bundle.picks || {}, bundle.pick_sessions);
+        await applyNutrition(bundle);
         renderHeader(main, bundle);
         renderMealsAndTraining(main, bundle);
         computeTotals(main, bundle);

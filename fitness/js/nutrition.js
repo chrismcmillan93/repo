@@ -183,6 +183,20 @@ export function buildDay(nut, opts){
   return { key, label: dt.label, appliesTo: dt.applies_to, meals, totals, baseKcal, k, factor, deficit, weight, usedWeight, miles, longRunDelta, enabled };
 }
 
+// The meal day type a training pick maps to: weights or both -> lift day,
+// cardio -> run day (long run day when the session is named "Long run").
+// null when nothing is picked (the plan's own day type applies).
+export function pickDayKey(picks, names){
+  if (!picks) return null;
+  if (picks.weights) return 'lift_day';
+  if (picks.cardio) return names && /^long run$/i.test(names.cardio || '') ? 'long_run_day' : 'run_day';
+  return null;
+}
+
+export function dayTotalsLine(totals){
+  return `${totals.kcal} kcal · ${round1(totals.protein_g)}g protein · ${round1(totals.carbs_g)}g carbs · ${round1(totals.fat_g)}g fat`;
+}
+
 // For a day-bundle: the long-run miles and race flag of the day's effective planned session.
 export function sessionFacts(bundle){
   const pd = (bundle.sessions || []).map((s) => s.plan_day).find(Boolean);

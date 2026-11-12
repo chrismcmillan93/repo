@@ -73,6 +73,17 @@ Monday weigh-in target (weeks 1-6). **Check-in** uses the Edale plan's weeks and
 `plan_checkins` (own rows; key `user_id, plan_version, week_number`); Block 2's old
 `weekly_checkins` still list under "Block 2 · Week N".
 
+## Meals follow your training pick; day totals (2026-11-12)
+
+On dates inside the nutrition plan, picking Weights / Cardio / Both on Today switches that
+day's meals to match: Weights or Both -> lift day, Cardio -> run day (long run day when the
+cardio session is named "Long run"); clearing the pick returns the plan's own day type
+(`pickDayKey()` in `js/nutrition.js`, passed to `buildDay` as `key`; Week does the same for
+picked days). Meal tick ids include the day type (`meal:<day type>:<slot>`), so ticks made
+under one day type don't carry over when the type changes. Day totals (kcal, protein, carbs,
+fat, scaled to your weight) sit under the meal list on Today, under each day on Week, and
+under each day type on Plan.
+
 ## Naming the session done, daily yes/no questions, light theme (2026-11-12)
 
 **Which session was done.** After picking Weights / Cardio / Both, a "Which ... session?"
