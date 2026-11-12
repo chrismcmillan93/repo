@@ -203,3 +203,35 @@ table.plan td.today { outline: 2px solid var(--accent); outline-offset: -2px }
 .toast { background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .2s }
 .toast.is-visible { opacity: 1 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none } }
+
+/* second build: review, playbook, notes, progress, posters, settings */
+.offline { margin: 0; padding: 6px max(16px, env(safe-area-inset-left, 0px)); background: var(--warn-soft); color: var(--warn); font-size: 13px; font-weight: 600; text-align: center }
+textarea.field { width: 100%; resize: vertical; font: inherit; line-height: 1.45 }
+.field.title { font: 700 18px var(--display) }
+.gh { display: flex; gap: 8px; justify-content: space-between; align-items: baseline }
+.gh b { min-width: 0 }
+.row.today { background: var(--accent-soft); margin: 0 -8px; padding: 8px; border-radius: 8px; border-top-color: transparent }
+.seg.sm button { padding: 3px 11px; font-size: 13px }
+.qrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0; font-size: 14px }
+.goalrev { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line) }
+.goalrev:first-of-type { border-top: 0 }
+.book { border-top: 1px solid var(--line); padding-top: 6px }
+.directive { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px dashed var(--line) }
+.directive .btn .pill { pointer-events: none }
+.steps { list-style: decimal; padding-left: 20px; display: flex; flex-direction: column; gap: 4px }
+svg.chart { width: 100%; height: auto }
+svg text { font: 11px var(--body); fill: var(--muted) }
+svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
+.hgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; max-width: 360px }
+.hw { text-align: center; font-size: 11px; color: var(--muted) }
+.hc { display: flex; flex-direction: column; aspect-ratio: 1; max-width: 100%; border-radius: 5px; overflow: hidden }
+.hc.empty { visibility: hidden }
+.hc i { flex: 1 }
+.s-yes { background: var(--good) } .s-partial { background: var(--warn) } .s-no { background: var(--bad) } .s-none { background: var(--sunk) }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted) }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: -6px }
+.adhrow { display: grid; grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted) }
+.adh { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk) }
+.adh i { min-width: 0 }
+.postprev { display: flex; gap: 8px; overflow-x: auto; max-width: 100% }
+.postprev canvas { height: 300px; width: auto; max-width: none; border-radius: 6px; flex: none }
