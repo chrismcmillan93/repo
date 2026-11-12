@@ -67,13 +67,14 @@ async function flow(outer, id){
   const today = todayStr();
   const [[r], goals, steps] = await Promise.all([store.reviews.list((q) => q.eq('id', id)), store.goals.list((q) => q.in('status', ['active', 'paused']).order('created_at')), store.steps.list()]);
   if (!r) { root.innerHTML = `<section class="panel">${empty('That review no longer exists.')}<a class="btn" href="#/review">All reviews</a></section>`; return; }
-  const [rgs, commits, tasks, misses, wins, closes] = await Promise.all([
+  const [rgs, commits, tasks, misses, wins, closes, monthly] = await Promise.all([
     store.reviewGoals.list((q) => q.eq('review_id', id)),
-    store.commitments.list((q) => q.gte('week_start', startOfWeek(r.period_start)).lte('week_start', r.period_end)),
+    store.commitments.list((q) => q.neq('cadence', 'monthly').gte('week_start', startOfWeek(r.period_start)).lte('week_start', r.period_end).order('week_start')),
     store.tasks.list((q) => q.eq('status', 'done').gte('done_on', r.period_start).lte('done_on', r.period_end)),
     store.journal.list((q) => q.eq('kind', 'miss').gte('entry_date', r.period_start).lte('entry_date', r.period_end).order('entry_date')),
     store.career.list((q) => q.eq('kind', 'win').gte('item_date', r.period_start).lte('item_date', r.period_end)),
-    store.journal.list((q) => q.eq('kind', 'close').gte('entry_date', r.period_start).lte('entry_date', r.period_end))
+    store.journal.list((q) => q.eq('kind', 'close').gte('entry_date', r.period_start).lte('entry_date', r.period_end)),
+    store.commitments.list((q) => q.eq('cadence', 'monthly').gte('week_start', r.period_start.slice(0, 7) + '-01').lte('week_start', r.period_end).order('week_start'))
   ]);
   const byGoal = Object.fromEntries(rgs.map((x) => [x.goal_id, x]));
   const rank = { stalled: 0, behind: 1, on: 2, done: 3 };
@@ -87,6 +88,7 @@ async function flow(outer, id){
       <div class="stats"><div><b class="big">${keptPct(commits)}%</b><span>commitments kept</span></div><div><b class="big">${tasks.length}</b><span>tasks done</span></div>
         <div><b class="big">${closes.length}/${days}</b><span>days closed</span></div><div><b class="big">${wins.length}</b><span>wins logged</span></div></div>
       ${commits.length ? `<p class="sub">Commitments</p>${commits.map((c) => `<div class="row"><span class="rt"><span class="rtitle">${esc(c.title)}</span><span class="rmeta"><span>Week of ${formatDateShort(c.week_start)}</span></span></span><span class="right"><b>${c.done_count}/${c.target_count}</b></span></div>`).join('')}` : ''}
+      ${monthly.length ? `<p class="sub">Monthly commitments</p>${monthly.map((c) => `<div class="row"><span class="rt"><span class="rtitle">${esc(c.title)}</span><span class="rmeta"><span>${new Date(c.week_start + 'T00:00:00').toLocaleDateString('en-GB', { month: 'long' })}</span></span></span><span class="right"><b>${c.done_count}/${c.target_count}</b></span></div>`).join('')}` : ''}
       ${misses.length ? `<p class="sub">What got missed, and why</p>${misses.map((m) => `<div class="row"><span class="rt"><span class="rtitle">${esc(m.body)}</span></span><span class="right">${formatDateShort(m.entry_date)}</span></div>`).join('')}` : ''}
       ${wins.length ? `<p class="sub">Wins</p>${wins.map((w) => `<div class="row"><span class="rt"><span class="rtitle">${esc(w.title)}</span></span></div>`).join('')}` : ''}</section>
     <section class="panel"><h2>2. Each goal <small>Worst first</small></h2>

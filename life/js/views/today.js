@@ -3,10 +3,10 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty } from '../ui.js';
 import { todayStr, addDays, startOfWeek, isoDow, toast } from '../fit/utils.js';
-import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, keptPct } from '../lib.js';
+import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, keptPct, weekCommitments, paceInfo } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
 import { mountDay } from '../fit/day.js';
-import { taskRow, towardsSelect, towardsFields } from './shared.js';
+import { taskRow, towardsSelect, towardsFields, commitRow, commitActs } from './shared.js';
 import { loadCountdowns, countdownRow } from './events.js';
 import { dueReviews, periodLabel } from './review.js';
 
@@ -28,7 +28,7 @@ export async function render(root){
     ]);
     await carryOver(tasks);
     await syncFit(weekStart, goals);
-    const [commits, steps] = await Promise.all([store.commitments.list((q) => q.eq('week_start', weekStart).order('created_at')), store.steps.list()]);
+    const [commits, steps] = await Promise.all([weekCommitments(weekStart), store.steps.list()]);
     d = { goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
@@ -52,7 +52,13 @@ export async function render(root){
       out.push(`<div class="nudge warn"><p><b>${esc(t.title)}</b> has been carried over ${t.carried_count} times.</p><div class="btns">
         <button class="btn sm" data-act="top" data-id="${t.id}">Do it today</button><button class="btn sm" data-act="sched" data-id="${t.id}">Move to Saturday</button><button class="btn sm" data-act="deltask" data-id="${t.id}">Delete</button></div></div>`);
     });
-    return out.slice(0, 5).join('');
+    d.commits.forEach((c) => {
+      const p = paceInfo(c);
+      if (!p || c.done_count >= c.target_count) return;
+      if (p.behind >= 2) out.push(`<div class="nudge warn"><p><b>${esc(c.title)}</b> is ${p.behind} behind. Do ${p.behind + p.perDay} today to get back on track.</p></div>`);
+      if (p.left != null && p.left <= 7) out.push(`<div class="nudge warn"><p><b>${esc(c.title)}</b> is still open and the month ends in ${p.left} day${p.left === 1 ? '' : 's'}.</p></div>`);
+    });
+    return out.slice(0, 6).join('');
   }
 
   function streak(h){
@@ -87,6 +93,8 @@ export async function render(root){
     root.querySelector('#weekcard').innerHTML = `<h2>This week so far <small>Day ${isoDow(today)} of 7</small></h2>
       <div class="stats"><div><b class="big">${wk}%</b><span>of commitments kept</span></div><div><b class="big">${gone}%</b><span>of the week gone</span></div></div>
       ${bar(wk, gone, wk + 10 < gone ? 'warn' : 'good')}<div class="btns"><a class="btn sm" href="#/week">Open the week</a></div>`;
+    const manual = d.commits.filter((c) => !c.source);
+    root.querySelector('#commits').innerHTML = `<h2>Commitments <small><a href="#/week">Add or change</a></small></h2>${manual.length ? manual.map((c) => commitRow(c, { tools: false })).join('') : empty('Nothing set. Add one on the Week tab, e.g. 1 chapter a day.')}`;
     root.querySelector('#habits').innerHTML = `<h2>Habits</h2>${d.habits.length ? d.habits.map((h) => { const s = streak(h);
       return `<label class="row ${s.on ? 'done' : ''}"><input type="checkbox" data-act="habit" data-id="${h.id}" ${s.on ? 'checked' : ''}><span class="rt"><span class="rtitle">${esc(h.title)}</span></span><span class="right">${s.n ? `${s.n} day streak` : 'No streak'}</span></label>`; }).join('') : empty('No habits yet.')}
       <form class="add" data-act="addhabit"><input class="field" name="title" placeholder="Add a daily habit" aria-label="Add a daily habit" required><button class="btn">Add</button></form>`;
@@ -95,12 +103,14 @@ export async function render(root){
 
   root.innerHTML = `<div id="nudges" class="stack"></div><div class="cols"><div class="stack" id="left"></div><div class="stack">
     <section class="panel" id="weekcard"></section>
+    <section class="panel" id="commits"></section>
     <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><div id="fit"></div></section>
     <section class="panel" id="habits"></section><section class="panel" id="coming"></section></div></div>`;
 
   const refresh = async () => { await load(); draw(); };
   const find = (id) => d.tasks.find((t) => t.id === id);
   wire(root, {
+    ...commitActs({ find: (id) => d.commits.find((c) => c.id === id), refresh, weekStart: () => weekStart }),
     async task(n){ await setTaskDone(find(n.dataset.id), n.checked); await refresh(); },
     async top(n){ await store.tasks.set(n.dataset.id, { top_date: today, due_date: today }); await refresh(); },
     async untop(n){ await store.tasks.set(n.dataset.id, { top_date: null }); await refresh(); },
@@ -128,5 +138,5 @@ export async function render(root){
 
   await load();
   draw();
-  mountDay(root.querySelector('#fit'), today, { compact: true, onChange: async () => { await syncFit(weekStart, d.goals); d.commits = await store.commitments.list((q) => q.eq('week_start', weekStart).order('created_at')); draw(); } });
+  mountDay(root.querySelector('#fit'), today, { compact: true, onChange: async () => { await syncFit(weekStart, d.goals); d.commits = await weekCommitments(weekStart); draw(); } });
 }

@@ -44,6 +44,7 @@ export const journal = table('journal');
 export const listItems = table('list_items');
 export const career = table('career_items');
 export const events = table('events');
+export const rules = table('commitment_rules');
 export const reviews = table('reviews');
 export const reviewGoals = table('review_goals');
 export const notes = table('notes');
@@ -58,6 +59,13 @@ export const playbook = {
     return ok(await supabase.from('playbook_progress').upsert({ user_id: uid, directive_key, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'user_id,directive_key' }).select().single());
   }
 };
+
+// Insert rows, silently skipping any that already exist (so two screens loading at the
+// same moment can't create the same recurring commitment twice).
+export async function upsertIgnore(name, rows, onConflict){
+  if (!rows.length) return;
+  ok(await supabase.from(name).upsert(rows.map((r) => ({ ...r, user_id: uid })), { onConflict, ignoreDuplicates: true }));
+}
 
 export async function upsertOn(name, row, onConflict){
   return ok(await supabase.from(name).upsert({ ...row, user_id: uid }, { onConflict }).select().single());

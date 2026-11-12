@@ -2,7 +2,7 @@
 import * as store from '../store.js';
 import { esc, wire, formData, empty, options } from '../ui.js';
 import { todayStr, startOfWeek, toast } from '../fit/utils.js';
-import { setTaskDone, carryOver } from '../lib.js';
+import { setTaskDone, carryOver, weekCommitments } from '../lib.js';
 import { taskRow, towardsSelect, towardsFields } from './shared.js';
 
 export async function render(root){
@@ -12,7 +12,7 @@ export async function render(root){
     const [tasks, goals, commits] = await Promise.all([
       store.tasks.list((q) => q.or(`status.neq.done,done_on.eq.${today}`).order('due_date', { nullsFirst: false }).order('created_at')),
       store.goals.list((q) => q.eq('status', 'active')),
-      store.commitments.list((q) => q.eq('week_start', startOfWeek(today)))
+      weekCommitments(startOfWeek(today))
     ]);
     await carryOver(tasks);
     d = { tasks, goals, commits, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
