@@ -213,8 +213,10 @@ finisher; weekly notes show on Today/Week/Plan; the Monday weight target shows o
 Mondays of weeks 1 to 6 only. Shared renderer: `js/planDay.js`.
 
 **Races page** (`#/races`): the 8 races from the plan with a days-only
-countdown and a finish-time box (h:mm:ss) that opens on race day. The Windmill 10k
-(8 Nov 2026) is deliberately not in the app. All races are `planned`; set
+countdown and a finish-time box (h:mm:ss) that opens on race day. The Windmill
+Remembrance Day 10k (8 Nov 2026) was first left out, then added on request (2026-11-12,
+migration `fitness_add_windmill_remembrance_10k`) as a user-owned race like the Santa Dash;
+it shows as "N days ago" with its finish-time box open. Plan races are `planned`; set
 `races.status = 'entered'` once one is booked.
 
 **Importing:** `node fitness/scripts/import-plan-v2.mjs --check` validates the JSON;
