@@ -159,6 +159,64 @@ can **repeat** via a rule in `life.commitment_rules` (title, goal, cadence, `per
   (`commitments.rule_id` is `on delete set null`).
 - Health-fed commitments (`source = fit_*`) are unchanged: weekly, one per week, no stepper.
 
+## Garmin (2026-11-13)
+
+Chris's own Garmin Connect data, mirrored into the `fitness` schema and read by this app.
+Same shape as Hevy: Garmin stays the source, an Edge Function fills read-only tables.
+
+- **API:** Garmin's *Personal API* (`personal.connectapi.garmin.com`): one self-made key,
+  26 read-only GET endpoints, pull only (no webhooks), personal use only. The spec is at
+  developer.garmin.com/gc-developer-program/personal/swagger-docs/. Not available from it:
+  training readiness/status, race predictions, personal records, gear; VO2 max comes back
+  empty. **Learned live, not in Garmin's docs:** the token request must not send
+  `Accept: application/json` (it answers 406); weights arrive in **grams** although the
+  spec says kilograms; and about 100 requests in a burst gets a 429.
+- **Tables** (migration `fitness_garmin_tables`; browser can only `select` its own rows):
+  `garmin_activities`, `garmin_days` (steps, resting HR, stress, Body Battery),
+  `garmin_sleep` (one row per night keyed by the morning it ended; sleep and HRV are
+  written separately, each touching only its own columns), `garmin_weights`,
+  `garmin_autoticks`, `garmin_sync_state`. Each data table keeps Garmin's whole answer in
+  `raw`, so a new field can be surfaced without fetching history again; **never
+  `select('*')` these from the browser** (`fit/garmin.js` names its columns).
+  `garmin_config` is server-only like `push_config` (RLS on, no policies, no grants): the
+  cron key, the owner's user id, and the cached 24-hour access token. The advisor's
+  "RLS enabled, no policy" INFO for it is expected.
+- **Edge Function `garmin-sync`** (`supabase/functions/garmin-sync/`, `verify_jwt` off, does
+  its own auth: the cron key, or the owner's session). Secret `GARMIN_API_KEY`. Each run:
+  re-reads the last 4 days (Garmin revises recent days; activities deleted in Garmin are
+  removed here), ticks runs, fills weigh-ins, then walks history backwards 28 days at a
+  time (at most 12 chunks a run, place saved after each) until a whole chunk older than
+  the first activity comes back empty. `pg_cron` job `garmin-sync-tick` runs it at :05 and
+  :35 (migration `fitness_garmin_sync_cron`). One endpoint failing doesn't stop the others;
+  the reason lands in `garmin_sync_state.last_message`.
+- **Auto-tick.** A run on a day whose session is a run (plan types `run`, `race`,
+  `hike_or_run`, `walk`, or a Cardio pick; hikes/walks/stairs count where the session is
+  that kind) upserts `daily_checks` `session:run`, the same tick the apps write. Only from
+  `garmin_sync_state.autotick_from` (the first sync date) onwards, and once per day:
+  `garmin_autoticks` remembers the day, so unticking by hand sticks.
+- **Weigh-ins.** The day's first Garmin reading is copied into `daily_logs.weight_kg` only
+  where none was typed (`garmin_weights.filled_log` marks which were). A typed value is
+  never overwritten.
+- **In the app** (`js/fit/garmin.js`, written for this app, not a Fitness copy): Today's
+  **Recovery** panel (sleep, HRV against Garmin's balanced range, resting HR against the
+  7-day average, Body Battery high; hidden until the first sync); the **From Garmin** block
+  on Health → Day and Today (each activity, and planned vs run distance); **trends** at the
+  bottom of Health → Progress (`#/health/progress/84|182|365`); and three optional weekly
+  commitments fed in `fit/feed.js` (`source` = `garmin_sleep`, `garmin_steps`, `garmin_km`;
+  targets in `settings.data.garmin`; the km target is the plan week's `run_km` when the
+  week is in the plan). Switching one off removes it from the current week only.
+  Settings has the status card, Sync now, the targets, and the key's expiry date
+  (`settings.data.garmin.key_expires`, typed in by hand because Garmin's API doesn't
+  report it): Today nudges from 14 days before. `life-push` adds last night's sleep, HRV
+  and resting HR to the morning brief when the watch has synced by then.
+- **When the key lapses** (they last at most a year): create a new one in Garmin Connect
+  web → Settings → Personal API Key, replace the `GARMIN_API_KEY` secret, update the date
+  in Settings. Nothing else needs touching.
+- **Tested:** the sync ran live against the real account (activities, days, nights, HRV
+  and weights all landed and were checked against `raw`). The screens were only driven
+  with stand-in data in Playwright, and auto-tick has not yet fired on a real planned run
+  (the plan starts 2026-11-30).
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

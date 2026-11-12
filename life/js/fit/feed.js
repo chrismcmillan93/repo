@@ -3,12 +3,17 @@
 //   - "Training sessions done"       planned (or picked) days vs days with a session ticked
 //   - "Days with every meal eaten"   days where every meal of that day's type is ticked
 //   - "Morning weigh-ins"            days with a weight logged
+// plus up to three from Garmin, each switched on in Settings (garmin.js):
+//   - "Nights of N+ hours sleep", "Days of N+ steps", "Kilometres run" (the plan's
+//     weekly distance when the week is in the plan, otherwise your own target)
 // Each is stored as one life.commitments row per week (source = fit_*), refreshed
 // whenever Today or Week loads, so past weeks keep their final score.
 import { db } from './db.js';
 import { loadNutrition, inNutritionPlan } from './nutrition.js';
-import { todayStr, addDays } from './utils.js';
+import { todayStr, addDays, startOfWeek } from './utils.js';
 import * as store from '../store.js';
+import { garminPrefs, garminCommitments } from './garmin.js';
+import { planWeeks } from './week.js';
 
 export async function syncFit(weekStart, goalRows = []){
   const today = todayStr();
@@ -48,12 +53,26 @@ export async function syncFit(weekStart, goalRows = []){
       ['fit_meals', 'Days with every meal eaten', inPlan ? 7 : 0, mealDays, goalFor('fitness_weight')],
       ['fit_weigh', 'Morning weigh-ins', 7, weighed, goalFor('fitness_weight')]
     ].filter((r) => r[2] > 0);
+    // Garmin: never let a problem here (not connected, offline) stop the three above.
+    const garminSources = ['garmin_sleep', 'garmin_steps', 'garmin_km'];
+    let garminOk = false;
+    try {
+      const [cfg, weeks] = await Promise.all([store.settings.get(), planWeeks()]);
+      const pw = weeks.find((w) => w.start_date === weekStart);
+      const extra = await garminCommitments(garminPrefs(cfg), weekStart, pw && pw.run_km != null ? Number(pw.run_km) : null);
+      extra.forEach(([source, title, target, done]) => rows.push([source, title, target, done, null]));
+      garminOk = true;
+    } catch (err) { console.warn('Garmin feed unavailable:', err && err.message); }
     await Promise.all(rows.map(([source, title, target, done, goalId]) => {
       const cur = existing.find((e) => e.source === source);
       if (!cur) return store.commitments.add({ week_start: weekStart, source, title, target_count: target, done_count: done, goal_id: goalId });
-      if (cur.target_count !== target || cur.done_count !== done || cur.goal_id !== goalId) return store.commitments.set(cur.id, { target_count: target, done_count: done, goal_id: goalId });
+      if (cur.target_count !== target || cur.done_count !== done || cur.goal_id !== goalId || cur.title !== title) return store.commitments.set(cur.id, { title, target_count: target, done_count: done, goal_id: goalId });
       return null;
     }));
+    // Switched off in Settings: it leaves this week, and earlier weeks keep their score.
+    if (garminOk && weekStart === startOfWeek(today)) {
+      await Promise.all(existing.filter((e) => garminSources.includes(e.source) && !rows.some((r) => r[0] === e.source)).map((e) => store.commitments.del(e.id)));
+    }
 
     // Weight goals follow the latest weigh-in.
     const latest = logs.filter((l) => l.weight_kg != null).sort((a, b) => (a.log_date < b.log_date ? 1 : -1))[0];

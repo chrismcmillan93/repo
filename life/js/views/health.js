@@ -9,6 +9,7 @@ import { buildExercises, findPrs, exerciseSummaries, weightLabel, monthSummary }
 import { ensureFonts, prStory, monthStory, carouselSlides, shareOrDownload } from '../fit/posters.js';
 import { dateRange, endOfWeek } from '../fit/utils.js';
 import { userId } from '../store.js';
+import { garmin, loadTrends, trendsHtml, syncSummary, syncError } from '../fit/garmin.js';
 
 const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['progress', 'Progress'], ['checkin', 'Check-in'], ['lifts', 'Lifts']];
 const shortDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -40,7 +41,12 @@ export async function render(root, params){
       catch (err) { toast(err.code === 'not_configured' ? 'Hevy is not connected yet: the API key has to be added in Supabase first.' : `Hevy sync: ${err.message}`); }
       await lifts();
     },
-    lift(n){ open = open === n.dataset.id ? null : n.dataset.id; drawLifts(); }
+    lift(n){ open = open === n.dataset.id ? null : n.dataset.id; drawLifts(); },
+    async garminsync(n){
+      n.disabled = true; n.textContent = 'Syncing with Garmin…';
+      try { toast(syncSummary(await garmin.runSync())); } catch (err) { toast(syncError(err)); }
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
   });
 
   // ---- Day ----
@@ -144,7 +150,11 @@ export async function render(root, params){
         <p class="legend"><i class="s-yes"></i>Yes <i class="s-partial"></i>Partly <i class="s-no"></i>No <i class="s-none"></i>Not logged</p></section>
       <div class="stack"><section class="panel"><h2>Streaks</h2><div class="stats"><div><b class="big">${streak('nutrition_status')}</b><span>day food streak</span></div><div><b class="big">${streak('training_status')}</b><span>day training streak</span></div><div><b class="big">${logged}/${dates.length}</b><span>days logged</span></div></div>
         <p class="hint">A streak counts days answered "Yes" to "How did today go?". Partly or no breaks it.</p></section>
-        <section class="panel"><h2>Adherence by week <small>Food · Training</small></h2>${weekRows.join('')}</section></div></div>`;
+        <section class="panel"><h2>Adherence by week <small>Food · Training</small></h2>${weekRows.join('')}</section></div></div>
+      <div id="garminTrends" class="stack"></div>`;
+    // Garmin trends load after the rest, and simply stay empty if Garmin isn't connected.
+    const span = [84, 182, 365].includes(Number(params[1])) ? Number(params[1]) : 84;
+    loadTrends(span, weeks).then((t) => { const host = body.querySelector('#garminTrends'); if (host && t.state) host.innerHTML = trendsHtml(t, span); }).catch(() => {});
     return;
   }
 

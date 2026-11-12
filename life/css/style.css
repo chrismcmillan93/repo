@@ -240,3 +240,10 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .check { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 7px 0; white-space: nowrap }
 .step .field { flex: none }
 .step { flex-wrap: wrap; justify-content: flex-end }
+
+/* garmin */
+.gact .rmeta + .rmeta { margin-top: 2px }
+.field.gnum { flex: none; width: 92px }
+.stats div span + span { font-size: 12px }
+#recovery .stats { gap: 16px 22px }
+#recovery .big { font-size: 28px }
