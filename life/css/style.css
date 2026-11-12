@@ -1,0 +1,205 @@
+/* Life app. Every colour is a variable: light values on :root, dark values when the
+   device is dark (unless light was chosen) and when dark was chosen. Never add a raw
+   colour to a component rule. */
+:root {
+  --bg: #F1F4F3; --surface: #FFFFFF; --sunk: #E6EBE9; --line: #D5DDDA;
+  --ink: #14201F; --muted: #5A6967; --accent: #0D6E83; --accent-soft: #D8ECF0; --on-accent: #FFFFFF;
+  --good: #2C8A57; --warn: #B87A00; --bad: #C0402B; --good-soft: #DDF0E4; --warn-soft: #F6EACB; --bad-soft: #F7DFD9;
+  --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1415; --surface: #172022; --sunk: #1F2B2D; --line: #2C3A3C;
+  --ink: #E6EEED; --muted: #94A5A3; --accent: #58BCD2; --accent-soft: #163840; --on-accent: #06181C;
+  --good: #5CC08A; --warn: #E0AC3F; --bad: #EF7F6B; --good-soft: #17352A; --warn-soft: #3A2F12; --bad-soft: #41211B;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E1415; --surface: #172022; --sunk: #1F2B2D; --line: #2C3A3C;
+  --ink: #E6EEED; --muted: #94A5A3; --accent: #58BCD2; --accent-soft: #163840; --on-accent: #06181C;
+  --good: #5CC08A; --warn: #E0AC3F; --bad: #EF7F6B; --good-soft: #17352A; --warn-soft: #3A2F12; --bad-soft: #41211B;
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); font-variant-numeric: tabular-nums; -webkit-text-size-adjust: 100% }
+h1, h2, h3, p, ul, ol { margin: 0 }
+ul, ol { padding: 0; list-style: none }
+button, input, select { font: inherit; color: inherit }
+a { color: var(--accent) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+/* shell */
+.top { position: sticky; top: 0; z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px) }
+.wrap { max-width: 1060px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.brand { display: flex; align-items: baseline; gap: 12px; padding-block: 12px 6px; flex-wrap: wrap }
+.brand b { font: 700 24px/1 var(--display); letter-spacing: -.02em }
+.brand > span { color: var(--muted) }
+.tools { margin-left: auto; display: flex; gap: 6px }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none }
+.tabs::-webkit-scrollbar { display: none }
+.tabs a { flex: none; padding: 9px 12px; color: var(--muted); text-decoration: none; font-weight: 600; border-bottom: 3px solid transparent }
+.tabs a.on { color: var(--ink); border-color: var(--accent) }
+main { padding-block: 18px calc(60px + env(safe-area-inset-bottom, 0px)) }
+.view, .stack { display: flex; flex-direction: column; gap: 18px; min-width: 0 }
+.cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start }
+.cols.g { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) }
+@media (max-width: 780px) { .cols, .cols.g { grid-template-columns: minmax(0, 1fr) } }
+.auth { min-height: 100vh; display: grid; place-items: center; padding: 16px }
+.auth .panel { max-width: 420px; width: 100% }
+.auth h1 { font: 700 34px/1 var(--display); letter-spacing: -.02em }
+
+/* building blocks */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.panel > h2 { font: 700 18px/1.2 var(--display); letter-spacing: -.01em; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.panel > h2 small { font: 500 13px var(--body); color: var(--muted) }
+.sub { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-top: 6px }
+.hint { color: var(--muted); font-size: 13px }
+.row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); color: inherit; text-decoration: none }
+.row:first-of-type { border-top: 0 }
+.sub + .row, h2 + .row, .bar + .row, .seg + .row { border-top: 0 }
+input[type=checkbox] { width: 19px; height: 19px; margin: 1px 0 0; accent-color: var(--accent); flex: none }
+.rt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px }
+.rmeta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 12.5px }
+.rmeta.spread { justify-content: space-between; color: var(--ink); font-size: 14px }
+.done .rtitle, .mini.done > span { text-decoration: line-through; color: var(--muted) }
+.right { margin-left: auto; flex: none; color: var(--muted); font-size: 13px; text-align: right }
+.right b { color: var(--ink) }
+.up { color: var(--good) } .down { color: var(--bad) }
+.count b { font: 700 20px/1 var(--display) }
+.count.soon b { color: var(--warn) }
+
+.pill { display: inline-block; border-radius: 20px; padding: 1px 9px; font-size: 12px; font-weight: 600; background: var(--sunk); color: var(--muted); white-space: nowrap }
+.pill.goal { background: var(--accent-soft); color: var(--accent); white-space: normal }
+.pill.good { background: var(--good-soft); color: var(--good) }
+.pill.warn { background: var(--warn-soft); color: var(--warn) }
+.pill.bad { background: var(--bad-soft); color: var(--bad) }
+
+.bar { position: relative; height: 8px; border-radius: 4px; background: var(--sunk) }
+.bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); max-width: 100% }
+.bar.good > span { background: var(--good) } .bar.warn > span { background: var(--warn) } .bar.bad > span { background: var(--bad) }
+.bar > i { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink) }
+
+.btn { display: inline-block; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 6px 12px; font-weight: 600; cursor: pointer; text-decoration: none; flex: none }
+.btn:hover { border-color: var(--accent) }
+.btn:disabled { opacity: .45; cursor: default }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent) }
+.btn.sm { padding: 3px 9px; font-size: 13px }
+.btn.ghost { border-color: transparent; background: none; color: var(--muted) }
+.btns { display: flex; gap: 6px; flex-wrap: wrap }
+.field { flex: 1; min-width: 0; max-width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 7px; padding: 7px 10px }
+select.field { flex: 0 1 auto }
+input[type=date].field { flex: 0 0 auto; min-width: 9.5em }
+form.add { display: flex; gap: 8px; align-items: flex-end }
+form.add.wrapf, .wrapf { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end }
+.wrapf > input.field:first-child { flex: 1 1 180px }
+.lab { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); min-width: 0 }
+.lab.inline { flex-direction: row; align-items: center; gap: 6px }
+.lab .field { flex: none; color: var(--ink); font-size: 15px }
+
+.nudge { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line); border-left: 4px solid var(--bad); background: var(--surface); border-radius: 8px; padding: 10px 14px }
+.nudge.warn { border-left-color: var(--warn) }
+.nudge p { flex: 1; min-width: 200px }
+.big { font: 700 34px/1 var(--display); letter-spacing: -.02em }
+.stats { display: flex; gap: 22px; flex-wrap: wrap }
+.stats div { display: flex; flex-direction: column; gap: 2px }
+.stats span { color: var(--muted); font-size: 13px }
+
+.seg { display: flex; gap: 6px; flex-wrap: wrap }
+.seg button, .seg a { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 20px; padding: 5px 14px; font-weight: 600; cursor: pointer; text-decoration: none }
+.seg .on { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+.weeknav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.weeknav b { font: 700 17px var(--display) }
+
+/* goals */
+.goalbtn { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 8px; cursor: pointer }
+.goalbtn:first-of-type { border-top: 0 }
+.goalbtn.on { background: var(--accent-soft); border-radius: 8px; border-top-color: transparent }
+.goalbtn .gh { display: flex; gap: 8px; justify-content: space-between; align-items: baseline }
+.goalbtn .gh b { min-width: 0 }
+.ladder { display: flex; flex-direction: column }
+.rung { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line) }
+.rung:first-child { border-top: 0 }
+.rung .lv { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding-top: 2px }
+.rung .body { display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+.rung.live { background: var(--accent-soft); margin: 0 -10px; padding: 12px 10px; border-radius: 8px; border-top-color: transparent }
+.rung.live + .rung { border-top-color: transparent }
+.rung.live .lv { color: var(--accent) }
+.mini { display: flex; gap: 8px; align-items: center; font-size: 14px }
+.mini input[type=checkbox] { width: 17px; height: 17px }
+@media (max-width: 480px) { .rung { grid-template-columns: minmax(0, 1fr); gap: 6px } }
+
+/* week */
+.step { display: flex; align-items: center; gap: 6px; flex: none }
+.step > button:not(.btn) { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 700 }
+.step b { min-width: 34px; text-align: center }
+.trend { display: flex; gap: 8px; align-items: flex-end; height: 120px; padding-top: 18px }
+.trend div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; font-size: 12px; color: var(--muted) }
+.trend div span { width: 100%; max-width: 34px; background: var(--line); border-radius: 4px 4px 0 0 }
+.trend div.now span { background: var(--accent) }
+.trend div.now { color: var(--ink); font-weight: 700 }
+
+/* career */
+.pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+@media (max-width: 620px) { .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.pipe > div { background: var(--bg); border-radius: 8px; padding: 9px; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+.pipe .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; font-size: 13px; display: flex; flex-direction: column; gap: 5px; align-items: flex-start }
+.pipe .card .field { width: 100%; padding: 4px 6px; font-size: 13px }
+
+/* health: day */
+.fitday { display: flex; flex-direction: column; gap: 10px }
+.sess { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line) }
+.drop > summary { cursor: pointer; font-weight: 600; padding: 4px 0; list-style-position: inside }
+.drop[open] > summary { margin-bottom: 6px }
+.exlist { display: flex; flex-direction: column; gap: 8px; counter-reset: ex }
+.exlist li { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); column-gap: 4px; font-size: 14px }
+.exlist li::before { counter-increment: ex; content: counter(ex); color: var(--muted); grid-row: span 3 }
+.exlist li > * { grid-column: 2 }
+.exlist span { color: var(--muted) }
+.exlist em { color: var(--accent); font-style: normal; font-size: 13px }
+.meal { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--line) }
+.meal .drop { flex: 1; min-width: 0 }
+.meal .mm { display: block; color: var(--muted); font-size: 13px; font-weight: 400 }
+.foods { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 6px }
+.foods li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px }
+.foods li span:first-child { display: flex; flex-direction: column; min-width: 0 }
+.foods b { font-weight: 600 }
+.foods em { font-style: normal; color: var(--muted); font-size: 12.5px }
+.foods .qty { flex: none; font-weight: 700 }
+.foods .swap { opacity: .7 }
+.fuel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.fuel div:not(.bar) { display: flex; flex-direction: column; gap: 3px }
+.fuel span { color: var(--muted); font-size: 12.5px }
+
+/* health: week and plan */
+.dayrow { align-items: center }
+.dayrow:hover .rtitle { color: var(--accent) }
+.dayrow.today { background: var(--accent-soft); margin: 0 -8px; padding: 8px; border-radius: 8px; border-top-color: transparent }
+.dow { flex: none; width: 52px; display: flex; flex-direction: column; font-size: 12.5px; color: var(--muted) }
+.dow b { color: var(--ink); font-size: 14px }
+.scroll { overflow-x: auto; max-width: 100% }
+table.plan { border-collapse: collapse; width: 100%; font-size: 13px }
+table.plan th, table.plan td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top }
+table.plan thead th { border-top: 0; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em }
+table.plan td a { color: inherit; text-decoration: none; display: block; min-width: 92px }
+table.plan .nw { white-space: nowrap }
+table.plan tr.phase th { background: var(--sunk); font: 700 14px var(--display) }
+table.plan tr.cur > * { background: var(--accent-soft) }
+table.plan tr.past { color: var(--muted) }
+table.plan td.today { outline: 2px solid var(--accent); outline-offset: -2px }
+.pd { display: block }
+.pd.t-lift { color: var(--muted) }
+.pd.t-race { color: var(--warn); font-weight: 700 }
+.pd.t-rest, .pd.t-travel { color: var(--muted); opacity: .75 }
+
+/* health: lifts */
+.liftrow { border-top: 1px solid var(--line) }
+.liftrow:first-of-type { border-top: 0 }
+.liftbtn { display: flex; gap: 10px; align-items: center; width: 100%; background: none; border: 0; padding: 9px 0; text-align: left; cursor: pointer }
+.spark { flex: none }
+@media (max-width: 480px) { .spark { display: none } }
+
+#toast-host { position: fixed; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: center; pointer-events: none; z-index: 20; padding: 0 16px }
+.toast { background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .2s }
+.toast.is-visible { opacity: 1 }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none } }
