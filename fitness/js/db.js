@@ -250,6 +250,37 @@ export const db = {
     }
   },
 
+  // Which specific session was done for a Weights / Cardio pick (e.g.
+  // "Full Body #2", "Long run"). The on/off pick itself is in daily_checks.
+  pickSessions: {
+    async listRange(userId, fromDate, toDate){
+      const { data, error } = await supabase
+        .from('pick_sessions')
+        .select('log_date, kind, session')
+        .eq('user_id', userId)
+        .gte('log_date', fromDate)
+        .lte('log_date', toDate);
+      checkError(error);
+      return data || [];
+    },
+    async set(userId, logDate, kind, session){
+      const { error } = await supabase
+        .from('pick_sessions')
+        .upsert({ user_id: userId, log_date: logDate, kind, session, updated_at: new Date().toISOString() }, { onConflict: 'user_id,log_date,kind' });
+      checkError(error);
+    },
+    async remove(userId, logDate, kinds){
+      if (!kinds.length) return;
+      const { error } = await supabase
+        .from('pick_sessions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('log_date', logDate)
+        .in('kind', kinds);
+      checkError(error);
+    }
+  },
+
   races: {
     // Plan races (user_id null) plus this user's own; RLS hides everyone else's.
     async list(planVersion){

@@ -35,9 +35,11 @@ function statusDotHtml(status){
 // replaces the planned session). Returns { title, detail } -- detail is the
 // chips (mode, time cap, optional) and finisher/effort lines from planDay.js,
 // so Week can never disagree with Today about what a day contains.
-function trainingFor(planDay, picks){
+function trainingFor(planDay, picks, names = {}){
   if (picks && (picks.weights || picks.cardio)) {
-    const label = picks.weights && picks.cardio ? 'Weights + cardio (your pick)' : picks.weights ? 'Weights (your pick)' : 'Cardio (your pick)';
+    // The specific session you named (Full Body #2, Long run...) if you did, else the generic kind.
+    const parts = [picks.weights && (names.weights || 'Weights'), picks.cardio && (names.cardio || 'Cardio')].filter(Boolean);
+    const label = `${parts.join(' + ')} (your pick)`;
     return { title: label, detail: '' };
   }
   if (!planDay) return null;
@@ -267,7 +269,7 @@ export async function render(main){
   if (!state.currentBlock) state.currentBlock = block;
   if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
   const planVersion = state.plan ? state.plan.plan_version : null;
-  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, swaps, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
+  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, swaps, pickNames, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
     // Block 2's archived session templates: nutrition day type only.
     block ? db.sessionTemplates.list(block.id) : Promise.resolve([]),
     block ? db.weekTargets.list(block.id) : Promise.resolve([]),
@@ -278,6 +280,7 @@ export async function render(main){
     planVersion ? db.planWeeks.list(planVersion).catch(() => []) : Promise.resolve([]),
     state.session ? db.dayPicks.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     state.session ? db.daySwaps.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
+    state.session ? db.pickSessions.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     // Caught individually, not left to reject the whole Promise.all -- the
     // day list and adherence above are the core of this screen; "This
     // week"'s prep/shopping data failing to load shouldn't take those down
@@ -314,7 +317,11 @@ export async function render(main){
       weights: picks.some((p) => p.log_date === d && p.item_id === 'pick:weights' && p.is_checked),
       cardio: picks.some((p) => p.log_date === d && p.item_id === 'pick:cardio' && p.is_checked)
     };
-    const training = trainingFor(planDay, dayPicks) || { title: 'Pick a session', detail: '' };
+    const dayPickNames = {
+      weights: (pickNames.find((x) => x.log_date === d && x.kind === 'weights') || {}).session,
+      cardio: (pickNames.find((x) => x.log_date === d && x.kind === 'cardio') || {}).session
+    };
+    const training = trainingFor(planDay, dayPicks, dayPickNames) || { title: 'Pick a session', detail: '' };
     const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
     const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `

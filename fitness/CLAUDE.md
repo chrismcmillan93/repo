@@ -10,6 +10,37 @@ yesterday actually happen. Lives entirely under `fitness/`, served at
 **Branch:** all work for this app lives on `beta` until Chris says otherwise. Nothing
 here merges to `main` on its own.
 
+## Naming the session done, daily yes/no questions, light theme (2026-11-12)
+
+**Which session was done.** After picking Weights / Cardio / Both, a "Which ... session?"
+dropdown appears for each picked kind (`js/sessionChoices.js`): Full Body #1/#2/#3 or
+Other weights; Easy run, Long run, Strides / hill sprints, Steady run, Hills / climbing,
+Shakeout, Walk / hike or Other cardio. Optional ("Not specified" keeps the generic
+"Weights session" / "Cardio session"). The name lives in `fitness.pick_sessions`
+(own rows; key `user_id, log_date, kind`); the on/off pick is still the
+`pick:weights` / `pick:cardio` `daily_checks` rows. It becomes the session title on Today
+and Week (`get_day_bundle()` returns `pick_sessions` and uses it as the title). Dropping a
+kind from the pick removes its saved name. Works on planned days too (under "Do something
+different today?").
+
+**Daily yes/no questions.** Under "How did today go?": "Progress pictures taken" and
+"Read 1 chapter / 10 pages", each Yes / No (tap the active answer again to clear).
+Stored as nullable booleans on `daily_logs` (`progress_pics`, `read_pages`; null = not
+answered, so the existing text-valued Nutrition / Training answers are untouched).
+`get_day_bundle()`'s `log` object lists its fields explicitly, so any new `daily_logs`
+column has to be added there too.
+
+**Light theme.** `css/styles.css` is built on colour variables; the light palette is a
+second set of values (`:root[data-theme="light"]`, plus a `prefers-color-scheme: light`
+block that applies when nothing has been chosen). Anything that used to be a hard-coded
+dark colour is now a variable (`--on-dawn`, `--on-sage`, `--panel-end`, `--plan-tint`,
+...); add new colours the same way, never as a raw hex. With nothing saved the app
+follows the device; the sun/moon button in the top bar saves an explicit choice
+(`localStorage` `fit-theme` = `light` | `dark`; `js/theme.js`). An inline script in
+`index.html` applies a saved choice before first paint (no flash), and the
+`theme-color` meta follows the theme. The share-poster canvases in
+`lifting/posters.js` stay dark on purpose (they are images).
+
 ## Swapping days, adding races, week calendar (2026-11-03)
 
 **Swap two days (same week).** `fitness.day_swaps` (own rows, RLS `user_id =

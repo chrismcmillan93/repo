@@ -12,6 +12,7 @@ import { qs, qsa, escapeHtml, formatDateFull, statusLabel, startOfWeek, endOfWee
   addDays, toast, friendlyError, debounce, round1, renderStatusPill, sessionTypeLabel } from '../utils.js';
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { planChipsHtml, planLinesHtml, planModeHelpHtml, planWeekHtml } from '../planDay.js';
+import { sessionOptions, pickTitle } from '../sessionChoices.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
@@ -103,8 +104,8 @@ function sessionTickRowHtml(sessionType, checked){
     </li>`;
 }
 
-function statusButtonsHtml(group, current){
-  return ['yes', 'partial', 'no'].map((v) => `
+function statusButtonsHtml(group, current, values = ['yes', 'partial', 'no']){
+  return values.map((v) => `
     <button type="button" class="status-btn status-${v} ${current === v ? 'is-active' : ''}" data-group="${group}" data-value="${v}">${statusLabel(v)}</button>
   `).join('');
 }
@@ -222,21 +223,34 @@ function weekPanelHtml(bundle){
 
 // Same objects get_day_bundle() builds for a pick, so a pick can be applied
 // locally (offline, or if the refetch fails) without a different code path.
-function pickSessions(picks){
+function pickSessions(picks, names = {}){
   const out = [];
-  if (picks.weights) out.push({ session_type: 'lift', source: 'pick', title: 'Weights session', summary: 'Picked: weights', run: null });
-  if (picks.cardio) out.push({ session_type: 'run', source: 'pick', title: 'Cardio session', summary: 'Picked: cardio', run: null });
+  if (picks.weights) out.push({ session_type: 'lift', source: 'pick', title: pickTitle('weights', names.weights), summary: `Picked: ${names.weights || 'weights'}`, run: null });
+  if (picks.cardio) out.push({ session_type: 'run', source: 'pick', title: pickTitle('cardio', names.cardio), summary: `Picked: ${names.cardio || 'cardio'}`, run: null });
   return out;
 }
 
-function pickerHtml(picks, hasPlannedDay){
+// "Which session did you do?" dropdowns, shown under the pick buttons for
+// whichever of Weights / Cardio is picked. Optional: leave it on "Not
+// specified" and the day just reads "Weights session" / "Cardio session".
+function pickSessionSelectsHtml(picks, names){
+  return ['weights', 'cardio'].filter((k) => picks[k]).map((k) => `
+    <label class="swap-field pick-session-field"><span>Which ${k === 'weights' ? 'weights' : 'cardio'} session?</span>
+      <select data-pick-session="${k}">
+        <option value="">Not specified</option>
+        ${sessionOptions(k).map((n) => `<option value="${escapeHtml(n)}" ${names[k] === n ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}
+      </select></label>`).join('');
+}
+
+function pickerHtml(picks, hasPlannedDay, names = {}){
   const active = picks.weights && picks.cardio ? 'both' : picks.weights ? 'weights' : picks.cardio ? 'cardio' : null;
   const btn = (key, label) => `<button type="button" class="segmented-btn ${active === key ? 'is-active' : ''}" data-pick="${key}" aria-pressed="${active === key}">${label}</button>`;
   const group = `
     <div class="segmented pick-group" role="group" aria-label="Pick today's session">
       ${btn('weights', 'Weights')}${btn('cardio', 'Cardio')}${btn('both', 'Both')}
     </div>
-    <span class="save-status" id="pickStatus" aria-live="polite"></span>`;
+    <span class="save-status" id="pickStatus" aria-live="polite"></span>
+    ${pickSessionSelectsHtml(picks, names)}`;
   if (hasPlannedDay && !active) {
     return `<section class="panel panel-pick"><details class="pick-more">
       <summary>Do something different today?</summary>
@@ -340,7 +354,7 @@ function renderMealsAndTraining(main, bundle){
   const hasPlannedDay = !!(bundle.plan && bundle.plan.has_day);
   const trainingHtml = weekPanelHtml(bundle)
     + sessions.map((s) => sessionPanelHtml(s, checks)).join('')
-    + pickerHtml(picks, hasPlannedDay)
+    + pickerHtml(picks, hasPlannedDay, bundle.pick_sessions || {})
     + swapTodayHtml(bundle);
 
   qs('#mealsAndTraining', main).innerHTML = trainingHtml + mealsHtml;
@@ -383,6 +397,11 @@ function wirePicker(main, bundle){
       const plannedSessions = cur.weights || cur.cardio ? null : bundle.sessions;
       bundle.picks = next;
       bundle.checks = { ...(bundle.checks || {}), 'pick:weights': next.weights, 'pick:cardio': next.cardio };
+      // A kind that is no longer picked loses its chosen session name.
+      const names = bundle.pick_sessions || {};
+      const off = ['weights', 'cardio'].filter((k) => !next[k] && names[k]);
+      bundle.pick_sessions = { weights: next.weights ? names.weights || null : null, cardio: next.cardio ? names.cardio || null : null };
+      if (off.length) await db.pickSessions.remove(userId(), state.currentDate, off).catch(() => {});
       renderStatusPill(statusEl, 'saving');
       const [a, b] = await Promise.all([
         saveCheck('pick:weights', next.weights, statusEl),
@@ -395,13 +414,34 @@ function wirePicker(main, bundle){
         const fresh = await db.getDayBundle(state.currentDate);
         bundle.sessions = fresh.sessions;
         bundle.picks = fresh.picks;
+        bundle.pick_sessions = fresh.pick_sessions;
       } catch (e) {
-        if (next.weights || next.cardio) bundle.sessions = pickSessions(next);
+        if (next.weights || next.cardio) bundle.sessions = pickSessions(next, bundle.pick_sessions);
         else if (plannedSessions) bundle.sessions = plannedSessions;
       }
       renderHeader(main, bundle);
       renderMealsAndTraining(main, bundle);
       computeTotals(main, bundle);
+    });
+  });
+
+  // Naming the specific session that was done.
+  qsa('[data-pick-session]', main).forEach((sel) => {
+    sel.addEventListener('change', async () => {
+      const kind = sel.dataset.pickSession;
+      const value = sel.value;
+      try {
+        if (value) await db.pickSessions.set(userId(), state.currentDate, kind, value);
+        else await db.pickSessions.remove(userId(), state.currentDate, [kind]);
+        bundle.pick_sessions = { ...(bundle.pick_sessions || {}), [kind]: value || null };
+        bundle.sessions = pickSessions(bundle.picks || {}, bundle.pick_sessions);
+        renderHeader(main, bundle);
+        renderMealsAndTraining(main, bundle);
+        computeTotals(main, bundle);
+      } catch (err) {
+        sel.value = (bundle.pick_sessions || {})[kind] || '';
+        toast(`Couldn't save the session — ${friendlyError(err)}.`);
+      }
     });
   });
 }
@@ -436,6 +476,9 @@ function renderWeight(main, bundle, weightCtx){
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
 }
 
+const BOOLEAN_GROUPS = new Set(['progress_pics', 'read_pages']);
+function boolToYesNo(v){ return v === true ? 'yes' : v === false ? 'no' : null; }
+
 function renderReview(main, bundle){
   const log = bundle.log || {};
   qs('#reviewSection', main).innerHTML = `
@@ -448,6 +491,14 @@ function renderReview(main, bundle){
       <div class="review-group">
         <span class="review-label">Training</span>
         <div class="status-btn-row" id="trainingButtons">${statusButtonsHtml('training_status', log.training_status)}</div>
+      </div>
+      <div class="review-group">
+        <span class="review-label">Progress pictures taken</span>
+        <div class="status-btn-row status-btn-row-2" id="picsButtons">${statusButtonsHtml('progress_pics', boolToYesNo(log.progress_pics), ['yes', 'no'])}</div>
+      </div>
+      <div class="review-group">
+        <span class="review-label">Read 1 chapter / 10 pages</span>
+        <div class="status-btn-row status-btn-row-2" id="readButtons">${statusButtonsHtml('read_pages', boolToYesNo(log.read_pages), ['yes', 'no'])}</div>
       </div>
       <span class="save-status" id="reviewStatus" aria-live="polite"></span>
       <label class="notes-label" for="notesField">Notes</label>
@@ -466,7 +517,9 @@ function renderReview(main, bundle){
       qsa('.status-btn', container).forEach((b) => b.classList.remove('is-active'));
       const newValue = wasActive ? null : value;
       if (!wasActive) btn.classList.add('is-active');
-      await saveLogField({ [group]: newValue }, reviewStatus);
+      // progress_pics / read_pages are stored as true / false / null, the rest as 'yes' | 'partial' | 'no'.
+      const stored = newValue !== null && BOOLEAN_GROUPS.has(group) ? newValue === 'yes' : newValue;
+      await saveLogField({ [group]: stored }, reviewStatus);
     });
   });
 
