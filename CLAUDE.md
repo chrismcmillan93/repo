@@ -456,6 +456,21 @@ nothing was ever cached (it falls back to `trip.thb_rate`, else "No rate availab
 The service worker doesn't touch these cross-origin API calls. Not a write control, so
 it stays usable offline. `sw.js` `VERSION` bumped to `v4` (new file in the shell).
 
+**Railay climbing booked (2026-11-12).** Pure data — migration `thailand_railay_climbing_booked`.
+Half-day (4 hr) climb with Real Rocks Climbing School on 17 Nov, 2 adults, £71.46 total
+(charged 14 Nov), ref `GYGFWVW2YAGK`, free cancellation before 09:00 on 16 Nov. Updated:
+the 17 Nov `itinerary_entries` row (now `FIXED`, `time_label` cleared because the pickup
+time isn't confirmed — the provider messages it 1–2 days before; also **ungrouped**, since
+its full-day alternative no longer existed and a one-option `choice_group_id` would keep
+rendering it as an undecided option); the `items` shortlist row (ticked, `cost_gbp`
+£35.73pp = £71.46 ÷ 2 adults, `needs_reservation` off); and the already-ticked "Book
+Railay climbing guide" `bookings` row, whose note wrongly said full-day. Added a
+"Confirm Railay climbing pickup time" `bookings` reminder (the booking lists the pickup
+only as "5, Ao Nang" — worth checking against where the group is staying). **The booking
+PIN was deliberately left out**, same rule as the Divalux PIN. Who the 2 adults are isn't
+recorded; the Krabi leg's party is Chris, Andrew and Craig. Once the pickup time is
+known, set the entry's `time_label`.
+
 **Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
 Screen and shows all its trip data with no signal. Two independent layers — the code
 shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that
