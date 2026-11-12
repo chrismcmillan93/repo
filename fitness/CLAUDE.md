@@ -23,8 +23,7 @@ is 2520 kcal, protein is at least the 155 g floor on every day type); without `-
 emits idempotent upsert SQL for `apply_migration`. Block 2's tables (`blocks`, `week_targets`,
 `meal_templates`, `meal_foods`, `prep_tasks`, `shopping_list_items`, `rules`) are untouched,
 so days up to 8 Nov still show what they showed; the Plan page no longer shows them. The
-prep tasks and shopping list on Week are still Block 2's (old foods) and are not generated
-from this plan yet.
+Week shopping list/prep tasks, Progress and Check-in now follow the new plan (next section).
 
 **Week map:** Mon/Wed/Fri lift day, Tue/Thu run day, Sat long run day, Sun Sunday.
 
@@ -53,6 +52,26 @@ Gels are shown as written (3 on a 9 mi Saturday) and are not rescaled by mileage
 SQL/heredocs. The importer swaps words like "drop" inside the JSON for a token that SQL
 rebuilds (`replace(..., 'D_R_O_P', 'dro' || 'p')`); stored text is identical. If a Bash
 heredoc is refused for no clear reason, write the file with the file-write tool instead.
+
+## Everything follows the new diet and plan (2026-11-12)
+
+**Shopping list and prep tasks (Week)** are generated, not stored (`js/weekLists.js`): the
+shopping list is the sum of that week's scaled meals (`nutrition.js buildDay`), swap rows
+excluded, so it moves with your weight and each day's long-run mileage. Shown for the real
+current week and the next one. Only the plan's own conversion is used (meat: cooked =
+0.75 x raw); dry rice is an **estimate** (about 2.8 g cooked per g dry), labelled as such.
+Prep tasks are two batch-cook sessions (Mon-Wed, Thu-Sun) per component; **the plan sets no
+prep schedule, so that split is this build's assumption.** Ticks live in
+`week_list_ticks` (own rows; key `user_id, week_start_date, list, item_key`; keys
+`shop:<food>` / `prep:<batch>:<component>`), offline-queued as `list_tick`. Block 2's
+`prep_tasks`, `shopping_list_items`, `prep_checks`, `shopping_checks`, `rules` are no longer
+read by the app (tables untouched; history only).
+
+**Progress** runs from the start of Block 2 (so the weight line is unbroken) to today;
+weeks inside the Edale plan are labelled `Wk N`, earlier ones `w/c <date>`; shows the plan's
+Monday weigh-in target (weeks 1-6). **Check-in** uses the Edale plan's weeks and
+`plan_checkins` (own rows; key `user_id, plan_version, week_number`); Block 2's old
+`weekly_checkins` still list under "Block 2 · Week N".
 
 ## Naming the session done, daily yes/no questions, light theme (2026-11-12)
 

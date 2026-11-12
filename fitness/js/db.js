@@ -411,45 +411,25 @@ export const db = {
     }
   },
 
-  rules: {
-    async list(){
+  // Weekly check-ins against the Edale training plan's weeks. weeklyCheckins
+  // (above) is Block 2's, kept as history.
+  planCheckins: {
+    async list(userId, planVersion){
       const { data, error } = await supabase
-        .from('rules')
-        .select('*')
-        .order('order_num');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  prepTasks: {
-    async list(blockId){
-      const { data, error } = await supabase
-        .from('prep_tasks')
-        .select('*')
-        .eq('block_id', blockId)
-        .order('sort_order');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  prepChecks: {
-    async listForWeek(userId, weekStartDate){
-      const { data, error } = await supabase
-        .from('prep_checks')
+        .from('plan_checkins')
         .select('*')
         .eq('user_id', userId)
-        .eq('week_start_date', weekStartDate);
+        .eq('plan_version', planVersion)
+        .order('week_number', { ascending: false });
       checkError(error);
       return data || [];
     },
-    async upsert(userId, weekStartDate, taskId, isChecked){
+    async upsert(userId, planVersion, weekNumber, fields){
       const { data, error } = await supabase
-        .from('prep_checks')
+        .from('plan_checkins')
         .upsert(
-          { user_id: userId, week_start_date: weekStartDate, task_id: taskId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
-          { onConflict: 'user_id,week_start_date,task_id' }
+          { user_id: userId, plan_version: planVersion, week_number: weekNumber, submitted_at: new Date().toISOString(), ...fields },
+          { onConflict: 'user_id,plan_version,week_number' }
         )
         .select()
         .single();
@@ -458,34 +438,23 @@ export const db = {
     }
   },
 
-  shoppingListItems: {
-    async list(blockId){
-      const { data, error } = await supabase
-        .from('shopping_list_items')
-        .select('*')
-        .eq('block_id', blockId)
-        .order('sort_order');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  shoppingChecks: {
+  // Ticks on the generated shopping list / prep tasks (js/weekLists.js).
+  weekListTicks: {
     async listForWeek(userId, weekStartDate){
       const { data, error } = await supabase
-        .from('shopping_checks')
-        .select('*')
+        .from('week_list_ticks')
+        .select('list, item_key, is_checked')
         .eq('user_id', userId)
         .eq('week_start_date', weekStartDate);
       checkError(error);
       return data || [];
     },
-    async upsert(userId, weekStartDate, itemId, isChecked){
+    async upsert(userId, weekStartDate, list, itemKey, isChecked){
       const { data, error } = await supabase
-        .from('shopping_checks')
+        .from('week_list_ticks')
         .upsert(
-          { user_id: userId, week_start_date: weekStartDate, item_id: itemId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
-          { onConflict: 'user_id,week_start_date,item_id' }
+          { user_id: userId, week_start_date: weekStartDate, list, item_key: itemKey, is_checked: isChecked, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,week_start_date,list,item_key' }
         )
         .select()
         .single();
