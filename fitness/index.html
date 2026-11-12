@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fitness log</title>
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
+<!-- Apply a saved light/dark choice before first paint (no flash). With nothing saved, CSS follows the device. -->
+<script>try{var t=localStorage.getItem('fit-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
 <!-- PWA: installable. All paths are relative so this works on any domain. -->
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#11151c">
@@ -57,6 +59,7 @@
   <div class="utility-bar">
     <a class="home-link" href="/goals/">‹ Goals</a>
     <span class="signed-in-as" id="signedInAs"></span>
+    <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode">☀️</button>
     <button type="button" class="signout-btn" id="signOutBtn">Sign out</button>
   </div>
 

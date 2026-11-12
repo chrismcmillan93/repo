@@ -8,6 +8,8 @@ import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, format
   resolveSessionsForDay } from '../utils.js';
 import { planChipsHtml, planLinesHtml, planWeekHtml } from '../planDay.js';
 import { mountCalendar } from '../calendar.js';
+import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, adjustEnabled } from '../nutrition.js';
+import { buildShoppingList, buildPrepTasks, shoppingListHtml, prepTasksHtml } from '../weekLists.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { dateBounds } from './today.js';
 import { db } from '../db.js';
@@ -35,9 +37,11 @@ function statusDotHtml(status){
 // replaces the planned session). Returns { title, detail } -- detail is the
 // chips (mode, time cap, optional) and finisher/effort lines from planDay.js,
 // so Week can never disagree with Today about what a day contains.
-function trainingFor(planDay, picks){
+function trainingFor(planDay, picks, names = {}){
   if (picks && (picks.weights || picks.cardio)) {
-    const label = picks.weights && picks.cardio ? 'Weights + cardio (your pick)' : picks.weights ? 'Weights (your pick)' : 'Cardio (your pick)';
+    // The specific session you named (Full Body #2, Long run...) if you did, else the generic kind.
+    const parts = [picks.weights && (names.weights || 'Weights'), picks.cardio && (names.cardio || 'Cardio')].filter(Boolean);
+    const label = `${parts.join(' + ')} (your pick)`;
     return { title: label, detail: '' };
   }
   if (!planDay) return null;
@@ -64,145 +68,30 @@ function mealsListHtml(meals){
     <li><span class="week-meal-time">${escapeHtml(m.time_label)}</span><span class="week-meal-name">${escapeHtml(m.name)}</span></li>`).join('')}</ul>`;
 }
 
-// Groups tasks under every day they're valid to prep on -- prep_day_of_week
-// is an array (e.g. [3, 4], "Wednesday or Thursday" -- either day works,
-// it's one prep session not two) so a task is grouped by its whole set of
-// valid days, not repeated once per day in that set: a [3, 4] task gets one
-// "Wednesday or Thursday" heading and one row, not a "Wednesday" heading
-// and a "Thursday" heading each showing the same task. Groups are ordered
-// by their earliest day.
-const WEEKDAY_NAMES = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' };
-
-function groupPrepTasksByDaySet(tasks){
-  const groups = new Map(); // "3,4" -> { days: [3, 4], tasks: [...] }
-  tasks.forEach((t) => {
-    const days = (t.prep_day_of_week || []).slice().sort((a, b) => a - b);
-    if (!days.length) return;
-    const key = days.join(',');
-    if (!groups.has(key)) groups.set(key, { days, tasks: [] });
-    groups.get(key).tasks.push(t);
-  });
-  return Array.from(groups.values()).sort((a, b) => a.days[0] - b.days[0]);
-}
-
-function daySetLabel(days){
-  return days.map((d) => WEEKDAY_NAMES[d]).join(' or ');
-}
-
-// Category order follows the items' own sort_order (first item seen per
-// category), not alphabetical -- matches how the list was actually
-// written, protein-then-carbs-then-veg rather than A-Z.
-function groupShoppingByCategory(items){
-  const byCategory = new Map();
-  items.forEach((item) => {
-    if (!byCategory.has(item.category)) byCategory.set(item.category, []);
-    byCategory.get(item.category).push(item);
-  });
-  return byCategory;
-}
-
-function prepTaskRowHtml(task, checked){
-  return `
-    <li class="tick-row ${checked ? 'is-checked' : ''}" data-task-id="${task.id}">
-      <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark ${escapeHtml(task.title)} as done"></button>
-      <div class="tick-body">
-        <div class="tick-name">${escapeHtml(task.title)}</div>
-        ${task.description ? `<div class="tick-notes">${escapeHtml(task.description)}</div>` : ''}
-      </div>
-      <span class="tick-status" aria-live="polite"></span>
-    </li>`;
-}
-
-function shoppingItemRowHtml(item, checked){
-  return `
-    <li class="tick-row ${checked ? 'is-checked' : ''}" data-item-id="${item.id}">
-      <button type="button" class="tick-box" aria-pressed="${checked}" aria-label="Mark ${escapeHtml(item.item)} as bought"></button>
-      <div class="tick-body">
-        ${item.weekly_quantity ? `<div class="tick-top-line"><span class="tick-macro">${escapeHtml(item.weekly_quantity)}</span></div>` : ''}
-        <div class="tick-name">${escapeHtml(item.item)}</div>
-        ${item.notes ? `<div class="tick-notes">${escapeHtml(item.notes)}</div>` : ''}
-      </div>
-      <span class="tick-status" aria-live="polite"></span>
-    </li>`;
-}
-
-function prepTasksSectionHtml(tasks, checkByTask){
-  const groups = groupPrepTasksByDaySet(tasks);
-  if (!groups.length) {
-    return `<section class="panel"><h2 class="panel-title">Prep tasks</h2><p class="section-note">Nothing on the prep list for this block yet.</p></section>`;
-  }
-  return `
-    <section class="panel">
-      <h2 class="panel-title">Prep tasks</h2>
-      ${groups.map((g) => `
-        <h3 class="plan-subhead">${escapeHtml(daySetLabel(g.days))}</h3>
-        <ul class="tick-list">${g.tasks.map((t) => prepTaskRowHtml(t, !!checkByTask[t.id])).join('')}</ul>
-      `).join('')}
-    </section>`;
-}
-
-function shoppingListSectionHtml(byCategory, checkByItem){
-  if (!byCategory.size) {
-    return `<section class="panel"><h2 class="panel-title">Shopping list</h2><p class="section-note">Nothing on the shopping list for this block yet.</p></section>`;
-  }
-  return `
-    <section class="panel">
-      <h2 class="panel-title">Shopping list</h2>
-      ${Array.from(byCategory.entries()).map(([category, items]) => `
-        <h3 class="plan-subhead">${escapeHtml(category)}</h3>
-        <ul class="tick-list">${items.map((item) => shoppingItemRowHtml(item, !!checkByItem[item.id])).join('')}</ul>
-      `).join('')}
-    </section>`;
-}
-
-async function savePrepCheck(weekStartDate, taskId, isChecked, statusEl, retryTarget){
-  const key = `prep_check:${weekStartDate}:${taskId}`;
-  const payload = { userId: state.session.user.id, weekStartDate, taskId, isChecked };
-  const run = () => db.prepChecks.upsert(payload.userId, payload.weekStartDate, payload.taskId, payload.isChecked);
-  const res = await offlineQueue.save({ key, kind: 'prep_check', payload, run });
+// Ticks on the generated shopping list / prep tasks (js/weekLists.js). Saved
+// through the offline queue like every other tick.
+async function saveListTick(weekStartDate, list, itemKey, isChecked, statusEl){
+  const key = `list_tick:${weekStartDate}:${list}:${itemKey}`;
+  const payload = { userId: state.session.user.id, weekStartDate, list, itemKey, isChecked };
+  const run = () => db.weekListTicks.upsert(payload.userId, payload.weekStartDate, payload.list, payload.itemKey, payload.isChecked);
+  const res = await offlineQueue.save({ key, kind: 'list_tick', payload, run });
   if (res.ok) {
     renderStatusPill(statusEl, 'saved');
   } else {
-    renderStatusPill(statusEl, 'queued', () => savePrepCheck(weekStartDate, taskId, isChecked, statusEl));
+    renderStatusPill(statusEl, 'queued', () => saveListTick(weekStartDate, list, itemKey, isChecked, statusEl));
     toast(`Couldn't save — ${friendlyError(res.error)}. Will retry.`);
   }
 }
 
-async function saveShoppingCheck(weekStartDate, itemId, isChecked, statusEl){
-  const key = `shopping_check:${weekStartDate}:${itemId}`;
-  const payload = { userId: state.session.user.id, weekStartDate, itemId, isChecked };
-  const run = () => db.shoppingChecks.upsert(payload.userId, payload.weekStartDate, payload.itemId, payload.isChecked);
-  const res = await offlineQueue.save({ key, kind: 'shopping_check', payload, run });
-  if (res.ok) {
-    renderStatusPill(statusEl, 'saved');
-  } else {
-    renderStatusPill(statusEl, 'queued', () => saveShoppingCheck(weekStartDate, itemId, isChecked, statusEl));
-    toast(`Couldn't save — ${friendlyError(res.error)}. Will retry.`);
-  }
-}
-
-function wirePrepTasks(main, weekStartDate){
-  qsa('#prepTasksSection .tick-row', main).forEach((row) => {
+function wireListTicks(main, weekStartDate){
+  qsa('#weekListsSection .tick-row', main).forEach((row) => {
     const btn = qs('.tick-box', row);
     const statusEl = qs('.tick-status', row);
     btn.addEventListener('click', async () => {
       const nowChecked = !row.classList.contains('is-checked');
       row.classList.toggle('is-checked', nowChecked);
       btn.setAttribute('aria-pressed', String(nowChecked));
-      await savePrepCheck(weekStartDate, row.dataset.taskId, nowChecked, statusEl);
-    });
-  });
-}
-
-function wireShoppingList(main, weekStartDate){
-  qsa('#shoppingListSection .tick-row', main).forEach((row) => {
-    const btn = qs('.tick-box', row);
-    const statusEl = qs('.tick-status', row);
-    btn.addEventListener('click', async () => {
-      const nowChecked = !row.classList.contains('is-checked');
-      row.classList.toggle('is-checked', nowChecked);
-      btn.setAttribute('aria-pressed', String(nowChecked));
-      await saveShoppingCheck(weekStartDate, row.dataset.itemId, nowChecked, statusEl);
+      await saveListTick(weekStartDate, row.dataset.list, row.dataset.itemKey, nowChecked, statusEl);
     });
   });
 }
@@ -258,7 +147,6 @@ export async function render(main){
   // "This week" (prep tasks, shopping list) always means the real current
   // week, not whichever week is being paged to above -- browsing week 5's
   // day list shouldn't surface this week's shopping list.
-  const isThisWeek = weekStart === startOfWeek(today);
 
   // getLatest(), not a date-scoped lookup -- this needs to resolve to the
   // block regardless of which week is currently being paged to, including
@@ -267,7 +155,7 @@ export async function render(main){
   if (!state.currentBlock) state.currentBlock = block;
   if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
   const planVersion = state.plan ? state.plan.plan_version : null;
-  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, swaps, prepTasks, shoppingItems, prepChecks, shoppingChecks] = await Promise.all([
+  const [sessions, targets, weeks, mealTemplates, logs, planDays, planWeeks, picks, swaps, pickNames, listTicks] = await Promise.all([
     // Block 2's archived session templates: nutrition day type only.
     block ? db.sessionTemplates.list(block.id) : Promise.resolve([]),
     block ? db.weekTargets.list(block.id) : Promise.resolve([]),
@@ -278,15 +166,10 @@ export async function render(main){
     planVersion ? db.planWeeks.list(planVersion).catch(() => []) : Promise.resolve([]),
     state.session ? db.dayPicks.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
     state.session ? db.daySwaps.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
-    // Caught individually, not left to reject the whole Promise.all -- the
-    // day list and adherence above are the core of this screen; "This
-    // week"'s prep/shopping data failing to load shouldn't take those down
-    // with it. render() below just renders an empty group for whichever
-    // one failed.
-    block && isThisWeek ? db.prepTasks.list(block.id).catch(() => []) : Promise.resolve([]),
-    block && isThisWeek ? db.shoppingListItems.list(block.id).catch(() => []) : Promise.resolve([]),
-    block && isThisWeek && state.session ? db.prepChecks.listForWeek(state.session.user.id, weekStart).catch(() => []) : Promise.resolve([]),
-    block && isThisWeek && state.session ? db.shoppingChecks.listForWeek(state.session.user.id, weekStart).catch(() => []) : Promise.resolve([])
+    state.session ? db.pickSessions.listRange(state.session.user.id, weekStart, weekEnd).catch(() => []) : Promise.resolve([]),
+    // Ticks for the generated shopping list / prep tasks. Caught on its own so a
+    // failure here never takes the day list down with it.
+    state.session ? db.weekListTicks.listForWeek(state.session.user.id, weekStart).catch(() => []) : Promise.resolve([])
   ]);
   const logByDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
   const weekRow = weeks.find((w) => weekStart >= w.start_date && weekStart <= w.end_date) || null;
@@ -297,10 +180,15 @@ export async function render(main){
     return weekNumber ? targets.find((t) => t.week_number === weekNumber && t.day_type === dayType) : null;
   }
 
+  // Nutrition plan (v4): each day's kcal / protein / meals, scaled to your weight.
+  const nut = await loadNutrition();
+  const weightInfo = nut && state.session ? await effectiveWeight(state.session.user.id, weekEnd) : { weight: null };
+
   // Day swaps: a day may show another day's planned session (same week only).
   const planByDate = Object.fromEntries(planDays.map((p) => [p.date, p]));
   const sources = sourcesFor(days, swaps);
 
+  const nDays = []; // [{ date, day }] the week's scaled nutrition, for the shopping list / prep tasks
   const rows = days.map((d, i) => {
     const dow = i + 1;
     const sessionsForDay = inBlock(d) ? resolveSessionsForDay(dow, weekNumber, sessions) : [];
@@ -314,9 +202,22 @@ export async function render(main){
       weights: picks.some((p) => p.log_date === d && p.item_id === 'pick:weights' && p.is_checked),
       cardio: picks.some((p) => p.log_date === d && p.item_id === 'pick:cardio' && p.is_checked)
     };
-    const training = trainingFor(planDay, dayPicks) || { title: 'Pick a session', detail: '' };
-    const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
-    const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
+    const dayPickNames = {
+      weights: (pickNames.find((x) => x.log_date === d && x.kind === 'weights') || {}).session,
+      cardio: (pickNames.find((x) => x.log_date === d && x.kind === 'cardio') || {}).session
+    };
+    const training = trainingFor(planDay, dayPicks, dayPickNames) || { title: 'Pick a session', detail: '' };
+    // Dates inside the nutrition plan use it; Block 2's own dates keep their old meal tables.
+    const nday = inNutritionPlan(nut, d) ? buildDay(nut, {
+      date: d, weight: weightInfo.weight, enabled: adjustEnabled(),
+      miles: planDay && planDay.kind === 'long' && planDay.distance_miles != null ? Number(planDay.distance_miles) : null,
+      isRaceDay: !!planDay && planDay.type === 'race'
+    }) : null;
+    nDays.push({ date: d, day: nday });
+    const food = nday ? `${nday.totals.kcal} kcal · ${Math.round(nday.totals.protein_g)}g protein`
+      : target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
+    const meals = nday ? nday.meals.map((m) => ({ time_label: m.time_label, name: m.name }))
+      : dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `
       <li class="week-day-row ${isToday ? 'is-today' : ''}" data-date="${d}">
         <button type="button" class="week-day-btn">
@@ -345,8 +246,10 @@ export async function render(main){
   const canForward = !bounds.max || weekStart < startOfWeek(bounds.max);
   const planWeek = planWeeks.find((w) => weekStart >= w.start_date && weekStart <= w.end_date) || null;
 
-  const prepCheckByTask = Object.fromEntries(prepChecks.map((c) => [c.task_id, c.is_checked]));
-  const shoppingCheckByItem = Object.fromEntries(shoppingChecks.map((c) => [c.item_id, c.is_checked]));
+  // Shopping list and prep tasks come from the nutrition plan for this week; shown for
+  // the current week and the next one (when you shop for it).
+  const showLists = nDays.some((x) => x.day) && weekStart >= startOfWeek(today) && weekStart <= addDays(startOfWeek(today), 7);
+  const tickMap = Object.fromEntries(listTicks.map((t) => [`${t.list}|${t.item_key}`, t.is_checked]));
 
   main.innerHTML = `
     <section class="panel">
@@ -364,8 +267,7 @@ export async function render(main){
       <ul class="week-day-list">${rows}</ul>
     </section>
     ${planWeek ? swapPanelHtml(days, sources, planByDate, swaps.length > 0) : ''}
-    ${isThisWeek ? `<div id="prepTasksSection">${prepTasksSectionHtml(prepTasks, prepCheckByTask)}</div>` : ''}
-    ${isThisWeek ? `<div id="shoppingListSection">${shoppingListSectionHtml(groupShoppingByCategory(shoppingItems), shoppingCheckByItem)}</div>` : ''}
+    ${showLists ? `<div id="weekListsSection">${prepTasksHtml(buildPrepTasks(nDays), tickMap)}${shoppingListHtml(buildShoppingList(nDays), weekStart, tickMap)}</div>` : ''}
     <section class="panel">
       <h2 class="panel-title">Adherence</h2>
       <div class="adherence-grid">
@@ -405,10 +307,7 @@ export async function render(main){
     render(main);
   });
 
-  if (isThisWeek) {
-    wirePrepTasks(main, weekStart);
-    wireShoppingList(main, weekStart);
-  }
+  if (showLists) wireListTicks(main, weekStart);
 
   qsa('.week-day-btn', main).forEach((btn) => {
     btn.addEventListener('click', () => {

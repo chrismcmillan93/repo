@@ -18,6 +18,78 @@
   --amber: #e0b04e;      /* partial status */
   --rust: #cf6a57;       /* caution: over calorie target, "no" status */
   --focus: #7fb8e0;      /* visible keyboard focus ring, distinct from all of the above */
+  /* Text on top of the accent / status fills, and a few surface details that
+     used to be hard-coded; all of them flip with the theme. */
+  --on-dawn: #241505;
+  --on-sage: #0e1a14;
+  --on-amber: #241a05;
+  --on-rust: #240d08;
+  --tick-mark: #0e1a14;
+  --panel-end: #171d27;
+  --panel-edge: #33404f;
+  --track-a: #232b38;
+  --track-b: #1c232e;
+  --plan-tint: #1f2a33;
+  --plan-tint-line: #2b3a46;
+  color-scheme: dark;
+}
+
+/* Light theme. Applies when the device prefers light (and nothing has been
+   chosen), or when the toggle has saved an explicit 'light'. The accent and
+   status colours are darkened so they stay readable on a pale background. */
+:root[data-theme="light"] {
+  --ink: #f5f3ee;
+  --panel: #ffffff;
+  --panel-2: #eeeae2;
+  --paper: #1b2230;
+  --slate: #5d6879;
+  --line: #d8d3c8;
+  --dawn: #c26a14;
+  --dawn-dim: #f1d3b0;
+  --sage: #2f8559;
+  --amber: #a8741c;
+  --rust: #b4452f;
+  --focus: #1f6fb0;
+  --on-dawn: #241505;
+  --on-sage: #ffffff;
+  --on-amber: #241a05;
+  --on-rust: #ffffff;
+  --tick-mark: #ffffff;
+  --panel-end: #faf8f3;
+  --panel-edge: #cfc9bb;
+  --track-a: #e8e3d8;
+  --track-b: #efeae0;
+  --plan-tint: #e6eef3;
+  --plan-tint-line: #c3d3de;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ink: #f5f3ee;
+    --panel: #ffffff;
+    --panel-2: #eeeae2;
+    --paper: #1b2230;
+    --slate: #5d6879;
+    --line: #d8d3c8;
+    --dawn: #c26a14;
+    --dawn-dim: #f1d3b0;
+    --sage: #2f8559;
+    --amber: #a8741c;
+    --rust: #b4452f;
+    --focus: #1f6fb0;
+    --on-dawn: #241505;
+    --on-sage: #ffffff;
+    --on-amber: #241a05;
+    --on-rust: #ffffff;
+    --tick-mark: #ffffff;
+    --panel-end: #faf8f3;
+    --panel-edge: #cfc9bb;
+    --track-a: #e8e3d8;
+    --track-b: #efeae0;
+    --plan-tint: #e6eef3;
+    --plan-tint-line: #c3d3de;
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -188,7 +260,7 @@ a { color: inherit; }
   cursor: pointer;
 }
 .btn-block { width: 100%; }
-.btn-primary { background: var(--dawn); color: #241505; }
+.btn-primary { background: var(--dawn); color: var(--on-dawn); }
 .btn-primary:hover { filter: brightness(1.06); }
 .btn-quiet { background: none; border-color: var(--line); color: var(--slate); }
 .btn-quiet:hover { color: var(--paper); }
@@ -234,8 +306,8 @@ a { color: inherit; }
 /* ---------------- Fuel panel — the one bold treatment ---------------- */
 
 .panel-fuel {
-  background: linear-gradient(180deg, var(--panel) 0%, #171d27 100%);
-  border-color: #33404f;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-end) 100%);
+  border-color: var(--panel-edge);
 }
 
 .fuel-row + .fuel-row { margin-top: 16px; }
@@ -256,7 +328,7 @@ a { color: inherit; }
 .fuel-track {
   position: relative;
   height: 14px;
-  background: repeating-linear-gradient(90deg, #232b38 0 2px, #1c232e 2px 10px);
+  background: repeating-linear-gradient(90deg, var(--track-a) 0 2px, var(--track-b) 2px 10px);
   border-radius: 7px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -317,8 +389,8 @@ a { color: inherit; }
   position: absolute;
   left: 6px; top: 2px;
   width: 7px; height: 12px;
-  border-right: 2px solid #0e1a14;
-  border-bottom: 2px solid #0e1a14;
+  border-right: 2px solid var(--tick-mark);
+  border-bottom: 2px solid var(--tick-mark);
   transform: rotate(40deg);
 }
 
@@ -488,9 +560,9 @@ a { color: inherit; }
   font-size: 0.88rem;
   cursor: pointer;
 }
-.status-btn.is-active.status-yes { background: var(--sage); border-color: var(--sage); color: #0e1a14; }
-.status-btn.is-active.status-partial { background: var(--amber); border-color: var(--amber); color: #241a05; }
-.status-btn.is-active.status-no { background: var(--rust); border-color: var(--rust); color: #240d08; }
+.status-btn.is-active.status-yes { background: var(--sage); border-color: var(--sage); color: var(--on-sage); }
+.status-btn.is-active.status-partial { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
+.status-btn.is-active.status-no { background: var(--rust); border-color: var(--rust); color: var(--on-rust); }
 
 .notes-label {
   display: block;
@@ -612,7 +684,7 @@ a { color: inherit; }
   font-size: 0.88rem;
   cursor: pointer;
 }
-.segmented-btn.is-active { background: var(--dawn); border-color: var(--dawn); color: #241505; }
+.segmented-btn.is-active { background: var(--dawn); border-color: var(--dawn); color: var(--on-dawn); }
 
 .plan-subhead { font-size: 0.9rem; color: var(--slate); margin: 16px 0 8px; }
 .plan-meal-block + .plan-meal-block { margin-top: 4px; }
@@ -928,7 +1000,7 @@ a { color: inherit; }
 /* ---------------- Install bar ---------------- */
 .install-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); background: var(--panel); border-bottom: 1px solid var(--line); }
 .install-bar[hidden], .install-hint[hidden] { display: none; }
-.install-btn { background: var(--dawn); color: #241505; border: none; border-radius: 8px; padding: 8px 16px; font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+.install-btn { background: var(--dawn); color: var(--on-dawn); border: none; border-radius: 8px; padding: 8px 16px; font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .install-hint { color: var(--slate); font-size: 0.78rem; }
 .install-close { background: transparent; border: none; color: var(--slate); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 4px 8px; }
 
@@ -947,13 +1019,13 @@ a { color: inherit; }
   padding: 9px 0; font: inherit; font-size: 0.9rem; cursor: pointer;
 }
 .cal-day.is-out { opacity: 0.45; }
-.cal-day.in-plan { background: #1f2a33; border-color: #2b3a46; }
+.cal-day.in-plan { background: var(--plan-tint); border-color: var(--plan-tint-line); }
 .cal-day.is-sel-week { border-color: var(--dawn); }
 .cal-day.is-today { color: var(--dawn); font-weight: 700; }
 .cal-day:disabled { opacity: 0.2; cursor: default; }
 .cal-legend { color: var(--slate); font-size: 0.74rem; margin: 8px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .cal-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid transparent; }
-.cal-key.in-plan { background: #1f2a33; border-color: #2b3a46; }
+.cal-key.in-plan { background: var(--plan-tint); border-color: var(--plan-tint-line); }
 .cal-key.is-sel-week { border-color: var(--dawn); margin-left: 8px; }
 #weekCalBtn { min-width: 44px; }
 
@@ -973,3 +1045,23 @@ a { color: inherit; }
 
 .race-booked { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.92rem; cursor: pointer; }
 .race-booked input { width: 22px; height: 22px; accent-color: var(--sage); cursor: pointer; }
+
+
+/* ---------------- Theme toggle, session pickers ---------------- */
+.theme-btn {
+  background: none; border: 1px solid var(--line); color: var(--slate); border-radius: 6px;
+  padding: 6px 10px; font: inherit; line-height: 1; cursor: pointer; margin-right: 8px; flex-shrink: 0;
+}
+.theme-btn:hover { color: var(--paper); border-color: var(--slate); }
+.pick-session-field { margin-top: 10px; }
+
+/* ---------------- Nutrition plan v4 ---------------- */
+.nutrition-note { color: var(--slate); font-size: 0.84rem; margin: 0 0 8px; }
+.nutrition-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; margin: 0 0 10px; cursor: pointer; }
+.nutrition-toggle input { width: 20px; height: 20px; accent-color: var(--sage); }
+.segmented-wrap { flex-wrap: wrap; }
+.plan-rule-group { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.plan-rule-group > summary { cursor: pointer; font-weight: 600; }
+.plan-rule-group p { margin: 8px 0 0; font-size: 0.9rem; }
+.plan-rule-list { margin: 8px 0 0; padding-left: 20px; font-size: 0.9rem; }
+.plan-rule-list li { margin-bottom: 5px; }

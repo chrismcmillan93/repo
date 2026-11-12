@@ -4,6 +4,7 @@ import { state } from './state.js';
 import { initRouter, renderRoute } from './router.js';
 import * as offlineQueue from './offlineQueue.js';
 import { registerServiceWorker, initInstallButton } from './pwa.js';
+import { initTheme } from './theme.js';
 import {
   requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl
 } from './auth.js';
@@ -22,8 +23,7 @@ function showScreen(name){
 const REPLAYERS = {
   daily_log: (payload) => db.dailyLogs.upsert(payload.userId, payload.logDate, payload.fields),
   daily_check: (payload) => db.dailyChecks.upsert(payload.userId, payload.logDate, payload.itemId, payload.isChecked),
-  prep_check: (payload) => db.prepChecks.upsert(payload.userId, payload.weekStartDate, payload.taskId, payload.isChecked),
-  shopping_check: (payload) => db.shoppingChecks.upsert(payload.userId, payload.weekStartDate, payload.itemId, payload.isChecked)
+  list_tick: (payload) => db.weekListTicks.upsert(payload.userId, payload.weekStartDate, payload.list, payload.itemKey, payload.isChecked)
 };
 
 function wireAuthForms(){
@@ -112,6 +112,7 @@ async function handleSession(session){
 }
 
 async function boot(){
+  initTheme();
   registerServiceWorker();
   initInstallButton();
   wireAuthForms();

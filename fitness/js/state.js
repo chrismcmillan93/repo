@@ -9,7 +9,8 @@ export const state = {
   currentDate: todayStr(),
   dayBundle: null,
   currentBlock: null, // fetched once, used for the Today nav's date bounds
-  plan: null // the active training_plans row (v2), also used for date bounds
+  plan: null, // the active training_plans row (v2), also used for date bounds
+  nutrition: undefined // loaded once by nutrition.js: { plan, dayTypes, dayTypeList, phases } or null
 };
 
 export function notifyDayChanged(){

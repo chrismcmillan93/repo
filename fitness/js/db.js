@@ -172,6 +172,25 @@ export const db = {
 
   // The v2 training plan (Edale 50km). Read-only to the app; every list is
   // scoped by plan_version, same belt-and-suspenders rule as the block tables.
+  // Nutrition plan (v4). Read-only to the app; quantities are scaled in js/nutrition.js.
+  nutrition: {
+    async getPlan(planVersion){
+      const { data, error } = await supabase.from('nutrition_plans').select('*').eq('plan_version', planVersion).maybeSingle();
+      checkError(error);
+      return data;
+    },
+    async listDayTypes(planVersion){
+      const { data, error } = await supabase.from('nutrition_day_types').select('*').eq('plan_version', planVersion).order('sort_order');
+      checkError(error);
+      return data || [];
+    },
+    async listPhases(planVersion){
+      const { data, error } = await supabase.from('nutrition_phases').select('*').eq('plan_version', planVersion).order('from_date');
+      checkError(error);
+      return data || [];
+    }
+  },
+
   trainingPlans: {
     async get(planVersion){
       const { data, error } = await supabase
@@ -247,6 +266,37 @@ export const db = {
         .lte('log_date', toDate);
       checkError(error);
       return data || [];
+    }
+  },
+
+  // Which specific session was done for a Weights / Cardio pick (e.g.
+  // "Full Body #2", "Long run"). The on/off pick itself is in daily_checks.
+  pickSessions: {
+    async listRange(userId, fromDate, toDate){
+      const { data, error } = await supabase
+        .from('pick_sessions')
+        .select('log_date, kind, session')
+        .eq('user_id', userId)
+        .gte('log_date', fromDate)
+        .lte('log_date', toDate);
+      checkError(error);
+      return data || [];
+    },
+    async set(userId, logDate, kind, session){
+      const { error } = await supabase
+        .from('pick_sessions')
+        .upsert({ user_id: userId, log_date: logDate, kind, session, updated_at: new Date().toISOString() }, { onConflict: 'user_id,log_date,kind' });
+      checkError(error);
+    },
+    async remove(userId, logDate, kinds){
+      if (!kinds.length) return;
+      const { error } = await supabase
+        .from('pick_sessions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('log_date', logDate)
+        .in('kind', kinds);
+      checkError(error);
     }
   },
 
@@ -361,45 +411,25 @@ export const db = {
     }
   },
 
-  rules: {
-    async list(){
+  // Weekly check-ins against the Edale training plan's weeks. weeklyCheckins
+  // (above) is Block 2's, kept as history.
+  planCheckins: {
+    async list(userId, planVersion){
       const { data, error } = await supabase
-        .from('rules')
-        .select('*')
-        .order('order_num');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  prepTasks: {
-    async list(blockId){
-      const { data, error } = await supabase
-        .from('prep_tasks')
-        .select('*')
-        .eq('block_id', blockId)
-        .order('sort_order');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  prepChecks: {
-    async listForWeek(userId, weekStartDate){
-      const { data, error } = await supabase
-        .from('prep_checks')
+        .from('plan_checkins')
         .select('*')
         .eq('user_id', userId)
-        .eq('week_start_date', weekStartDate);
+        .eq('plan_version', planVersion)
+        .order('week_number', { ascending: false });
       checkError(error);
       return data || [];
     },
-    async upsert(userId, weekStartDate, taskId, isChecked){
+    async upsert(userId, planVersion, weekNumber, fields){
       const { data, error } = await supabase
-        .from('prep_checks')
+        .from('plan_checkins')
         .upsert(
-          { user_id: userId, week_start_date: weekStartDate, task_id: taskId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
-          { onConflict: 'user_id,week_start_date,task_id' }
+          { user_id: userId, plan_version: planVersion, week_number: weekNumber, submitted_at: new Date().toISOString(), ...fields },
+          { onConflict: 'user_id,plan_version,week_number' }
         )
         .select()
         .single();
@@ -408,34 +438,23 @@ export const db = {
     }
   },
 
-  shoppingListItems: {
-    async list(blockId){
-      const { data, error } = await supabase
-        .from('shopping_list_items')
-        .select('*')
-        .eq('block_id', blockId)
-        .order('sort_order');
-      checkError(error);
-      return data || [];
-    }
-  },
-
-  shoppingChecks: {
+  // Ticks on the generated shopping list / prep tasks (js/weekLists.js).
+  weekListTicks: {
     async listForWeek(userId, weekStartDate){
       const { data, error } = await supabase
-        .from('shopping_checks')
-        .select('*')
+        .from('week_list_ticks')
+        .select('list, item_key, is_checked')
         .eq('user_id', userId)
         .eq('week_start_date', weekStartDate);
       checkError(error);
       return data || [];
     },
-    async upsert(userId, weekStartDate, itemId, isChecked){
+    async upsert(userId, weekStartDate, list, itemKey, isChecked){
       const { data, error } = await supabase
-        .from('shopping_checks')
+        .from('week_list_ticks')
         .upsert(
-          { user_id: userId, week_start_date: weekStartDate, item_id: itemId, is_checked: isChecked, checked_at: isChecked ? new Date().toISOString() : null },
-          { onConflict: 'user_id,week_start_date,item_id' }
+          { user_id: userId, week_start_date: weekStartDate, list, item_key: itemKey, is_checked: isChecked, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,week_start_date,list,item_key' }
         )
         .select()
         .single();

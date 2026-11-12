@@ -1,9 +1,13 @@
-// Weight over the block (raw points secondary, 7-day rolling average the
-// signal), a day-by-day history of what was actually stuck to, current
-// streaks, and adherence per week. No chart library -- a small inline SVG
+// Weight over time (raw points secondary, 7-day rolling average the signal),
+// a day-by-day history of what was actually stuck to, current streaks, and
+// adherence per week. It runs from the start of the old Block 2 (so the weight
+// line is unbroken across the switch to the Edale plan and its nutrition plan)
+// to today, and weeks are labelled by the Edale plan's week numbers once it
+// starts. No chart library -- a small inline SVG
 // line, dependency-free like everything else here.
 import { qs, qsa, escapeHtml, addDays, dateRange, todayStr, round1,
-  startOfWeek, endOfWeek, formatDateFull } from '../utils.js';
+  startOfWeek, endOfWeek, formatDateFull, formatDateShort } from '../utils.js';
+import { loadNutrition } from '../nutrition.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 import { renderRoute } from '../router.js';
@@ -23,7 +27,7 @@ function rollingAverage(points, windowSize){
 
 function weightChartSvg(points, avg){
   const withValue = points.map((p, i) => ({ x: i, raw: p.weight, avg: avg[i] })).filter((p) => p.raw !== null || p.avg !== null);
-  if (!withValue.length) return '<p class="section-note">No weight logged yet this block.</p>';
+  if (!withValue.length) return '<p class="section-note">No weight logged yet.</p>';
 
   const width = 640, height = 200, padX = 12, padY = 16;
   const n = points.length;
@@ -39,7 +43,7 @@ function weightChartSvg(points, avg){
   const dots = points.map((p, i) => p.weight !== null ? `<circle cx="${xFor(i)}" cy="${yFor(p.weight)}" r="2.5" class="chart-raw-dot"></circle>` : '').join('');
 
   return `
-    <svg viewBox="0 0 ${width} ${height}" class="weight-chart" role="img" aria-label="Weight over the block, raw points and 7-day average">
+    <svg viewBox="0 0 ${width} ${height}" class="weight-chart" role="img" aria-label="Weight over time, raw points and 7-day average">
       <polyline points="${rawPoints.join(' ')}" class="chart-raw-line"></polyline>
       ${dots}
       <polyline points="${avgPoints.join(' ')}" class="chart-avg-line"></polyline>
@@ -89,23 +93,29 @@ function historyGridHtml(block, endDate, logByDate){
 }
 
 export async function render(main){
-  const block = await db.blocks.getLatest();
-  if (!block) {
-    main.innerHTML = '<div class="empty-state"><strong>No training block yet.</strong></div>';
+  if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
+  const nut = await loadNutrition();
+  const block = await db.blocks.getLatest().catch(() => null);
+  const starts = [block && block.start_date, nut && nut.plan.start_date, state.plan && state.plan.start_date].filter(Boolean).sort();
+  const ends = [block && block.end_date, nut && nut.plan.end_date, state.plan && state.plan.end_date].filter(Boolean).sort();
+  if (!starts.length) {
+    main.innerHTML = '<div class="empty-state"><strong>No plan yet.</strong></div>';
     return;
   }
+  const startDate = starts[0];
   // Cap at today so the grid never pads into the future, but never let that
-  // push endDate *before* start_date either -- viewing Progress on or
-  // before the block's own first day (todayStr() < block.start_date) would
-  // otherwise produce an inverted, empty range everywhere below.
-  const cappedToToday = todayStr() < block.end_date ? todayStr() : block.end_date;
-  const endDate = cappedToToday < block.start_date ? block.start_date : cappedToToday;
-  const [weeks, logs] = await Promise.all([
-    db.blockWeeks.list(block.id),
-    db.dailyLogs.listRange(state.session.user.id, block.start_date, endDate)
+  // push endDate *before* the start either (viewing this before anything has
+  // started would otherwise give an inverted, empty range everywhere below).
+  const lastDate = ends[ends.length - 1];
+  const cappedToToday = todayStr() < lastDate ? todayStr() : lastDate;
+  const endDate = cappedToToday < startDate ? startDate : cappedToToday;
+  const period = { start_date: startDate, end_date: endDate };
+  const [planWeeks, logs] = await Promise.all([
+    state.plan ? db.planWeeks.list(state.plan.plan_version).catch(() => []) : Promise.resolve([]),
+    db.dailyLogs.listRange(state.session.user.id, startDate, endDate)
   ]);
   const logByDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
-  const allDates = dateRange(block.start_date, endDate);
+  const allDates = dateRange(startDate, endDate);
   const points = allDates.map((d) => ({ date: d, weight: logByDate[d] && logByDate[d].weight_kg != null ? Number(logByDate[d].weight_kg) : null }));
   const avg = rollingAverage(points, 7);
 
@@ -113,8 +123,22 @@ export async function render(main){
   const nutritionStreak = computeStreak(logByDate, 'nutrition_status');
   const trainingStreak = computeStreak(logByDate, 'training_status');
 
-  const weekRows = weeks.map((w) => {
-    const weekDates = dateRange(w.start_date, w.end_date < endDate ? w.end_date : endDate);
+  // The next Monday weigh-in target from the plan (weeks 1-6 have one), next to your latest weight.
+  const today = todayStr();
+  const nextTarget = planWeeks.find((w) => w.weight_target_kg_monday != null && w.start_date >= startOfWeek(today));
+  const latest = [...points].reverse().find((p) => p.weight !== null);
+  const targetNote = nextTarget
+    ? `<p class="section-note">Monday weigh-in target: <strong>${Number(nextTarget.weight_target_kg_monday).toFixed(1)} kg</strong> (${escapeHtml(formatDateShort(nextTarget.start_date))})${latest ? ` · latest weigh-in ${latest.weight} kg` : ''}.</p>`
+    : '';
+
+  // One row per Mon-Sun week from the start; Edale plan weeks are labelled "Wk N", earlier ones by date.
+  const weekRows = [];
+  for (let ws = startOfWeek(startDate); ws <= endDate; ws = addDays(ws, 7)) {
+    const first = ws < startDate ? startDate : ws;
+    const last = addDays(ws, 6) < endDate ? addDays(ws, 6) : endDate;
+    const weekDates = dateRange(first, last);
+    const pw = planWeeks.find((w) => ws >= w.start_date && ws <= w.end_date);
+    const label = pw ? `Wk ${pw.week_number}` : `w/c ${formatDateShort(ws)}`;
     const count = (key, val) => weekDates.filter((d) => logByDate[d] && logByDate[d][key] === val).length;
     const cellHtml = (key) => `
       <div class="week-grid-cell">
@@ -122,19 +146,19 @@ export async function render(main){
         <span class="week-grid-partial" style="flex-grow:${count(key, 'partial') || 0.01}"></span>
         <span class="week-grid-no" style="flex-grow:${count(key, 'no') || 0.01}"></span>
       </div>`;
-    if (w.start_date > endDate) return '';
-    return `
+    weekRows.push(`
       <div class="week-grid-row">
-        <span class="week-grid-label">Wk ${w.week_number}</span>
+        <span class="week-grid-label">${escapeHtml(label)}</span>
         ${cellHtml('nutrition_status')}
         ${cellHtml('training_status')}
-      </div>`;
-  }).join('');
+      </div>`);
+  }
 
   main.innerHTML = `
     <section class="panel">
       <h2 class="panel-title">Weight</h2>
       ${weightChartSvg(points, avg)}
+      ${targetNote}
       <p class="chart-legend"><span class="legend-swatch legend-avg"></span>7-day average <span class="legend-swatch legend-raw"></span>daily reading</p>
     </section>
 
@@ -150,7 +174,7 @@ export async function render(main){
     <section class="panel">
       <h2 class="panel-title">Day by day</h2>
       <p class="panel-summary">Top half of each day is nutrition, bottom half is training. Tap a day to open it.</p>
-      ${historyGridHtml(block, endDate, logByDate)}
+      ${historyGridHtml(period, endDate, logByDate)}
       <p class="chart-legend">
         <span class="legend-swatch legend-yes"></span>yes
         <span class="legend-swatch legend-partial"></span>partial
@@ -162,7 +186,7 @@ export async function render(main){
     <section class="panel">
       <h2 class="panel-title">Adherence by week</h2>
       <div class="week-grid-head"><span></span><span>Nutrition</span><span>Training</span></div>
-      ${weekRows}
+      ${weekRows.join('')}
     </section>
   `;
 
