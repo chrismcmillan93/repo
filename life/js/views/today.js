@@ -6,6 +6,7 @@ import { todayStr, addDays, startOfWeek, isoDow, toast } from '../fit/utils.js';
 import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, keptPct, weekCommitments, paceInfo } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
 import { mountDay } from '../fit/day.js';
+import { garmin, loadRecovery, recoveryHtml, syncSummary, syncError, garminPrefs } from '../fit/garmin.js';
 import { taskRow, towardsSelect, towardsFields, commitRow, commitActs } from './shared.js';
 import { loadCountdowns, countdownRow } from './events.js';
 import { dueReviews, periodLabel } from './review.js';
@@ -17,19 +18,20 @@ export async function render(root){
   let closing = false;
 
   async function load(){
-    const [goals, tasks, habits, checks, closed, coming, reviewsDue] = await Promise.all([
+    const [goals, tasks, habits, checks, closed, coming, reviewsDue, cfg] = await Promise.all([
       store.goals.list((q) => q.eq('status', 'active').order('created_at')),
       store.tasks.list((q) => q.or(`status.eq.open,and(status.eq.done,done_on.eq.${today})`).order('created_at')),
       store.habits.list((q) => q.eq('archived', false).order('sort_order').order('created_at')),
       store.habitChecks.listSince(addDays(today, -90)),
       store.journal.list((q) => q.eq('entry_date', today).eq('kind', 'close')),
       loadCountdowns().catch(() => []),
-      dueReviews().catch(() => [])
+      dueReviews().catch(() => []),
+      store.settings.get().catch(() => ({}))
     ]);
     await carryOver(tasks);
     await syncFit(weekStart, goals);
     const [commits, steps] = await Promise.all([weekCommitments(weekStart), store.steps.list()]);
-    d = { goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    d = { cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -37,6 +39,12 @@ export async function render(root){
 
   function nudges(){
     const out = [];
+    // The Garmin key only lasts up to a year, and the sync stops dead when it lapses.
+    const keyEnds = garminPrefs(d.cfg).key_expires;
+    if (keyEnds && daysBetween(today, keyEnds) <= 14) {
+      const left = daysBetween(today, keyEnds);
+      out.push(`<div class="nudge warn"><p>Your Garmin API key ${left < 0 ? 'has expired' : left === 0 ? 'expires today' : `expires in ${left} day${left === 1 ? '' : 's'}`}. Create a new one in Garmin Connect and replace the GARMIN_API_KEY secret in Supabase.</p><div class="btns"><a class="btn sm" href="#/settings">Settings</a></div></div>`);
+    }
     const wk = d.reviewsDue.find((r) => r.type === 'week');
     if (wk && isoDow(today) >= 1) out.push(`<div class="nudge warn"><p>${esc(periodLabel('week', wk.start))} hasn't been reviewed. It takes ten minutes and sets this week up.</p><div class="btns"><a class="btn sm" href="#/review">Review it</a></div></div>`);
     d.reviewsDue.filter((r) => r.type !== 'week').forEach((r) => out.push(`<div class="nudge warn"><p>${esc(periodLabel(r.type, r.start))} is over. Time for the ${r.type}ly review.</p><div class="btns"><a class="btn sm" href="#/review">Review it</a></div></div>`));
@@ -102,12 +110,14 @@ export async function render(root){
   }
 
   root.innerHTML = `<div id="nudges" class="stack"></div><div class="cols"><div class="stack" id="left"></div><div class="stack">
+    <section class="panel" id="recovery" hidden></section>
     <section class="panel" id="weekcard"></section>
     <section class="panel" id="commits"></section>
     <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><div id="fit"></div></section>
     <section class="panel" id="habits"></section><section class="panel" id="coming"></section></div></div>`;
 
   const refresh = async () => { await load(); draw(); };
+  const mountFit = () => mountDay(root.querySelector('#fit'), today, { compact: true, onChange: async () => { await syncFit(weekStart, d.goals); d.commits = await weekCommitments(weekStart); draw(); } });
   const find = (id) => d.tasks.find((t) => t.id === id);
   wire(root, {
     ...commitActs({ find: (id) => d.commits.find((c) => c.id === id), refresh, weekStart: () => weekStart }),
@@ -123,6 +133,13 @@ export async function render(root){
     },
     async habit(n){ await store.habitChecks.set(n.dataset.id, today, n.checked); await refresh(); },
     async addhabit(f){ await store.habits.add({ title: formData(f).title.trim(), sort_order: d.habits.length }); await refresh(); },
+    async garminsync(n){
+      n.disabled = true; n.textContent = 'Checking Garmin…';
+      try { toast(syncSummary(await garmin.runSync())); } catch (err) { toast(syncError(err)); }
+      await recovery();
+      await refresh();
+      mountFit();
+    },
     closeopen(){ closing = true; draw(); },
     closecancel(){ closing = false; draw(); },
     async closeday(f){
@@ -138,5 +155,11 @@ export async function render(root){
 
   await load();
   draw();
-  mountDay(root.querySelector('#fit'), today, { compact: true, onChange: async () => { await syncFit(weekStart, d.goals); d.commits = await weekCommitments(weekStart); draw(); } });
+  // Last night's sleep, HRV and resting heart rate from Garmin. Hidden until Garmin is connected.
+  const recovery = async () => {
+    const el = root.querySelector('#recovery');
+    try { const html = recoveryHtml(await loadRecovery(today)); el.innerHTML = html; el.hidden = !html; } catch (_) { el.hidden = true; }
+  };
+  recovery();
+  mountFit();
 }

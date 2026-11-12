@@ -30,7 +30,7 @@ export function towardsFields(value, commits){
 
 // ---------------- commitments (shared by Week, Goals and Today) ----------------
 export function cadenceText(c){
-  if (c.source) return 'From Health';
+  if (c.source) return c.source.startsWith('garmin') ? 'From Garmin' : 'From Health';
   if (c.cadence === 'daily') return `${c.target_count / 7} a day, ${c.target_count} for the week`;
   return `${c.target_count} ${CADENCE_UNIT[c.cadence] || 'a week'}`;
 }

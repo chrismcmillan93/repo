@@ -13,7 +13,9 @@ first (a static-hosting deploy and a framework build step are two different proj
 The combined "one app" for goals, to-dos, lists, career, health and events, meant to
 replace `goals/` and `fitness/` over time (both are left running and untouched). Own
 schema **`life`**; it also reads and writes the `fitness` schema directly so the two apps
-always agree. Everything about it is in **`life/CLAUDE.md`** — read that before touching it.
+always agree. Everything about it is in **`life/CLAUDE.md`** — read that before touching it. It also
+shows Garmin data (sleep, HRV, activities), mirrored into `fitness.garmin_*` by the
+`garmin-sync` Edge Function; that is documented there too.
 
 ## USA trip planner (`/usa`)
 

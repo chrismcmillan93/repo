@@ -56,18 +56,26 @@ function prefsOf(data: Record<string, unknown> | null): Prefs {
 }
 
 async function morningBrief(userId: string, today: string, dow: string){
-  const [tasks, plan, picks, events, races] = await Promise.all([
+  const [tasks, plan, picks, events, races, night, gday] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
     fitness().from('plan_days').select('session, type').eq('plan_version', 'v2').eq('date', today),
     fitness().from('pick_sessions').select('kind, session').eq('user_id', userId).eq('log_date', today),
     life().from('events').select('title, start_date, repeats_yearly').eq('user_id', userId).gte('start_date', today).order('start_date').limit(1),
-    fitness().from('races').select('name, race_date').gte('race_date', today).order('race_date').limit(1)
+    fitness().from('races').select('name, race_date').gte('race_date', today).order('race_date').limit(1),
+    // Last night from Garmin, when the watch has synced by now (garmin-sync runs every half hour).
+    fitness().from('garmin_sleep').select('sleep_s, score, hrv_last_night').eq('user_id', userId).eq('day', today).maybeSingle(),
+    fitness().from('garmin_days').select('resting_hr').eq('user_id', userId).eq('day', today).maybeSingle()
   ]);
   const t = tasks.data || [];
   const top = t.filter((x) => x.top_date === today).map((x) => x.title);
   const lines: string[] = [];
   const session = (picks.data || []).map((p) => p.session).filter(Boolean).join(' + ') || (plan.data || []).filter((p) => p.type !== 'rest').map((p) => p.session).join(' + ');
   lines.push(session ? `Training: ${session}` : 'No session planned. Pick one in the app.');
+  const n = night.data, rhr = gday.data?.resting_hr;
+  if (n && n.sleep_s) {
+    const mins = Math.round(n.sleep_s / 60);
+    lines.push([`Slept ${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m${n.score != null ? ` (score ${n.score})` : ''}`, n.hrv_last_night != null ? `HRV ${n.hrv_last_night}` : '', rhr != null ? `resting HR ${rhr}` : ''].filter(Boolean).join(' · '));
+  }
   if (top.length) lines.push(`Top three: ${top.join(', ')}`);
   lines.push(t.length ? `${t.length} task${t.length === 1 ? '' : 's'} due today` : 'Nothing due yet. Pick your top three.');
   const next = [...(events.data || []).map((e) => ({ t: e.title, d: e.start_date })), ...(races.data || []).map((r) => ({ t: r.name, d: r.race_date }))].sort((a, b) => (a.d < b.d ? -1 : 1))[0];

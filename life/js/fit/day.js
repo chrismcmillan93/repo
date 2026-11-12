@@ -11,6 +11,7 @@ import { userId } from '../store.js';
 import { sourcesFor, swapDays, resetWeek, dayOptionsHtml } from './daySwap.js';
 import { startOfWeek, endOfWeek, dateRange, formatDayLabel } from './utils.js';
 import { bar, wire, options } from '../ui.js';
+import { garmin, dayHtml as garminDayHtml } from './garmin.js';
 
 let templatesCache = null;
 export async function liftTemplates(){
@@ -27,7 +28,9 @@ async function loadSwap(date){
 
 async function loadDay(date, full){
   const uid = userId();
-  const [bundle, nut, tpls, swap] = await Promise.all([db.getDayBundle(date), loadNutrition(), liftTemplates(), full ? loadSwap(date).catch(() => null) : null]);
+  // Garmin is extra: if it isn't connected (or the tables can't be read) the day still loads.
+  const [bundle, nut, tpls, swap, acts, ticks] = await Promise.all([db.getDayBundle(date), loadNutrition(), liftTemplates(), full ? loadSwap(date).catch(() => null) : null,
+    garmin.activities(date, date).catch(() => []), garmin.autoticks(date, date).catch(() => [])]);
   let day = null, weightInfo = null;
   if (inNutritionPlan(nut, date)) {
     weightInfo = await effectiveWeight(uid, date);
@@ -38,6 +41,7 @@ async function loadDay(date, full){
   }
   return {
     bundle, nut, tpls, day, weightInfo,
+    garmin: { acts, ticked: ticks.length ? ticks[0].activity_id : null },
     checks: { ...(bundle.checks || {}) },
     picks: bundle.picks || { weights: false, cardio: false },
     names: bundle.pick_sessions || {},
@@ -143,6 +147,15 @@ function swapHtml(c, date){
     <button type="button" class="btn" data-act="swap">Swap</button>${c.swap.swaps.length ? '<button type="button" class="btn ghost" data-act="swapreset">Reset this week</button>' : ''}</div></details>`;
 }
 
+// What Garmin recorded that day, against the planned run distance when there is one.
+function garminHtml(c, sessions, compact){
+  const run = sessions.find((s) => s.session_type === 'run' && s.plan_day && s.plan_day.distance_km != null);
+  return garminDayHtml(c.garmin.acts, {
+    plannedKm: run ? run.plan_day.distance_km : null, plannedMiles: run ? run.plan_day.distance_miles : null,
+    ticked: c.checks['session:run'] ? c.garmin.ticked : null, compact
+  });
+}
+
 function html(c, opts){
   const sessions = c.bundle.sessions || [];
   const hasPlanned = !!(c.bundle.plan && c.bundle.plan.has_day);
@@ -151,6 +164,7 @@ function html(c, opts){
   return `
     ${pw ? `<p class="hint">Week ${pw.week_number} of ${pw.total_weeks} · ${esc(pw.phase)} · ${esc(pw.load)} load${!opts.compact && pw.notes ? ` · ${esc(pw.notes)}` : ''}</p>` : ''}
     ${sessions.length ? sessions.map((s) => sessionHtml(s, c, opts.compact)).join('') : '<p class="hint">Nothing is planned for this day.</p>'}
+    ${garminHtml(c, sessions, opts.compact)}
     ${pickerHtml(c, hasPlanned)}
     ${mealsHtml(c, opts.compact)}
     ${opts.compact ? '' : swapHtml(c, opts.date)}
