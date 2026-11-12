@@ -11,7 +11,7 @@
 // Google Fonts) is never touched.
 //
 // Bump VERSION to drop every old cache on the next load.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `fitness-shell-${VERSION}`;
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png'];
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -32,7 +32,12 @@ self.addEventListener('activate', (event) => {
 
 async function networkFirst(request) {
   try {
-    const res = await fetch(request);
+    // 'no-cache' makes the browser revalidate with the server instead of reusing
+    // its own HTTP cache (GitHub Pages sends max-age=600), otherwise a fresh
+    // index.html can load alongside a stale main.js for up to 10 minutes after
+    // a deploy. Same-origin only; the CDN script keeps its normal caching.
+    const sameOrigin = new URL(request.url).origin === self.location.origin;
+    const res = await fetch(sameOrigin ? new Request(request, { cache: 'no-cache' }) : request);
     // The CDN script is requested no-cors, so its response is opaque (status 0); cache it anyway.
     if (res && (res.ok || res.type === 'opaque')) {
       const cache = await caches.open(CACHE);

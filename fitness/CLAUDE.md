@@ -153,7 +153,9 @@ repo), `sw.js`, `js/pwa.js`. Every path is relative.
   copy offline. Because it is network-first, a deploy is never hidden behind a stale
   cache and there is no update prompt. It is **not** an offline data layer: with no
   signal the shell opens, but Today/Week/Races say they couldn't load. Supabase API
-  calls and fonts are never intercepted. Bump `VERSION` to clear all old caches.
+  calls and fonts are never intercepted. Bump `VERSION` to clear all old caches. Same-origin fetches use `cache: 'no-cache'` so the
+  browser's own HTTP cache (GitHub Pages: max-age=600) can't serve a stale module next to a
+  fresh `index.html` (that mix left the light-mode button inert on Android, 2026-11-12).
 - **Testing it:** Chrome's own `Page.getInstallabilityErrors` returns none. A
   Playwright `page.route` mock does not see service-worker requests; use
   `context.route` with `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (or the
