@@ -44,6 +44,24 @@ export const journal = table('journal');
 export const listItems = table('list_items');
 export const career = table('career_items');
 export const events = table('events');
+export const reviews = table('reviews');
+export const reviewGoals = table('review_goals');
+export const notes = table('notes');
+export const pushSubs = table('push_subscriptions');
+
+// Playbook progress is keyed by directive, not id.
+export const playbook = {
+  async list(){
+    return ok(await supabase.from('playbook_progress').select('*').eq('user_id', uid)) || [];
+  },
+  async set(directive_key, patch){
+    return ok(await supabase.from('playbook_progress').upsert({ user_id: uid, directive_key, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'user_id,directive_key' }).select().single());
+  }
+};
+
+export async function upsertOn(name, row, onConflict){
+  return ok(await supabase.from(name).upsert({ ...row, user_id: uid }, { onConflict }).select().single());
+}
 
 export const habitChecks = {
   async listSince(date){
@@ -75,6 +93,13 @@ export const goalsApp = {
       g.from('milestones').select('*').eq('user_id', uid).order('sort_order'),
       g.from('goal_updates').select('goal_id, occurred_on, value').eq('user_id', uid).not('value', 'is', null).order('occurred_on')
     ].map(async (p) => ok(await p) || []));
-    return { areas, goals: goalRows, milestones, updates };
+    // Optional extras: a missing table or column shouldn't stop the goals import.
+    const soft = async (p) => { const r = await p; return r.error ? [] : r.data || []; };
+    const [wishlist, pages, playbook] = await Promise.all([
+      soft(g.from('wishlist_items').select('*').eq('user_id', uid).is('archived_at', null)),
+      soft(g.from('note_pages').select('*').eq('user_id', uid).is('archived_at', null)),
+      soft(g.from('playbook_progress').select('*').eq('user_id', uid))
+    ]);
+    return { areas, goals: goalRows, milestones, updates, wishlist, pages, playbook };
   }
 };

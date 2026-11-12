@@ -5,6 +5,7 @@ import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
 import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
+import { importFromGoalsApp, importSummary } from '../importer.js';
 
 const AREAS = ['Health', 'Career', 'Money', 'Learning', 'Relationships', 'Home', 'Personal'];
 const LEVELS = [['year', 'This year'], ['quarter', 'This quarter'], ['month', 'This month']];
@@ -106,25 +107,7 @@ export async function render(root, params){
     async addtask(f){ await store.tasks.add({ title: formData(f).title.trim(), status: 'open', due_date: today, goal_id: sel }); await refresh(); },
     async status(n){ await store.goals.set(sel, { status: n.dataset.v }); toast(n.dataset.v === 'stopped' ? 'Goal dropped' : 'Saved'); await refresh(); },
     async import(){
-      const src = await store.goalsApp.load();
-      const have = new Set((await store.goals.list()).map((g) => g.source_goal_id).filter(Boolean));
-      const areaName = Object.fromEntries(src.areas.map((a) => [a.id, a.name]));
-      const fresh = src.goals.filter((g) => !have.has(g.id));
-      for (const g of fresh) {
-        const vals = src.updates.filter((u) => u.goal_id === g.id);
-        const numeric = g.measure_type === 'numeric' && g.target_value != null;
-        const start = g.start_value != null ? Number(g.start_value) : 0;
-        const current = !vals.length ? start : g.cumulative ? start + vals.reduce((s, u) => s + Number(u.value), 0) : Number(vals[vals.length - 1].value);
-        const row = await store.goals.add({ title: g.title, why: g.why || g.description || '', area: areaName[g.area_id] || 'Personal', start_date: g.start_date || today, target_date: g.target_date,
-          measure: numeric ? 'numeric' : 'steps', start_value: numeric ? start : null, target_value: numeric ? Number(g.target_value) : null, current_value: numeric ? current : null, unit: g.unit || '',
-          status: { active: 'active', paused: 'paused', achieved: 'achieved', dropped: 'stopped' }[g.status] || 'active', source_goal_id: g.id,
-          last_progress_on: vals.length ? vals[vals.length - 1].occurred_on : null });
-        await store.steps.addMany(src.milestones.filter((m) => m.goal_id === g.id).map((m, i) => {
-          const away = m.due_date ? daysBetween(today, m.due_date) : 0;
-          return { goal_id: row.id, title: m.title, due_date: m.due_date, done_on: m.completed_on, sort_order: i, level: away > 120 ? 'year' : away > 45 ? 'quarter' : 'month' };
-        }));
-      }
-      toast(fresh.length ? `Imported ${fresh.length} goal${fresh.length === 1 ? '' : 's'}` : 'Everything in the Goals app is already here');
+      toast(importSummary(await importFromGoalsApp()));
       await refresh();
     }
   });

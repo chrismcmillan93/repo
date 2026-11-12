@@ -7,8 +7,9 @@ import { setUser } from './store.js';
 import { initTheme } from './theme.js';
 import { state as fitState } from './fit/state.js';
 import { escapeHtml, formatDateFull, todayStr, toast } from './fit/utils.js';
+import { registerSw, clearOfflineData } from './pwa.js';
 
-const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['tasks', 'To-dos'], ['lists', 'Lists'], ['career', 'Career'], ['health', 'Health'], ['events', 'Events'], ['journal', 'Journal']];
+const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['playbook', 'Playbook'], ['settings', 'Settings']];
 const $ = (s) => document.querySelector(s);
 let signedIn = false;
 let renderToken = 0;
@@ -34,7 +35,9 @@ async function route(){
     console.error(err);
     if (token !== renderToken) return;
     const schema = /schema must be one of|PGRST106/i.test(err.message || '');
+    const offline = !navigator.onLine || /Failed to fetch|NetworkError|Load failed/i.test(err.message || '');
     root.innerHTML = `<section class="panel"><h2>Couldn't load this screen</h2><p>${escapeHtml(err.message || String(err))}</p>
+      ${offline ? '<p class="hint">You seem to be offline and this screen has not been opened on this device before, so there is no saved copy yet.</p>' : ''}
       ${schema ? '<p class="hint">One-time setup: in the Supabase dashboard open Project Settings, Data API, and add <b>life</b> to "Exposed schemas" (keep the existing entries), then reload.</p>' : ''}
       <div class="btns"><button class="btn" id="retry">Try again</button></div></section>`;
     root.querySelector('#retry').addEventListener('click', route);
@@ -81,7 +84,12 @@ function initAuthForm(){
 async function boot(){
   initTheme($('#themeBtn'));
   initAuthForm();
-  $('#signOut').addEventListener('click', async () => { await signOut(); toast('Signed out'); });
+  $('#signOut').addEventListener('click', async () => { clearOfflineData(); await signOut(); toast('Signed out'); });
+  registerSw();
+  const net = () => { $('#offline').hidden = navigator.onLine; };
+  window.addEventListener('online', () => { net(); route(); });
+  window.addEventListener('offline', net);
+  net();
   window.addEventListener('hashchange', route);
   let lastUser = null;
   const onSession = (session) => {

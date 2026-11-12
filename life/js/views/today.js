@@ -8,6 +8,7 @@ import { syncFit } from '../fit/feed.js';
 import { mountDay } from '../fit/day.js';
 import { taskRow, towardsSelect, towardsFields } from './shared.js';
 import { loadCountdowns, countdownRow } from './events.js';
+import { dueReviews, periodLabel } from './review.js';
 
 export async function render(root){
   const today = todayStr();
@@ -16,18 +17,19 @@ export async function render(root){
   let closing = false;
 
   async function load(){
-    const [goals, tasks, habits, checks, closed, coming] = await Promise.all([
+    const [goals, tasks, habits, checks, closed, coming, reviewsDue] = await Promise.all([
       store.goals.list((q) => q.eq('status', 'active').order('created_at')),
       store.tasks.list((q) => q.or(`status.eq.open,and(status.eq.done,done_on.eq.${today})`).order('created_at')),
       store.habits.list((q) => q.eq('archived', false).order('sort_order').order('created_at')),
       store.habitChecks.listSince(addDays(today, -90)),
       store.journal.list((q) => q.eq('entry_date', today).eq('kind', 'close')),
-      loadCountdowns().catch(() => [])
+      loadCountdowns().catch(() => []),
+      dueReviews().catch(() => [])
     ]);
     await carryOver(tasks);
     await syncFit(weekStart, goals);
     const [commits, steps] = await Promise.all([store.commitments.list((q) => q.eq('week_start', weekStart).order('created_at')), store.steps.list()]);
-    d = { goals, tasks, habits, checks, closed: closed.length > 0, coming, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    d = { goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -35,6 +37,9 @@ export async function render(root){
 
   function nudges(){
     const out = [];
+    const wk = d.reviewsDue.find((r) => r.type === 'week');
+    if (wk && isoDow(today) >= 1) out.push(`<div class="nudge warn"><p>${esc(periodLabel('week', wk.start))} hasn't been reviewed. It takes ten minutes and sets this week up.</p><div class="btns"><a class="btn sm" href="#/review">Review it</a></div></div>`);
+    d.reviewsDue.filter((r) => r.type !== 'week').forEach((r) => out.push(`<div class="nudge warn"><p>${esc(periodLabel(r.type, r.start))} is over. Time for the ${r.type}ly review.</p><div class="btns"><a class="btn sm" href="#/review">Review it</a></div></div>`));
     d.goals.forEach((g) => {
       const pct = goalPct(g, d.steps);
       if (goalState(g, pct, goalExpected(g)) === 'stalled') {

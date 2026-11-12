@@ -5,10 +5,12 @@ import { todayStr, addDays, startOfWeek, formatDateFull, formatDateShort, format
 import { db } from '../fit/db.js';
 import { mountDay } from '../fit/day.js';
 import { loadWeek, planWeeks } from '../fit/week.js';
-import { buildExercises, findPrs, exerciseSummaries, weightLabel } from '../fit/analysis.js';
+import { buildExercises, findPrs, exerciseSummaries, weightLabel, monthSummary } from '../fit/analysis.js';
+import { ensureFonts, prStory, monthStory, carouselSlides, shareOrDownload } from '../fit/posters.js';
+import { dateRange, endOfWeek } from '../fit/utils.js';
 import { userId } from '../store.js';
 
-const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['lifts', 'Lifts']];
+const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['progress', 'Progress'], ['checkin', 'Check-in'], ['lifts', 'Lifts']];
 const shortDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 function spark(values, w = 96, h = 28){
@@ -97,6 +99,85 @@ export async function render(root, params){
     return;
   }
 
+  // ---- Progress: weight, streaks, day by day, adherence by week ----
+  if (tab === 'progress') {
+    const start = weeks.length ? (today < weeks[0].start_date ? addDays(today, -83) : addDays(weeks[0].start_date, -21)) : addDays(today, -83);
+    const end = today;
+    const logs = await db.dailyLogs.listRange(userId(), start, end);
+    const byDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
+    const dates = dateRange(start, end);
+    const pts = dates.map((d) => (byDate[d] && byDate[d].weight_kg != null ? Number(byDate[d].weight_kg) : null));
+    const avg = pts.map((_, i) => { const w = pts.slice(Math.max(0, i - 6), i + 1).filter((v) => v != null); return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null; });
+    const vals = pts.concat(avg).filter((v) => v != null);
+    let chart = empty('No weigh-ins yet. Log one on Today or Health → Day.');
+    if (vals.length) {
+      const W = 640, H = 210, L = 38, R = 10, T = 12, Bm = 24;
+      const lo = Math.floor(Math.min(...vals) - 0.5), hi = Math.ceil(Math.max(...vals) + 0.5);
+      const x = (i) => L + i * (W - L - R) / Math.max(1, dates.length - 1), y = (v) => T + (hi - v) / (hi - lo || 1) * (H - T - Bm);
+      const ticks = []; for (let v = lo; v <= hi; v += Math.max(1, Math.round((hi - lo) / 4))) ticks.push(v);
+      const line = (arr) => arr.map((v, i) => (v == null ? null : `${round1(x(i))},${round1(y(v))}`)).filter(Boolean).join(' ');
+      const lastI = avg.map((v, i) => (v == null ? -1 : i)).reduce((a, b) => Math.max(a, b), -1);
+      chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight over the last ${dates.length} days with a 7-day average">
+        ${ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+        ${pts.map((v, i) => (v == null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="2.2" fill="var(--muted)"/>`)).join('')}
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="${line(avg)}"/>
+        ${lastI >= 0 ? `<circle cx="${x(lastI)}" cy="${y(avg[lastI])}" r="4" fill="var(--accent)"/><text x="${Math.min(x(lastI), W - R - 4)}" y="${y(avg[lastI]) - 9}" text-anchor="end" class="strong">${round1(avg[lastI])} kg</text>` : ''}
+        <text x="${L}" y="${H - 6}">${shortDate(start)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Today</text></svg>`;
+    }
+    const streak = (key) => { let n = 0; for (let d = byDate[today] && byDate[today][key] ? today : addDays(today, -1); byDate[d] && byDate[d][key] === 'yes'; d = addDays(d, -1)) n += 1; return n; };
+    const logged = dates.filter((d) => byDate[d] && (byDate[d].nutrition_status || byDate[d].training_status)).length;
+    const gStart = startOfWeek(start), gDates = dateRange(gStart, endOfWeek(end));
+    const cell = (d) => { if (d < start || d > end) return '<span class="hc empty"></span>'; const l = byDate[d] || {};
+      return `<a class="hc" href="#/health/day/${d}" title="${formatDateShort(d)}: food ${l.nutrition_status || 'not logged'}, training ${l.training_status || 'not logged'}"><i class="s-${l.nutrition_status || 'none'}"></i><i class="s-${l.training_status || 'none'}"></i></a>`; };
+    const weekRows = [];
+    for (let ws = gStart; ws <= end; ws = addDays(ws, 7)) {
+      const ds = dateRange(ws < start ? start : ws, addDays(ws, 6) > end ? end : addDays(ws, 6));
+      const pw = weeks.find((w) => w.start_date === ws);
+      const share = (key) => { const n = ds.length || 1; const c = (v) => ds.filter((d) => byDate[d] && byDate[d][key] === v).length; return `<span class="adh"><i class="s-yes" style="flex-grow:${c('yes')}"></i><i class="s-partial" style="flex-grow:${c('partial')}"></i><i class="s-no" style="flex-grow:${c('no')}"></i><i class="s-none" style="flex-grow:${n - c('yes') - c('partial') - c('no')}"></i></span>`; };
+      weekRows.unshift(`<div class="adhrow"><span>${pw ? `Wk ${pw.week_number}` : shortDate(ws)}</span>${share('nutrition_status')}${share('training_status')}</div>`);
+    }
+    const nextTarget = weeks.find((w) => w.weight_target_kg_monday != null && w.start_date >= startOfWeek(today));
+    body.innerHTML = `<section class="panel"><h2>Weight <small>Dots are daily readings, the line is the 7-day average</small></h2>${chart}
+        ${nextTarget ? `<p class="hint">Next Monday target: ${Number(nextTarget.weight_target_kg_monday).toFixed(1)} kg (${formatDateShort(nextTarget.start_date)})</p>` : ''}</section>
+      <div class="cols"><section class="panel"><h2>Day by day <small>Top: food. Bottom: training.</small></h2>
+        <div class="hgrid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l) => `<span class="hw">${l}</span>`).join('')}${gDates.map(cell).join('')}</div>
+        <p class="legend"><i class="s-yes"></i>Yes <i class="s-partial"></i>Partly <i class="s-no"></i>No <i class="s-none"></i>Not logged</p></section>
+      <div class="stack"><section class="panel"><h2>Streaks</h2><div class="stats"><div><b class="big">${streak('nutrition_status')}</b><span>day food streak</span></div><div><b class="big">${streak('training_status')}</b><span>day training streak</span></div><div><b class="big">${logged}/${dates.length}</b><span>days logged</span></div></div>
+        <p class="hint">A streak counts days answered "Yes" to "How did today go?". Partly or no breaks it.</p></section>
+        <section class="panel"><h2>Adherence by week <small>Food · Training</small></h2>${weekRows.join('')}</section></div></div>`;
+    return;
+  }
+
+  // ---- Check-in: one per plan week (weight, leaks, a win, something hard) ----
+  if (tab === 'checkin') {
+    const wk = weeks.find((w) => w.start_date === params[1]) || weeks.find((w) => today >= w.start_date && today <= w.end_date) || (weeks.length && today > weeks[weeks.length - 1].end_date ? weeks[weeks.length - 1] : weeks[0]);
+    if (!wk) { body.innerHTML = `<section class="panel">${empty('The training plan is not loaded.')}</section>`; return; }
+    const list = await db.planCheckins.list(userId(), 'v2');
+    const ex = list.find((c) => c.week_number === wk.week_number) || {};
+    body.innerHTML = `<section class="panel"><h2>Week ${wk.week_number} check-in <small>${formatDateShort(wk.start_date)} · ${esc(wk.phase)}</small></h2>
+        <div class="weeknav"><select class="field" data-act="ciweek" aria-label="Week">${options(weeks.map((w) => [w.start_date, `Week ${w.week_number} · ${formatDateShort(w.start_date)}`]), wk.start_date)}</select></div>
+        ${wk.weight_target_kg_monday != null ? `<p class="hint">Monday target: ${Number(wk.weight_target_kg_monday).toFixed(1)} kg</p>` : ''}
+        <form data-act="checkin" class="stack"><div class="wrapf"><label class="lab">Monday weight (kg)<input class="field" type="number" step="0.1" name="weight_kg" value="${ex.weight_kg ?? ''}"></label>
+          <label class="lab">Leaks this week<input class="field" type="number" min="0" step="1" name="leak_count" value="${ex.leak_count ?? ''}"></label></div>
+          <label class="lab">One win<textarea class="field" rows="2" name="win">${esc(ex.win || '')}</textarea></label>
+          <label class="lab">One thing that was hard<textarea class="field" rows="2" name="challenge">${esc(ex.challenge || '')}</textarea></label>
+          <div class="btns"><button class="btn pri">${ex.week_number ? 'Update check-in' : 'Save check-in'}</button></div></form></section>
+      <section class="panel"><h2>Previous check-ins</h2>${list.length ? list.map((c) => `<div class="row"><span class="rt"><span class="rtitle">Week ${c.week_number}</span>
+        <span class="rmeta"><span>${c.weight_kg != null ? `${c.weight_kg} kg` : 'no weight'}</span><span>${c.leak_count != null ? `${c.leak_count} leak${c.leak_count === 1 ? '' : 's'}` : ''}</span></span>
+        ${c.win ? `<span>Win: ${esc(c.win)}</span>` : ''}${c.challenge ? `<span class="hint">Hard: ${esc(c.challenge)}</span>` : ''}</span></div>`).join('') : empty('No check-ins yet.')}</section>`;
+    wire(body, {
+      ciweek(n){ location.hash = `#/health/checkin/${n.value}`; },
+      async checkin(f){
+        const v = new FormData(f);
+        const num = (k) => (v.get(k) === '' ? null : Number(v.get(k)));
+        await db.planCheckins.upsert(userId(), 'v2', wk.week_number, { weight_kg: num('weight_kg'), leak_count: num('leak_count'), win: v.get('win'), challenge: v.get('challenge') });
+        toast('Check-in saved');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    });
+    return;
+  }
+
   // ---- Lifts (Hevy) ----
   let L = null, open = null;
   function drawLifts(){
@@ -111,8 +192,72 @@ export async function render(root, params){
         <div class="stats"><div><b class="big">${month}</b><span>workouts in 4 weeks</span></div><div><b class="big">${prs.filter((p) => p.at >= new Date(Date.now() - 28 * 864e5).toISOString()).length}</b><span>personal bests in 4 weeks</span></div><div><b class="big">${summaries.length}</b><span>lifts tracked</span></div></div>
         <div class="btns"><button class="btn pri" data-act="sync">Sync now</button></div><p class="hint">Lifts are logged in Hevy and mirrored here. Dumbbell weights are the total of both dumbbells. Estimated 1RM uses working sets of 1 to 12 reps.</p></section>
       <div class="cols"><section class="panel"><h2>Your lifts <small>Best estimated 1RM, last 12 sessions</small></h2>${list || empty('No lifts in the last 12 weeks. Tap Sync now.')}</section>
-      <section class="panel"><h2>Recent personal bests</h2>${prs.length ? prs.slice(0, 10).map((p) => `<div class="row"><span class="rt"><span class="rtitle">${esc(p.title)}</span><span class="rmeta"><span>${weightLabel(p.weight, p.reps, p.dumbbell)}</span><span>${shortDate(p.at)}</span></span></span><span class="right"><b>${round1(p.e1rm)} kg</b><br><span class="up">+${round1(p.e1rm - p.previous)}</span></span></div>`).join('') : empty('No personal bests yet.')}</section></div>`;
+      <div class="stack"><section class="panel"><h2>Recent personal bests</h2>${prs.length ? prs.slice(0, 10).map((p) => `<div class="row"><span class="rt"><span class="rtitle">${esc(p.title)}</span><span class="rmeta"><span>${weightLabel(p.weight, p.reps, p.dumbbell)}</span><span>${shortDate(p.at)}</span></span></span><span class="right"><b>${round1(p.e1rm)} kg</b><br><span class="up">+${round1(p.e1rm - p.previous)}</span></span></div>`).join('') : empty('No personal bests yet.')}</section>
+      ${postPanel()}</div></div>`;
+    drawPost();
   }
+  // Instagram posts (@cmfitnesslog), drawn on canvas by the Fitness app's own poster code.
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const post = { kind: 'pr', pr: 0, month: null, goal: '' };
+  function months(){
+    const seen = new Map();
+    L.workouts.forEach((w) => { const d = new Date(w.start_time); const k = `${d.getFullYear()}-${d.getMonth()}`; if (!seen.has(k)) seen.set(k, `${MONTHS[d.getMonth()]} ${d.getFullYear()}`); });
+    return Array.from(seen.entries()).reverse();
+  }
+  function postPanel(){
+    const ms = months();
+    if (!post.month && ms.length) post.month = ms[0][0];
+    const kinds = [['pr', 'PB story'], ['month', 'Month story'], ['carousel', 'Month carousel']];
+    const controls = post.kind === 'pr'
+      ? (L.prs.length ? `<label class="lab">Personal best<select class="field" data-act="postpr">${options(L.prs.slice(0, 30).map((p, i) => [i, `${p.title}: ${weightLabel(p.weight, p.reps, p.dumbbell)}, ${shortDate(p.at)}`]), post.pr)}</select></label>` : empty('No personal bests to post yet.'))
+      : `<label class="lab">Month<select class="field" data-act="postmonth">${options(ms, post.month)}</select></label>${post.kind === 'carousel' ? `<label class="lab">Next month's focus (last slide)<input class="field" data-act="postgoal" maxlength="90" value="${esc(post.goal)}" placeholder="e.g. 140 kg Romanian deadlift for 5"></label>` : ''}`;
+    return `<section class="panel" id="postPanel"><h2>Make a post <small>Stories 9:16, slides 4:5</small></h2>
+      <div class="seg">${kinds.map(([k, l]) => `<button class="${post.kind === k ? 'on' : ''}" data-act="postkind" data-k="${k}">${l}</button>`).join('')}</div>${controls}
+      <div class="postprev" id="postPreview"></div><div class="btns"><button class="btn pri" data-act="postshare">Share or download</button></div>
+      <p class="hint">Nothing is uploaded: your phone's share sheet opens, or the images download.</p></section>`;
+  }
+  async function buildPost(){
+    if (!document.getElementById('poster-fonts')) {
+      const l = document.createElement('link'); l.id = 'poster-fonts'; l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Work+Sans:wght@500;600&display=swap';
+      document.head.appendChild(l);
+    }
+    await ensureFonts();
+    if (post.kind === 'pr') {
+      const pr = L.prs[post.pr]; if (!pr) return [];
+      const ex = L.exercises.get(pr.exerciseId);
+      return [prStory(pr, ex ? ex.sessions.filter((x) => x.at <= pr.at).slice(-10).map((x) => x.bestE1rm) : [])];
+    }
+    if (!post.month) return [];
+    const [y, m] = post.month.split('-').map(Number);
+    const summary = monthSummary(L.exercises, L.workouts, L.prs, y, m);
+    if (post.kind === 'month') return [monthStory(summary)];
+    const trends = {}, endIso = new Date(y, m + 1, 1).toISOString();
+    for (const ex of L.exercises.values()) trends[ex.title] = ex.sessions.filter((x) => x.at < endIso).slice(-10).map((x) => x.bestE1rm);
+    return carouselSlides(summary, { trends, nextGoal: post.goal });
+  }
+  let previewToken = 0;
+  async function drawPost(){
+    const host = body.querySelector('#postPreview'); if (!host) return;
+    const t = ++previewToken, cs = await buildPost();
+    if (t !== previewToken) return;
+    host.replaceChildren(...cs);
+    if (!cs.length) host.innerHTML = '<p class="hint">Nothing to preview yet.</p>';
+  }
+  const redrawPost = () => { const p = body.querySelector('#postPanel'); if (!p) return; const tmp = document.createElement('div'); tmp.innerHTML = postPanel(); p.replaceWith(tmp.firstElementChild); drawPost(); };
+  wire(root, {
+    postkind(n){ post.kind = n.dataset.k; redrawPost(); },
+    postpr(n){ post.pr = Number(n.value); drawPost(); },
+    postmonth(n){ post.month = n.value; drawPost(); },
+    postgoal(n){ post.goal = n.value; drawPost(); },
+    async postshare(n){
+      const cs = await buildPost(); if (!cs.length) { toast('Nothing to post yet'); return; }
+      n.disabled = true;
+      try { const r = await shareOrDownload(cs, post.kind === 'pr' ? 'cmfitnesslog-pb' : post.kind === 'month' ? 'cmfitnesslog-month' : 'cmfitnesslog-carousel'); if (r === 'downloaded') toast(cs.length > 1 ? `${cs.length} images downloaded` : 'Image downloaded'); }
+      catch (err) { toast(err.message); } finally { n.disabled = false; }
+    }
+  });
+
   async function lifts(){
     const since = new Date(Date.now() - 400 * 864e5).toISOString();
     try {

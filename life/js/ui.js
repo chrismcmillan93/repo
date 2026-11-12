@@ -28,14 +28,14 @@ export function wire(el, acts){
   async function run(node, e){
     const fn = acts[node.dataset.act];
     if (!fn) return;
-    try { await fn(node, e); } catch (err) { console.error(err); toast(err.message || 'Something went wrong'); }
+    try { await fn(node, e); } catch (err) { console.error(err); toast(String(err.message || 'Something went wrong').replace(/^(Type)?Error:\s*/, '')); }
   }
   el.addEventListener('click', (e) => {
     const n = e.target.closest('[data-act]');
     if (n && !n.matches('input, select, textarea, form')) run(n, e);
   });
   el.addEventListener('change', (e) => {
-    const n = e.target.closest('input[data-act], select[data-act]');
+    const n = e.target.closest('input[data-act], select[data-act], textarea[data-act]');
     if (n) run(n, e);
   });
   el.addEventListener('submit', (e) => {

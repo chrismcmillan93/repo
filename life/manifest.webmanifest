@@ -1,0 +1,20 @@
+{
+  "name": "Life",
+  "short_name": "Life",
+  "description": "Goals, to-dos, training, food, lists and events in one place.",
+  "start_url": "./#/today",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0E1415",
+  "theme_color": "#172022",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "url": "./#/today" },
+    { "name": "Health", "url": "./#/health/day" },
+    { "name": "To-dos", "url": "./#/tasks" }
+  ]
+}
