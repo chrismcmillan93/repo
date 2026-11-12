@@ -471,6 +471,17 @@ PIN was deliberately left out**, same rule as the Divalux PIN. Who the 2 adults 
 recorded; the Krabi leg's party is Chris, Andrew and Craig. Once the pickup time is
 known, set the entry's `time_label`.
 
+**Baan Rim Pa reservation requested (2026-11-12).** Pure data — migration
+`thailand_baan_rim_pa_reservation_requested`. A reservation *request* went in through
+the restaurant's website for 19 Nov, 18:30; the site said it was "waiting for our
+confirmation", so it is deliberately recorded as **not confirmed**: a new 19 Nov
+`itinerary_entries` row (`kind` `optional`, `status` `PROPOSED`, 18:30, Phuket leg) and
+the existing "Reserve Baan Rim Pa" `bookings` row retitled "Confirm Baan Rim Pa
+reservation" and left **open** (`is_done` false). The `items` shortlist row was left
+unticked (nothing confirmed or priced). Party size wasn't on the confirmation, so none is
+recorded. When the restaurant replies: set the entry's `status` to `FIXED`, tidy its
+text, and tick the booking.
+
 **Installable PWA + offline (2026-10-31).** `/thailand` installs to a phone's Home
 Screen and shows all its trip data with no signal. Two independent layers — the code
 shell (service worker) and the trip data (IndexedDB snapshot) — plus a hard rule that
