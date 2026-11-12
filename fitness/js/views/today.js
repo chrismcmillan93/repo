@@ -13,6 +13,7 @@ import { qs, qsa, escapeHtml, formatDateFull, statusLabel, startOfWeek, endOfWee
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { planChipsHtml, planLinesHtml, planModeHelpHtml, planWeekHtml } from '../planDay.js';
 import { sessionOptions, pickTitle } from '../sessionChoices.js';
+import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, sessionFacts, describeScaling, adjustEnabled, setAdjustEnabled } from '../nutrition.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
@@ -52,6 +53,32 @@ async function saveCheck(itemId, isChecked, statusEl){
     toast(`Couldn't save that tick — ${friendlyError(res.error)}. Will retry.`);
   }
   return res;
+}
+
+// ---- nutrition plan (v4), scaled to your weight ---------------------------
+// For dates inside the nutrition plan, the day's meals, kcal target and day
+// type come from js/nutrition.js (scaled to your weigh-ins) and replace what
+// the day bundle carries from Block 2's older meal tables. Outside the plan
+// (Block 2's own dates), the bundle's meals are used as before.
+let nutritionInfo = null; // { day, weightInfo } for the date on screen, or null
+
+async function applyNutrition(bundle){
+  nutritionInfo = null;
+  const nut = await loadNutrition();
+  if (!inNutritionPlan(nut, state.currentDate)) return;
+  const weightInfo = await effectiveWeight(userId(), state.currentDate);
+  const { miles, isRaceDay } = sessionFacts(bundle);
+  const day = buildDay(nut, { date: state.currentDate, weight: weightInfo.weight, enabled: adjustEnabled(), miles, isRaceDay });
+  bundle.day_type = day.key;
+  bundle.meals = day.meals;
+  bundle.target = { kcal_target: day.totals.kcal, protein_floor_g: Number(nut.plan.protein_floor_g) };
+  nutritionInfo = { day, weightInfo };
+}
+
+function nutritionNoteHtml(){
+  if (!nutritionInfo) return '';
+  return `<p class="nutrition-note">${escapeHtml(describeScaling(nutritionInfo.day, nutritionInfo.weightInfo))}</p>
+    <label class="nutrition-toggle"><input type="checkbox" id="adjustToggle" ${adjustEnabled() ? 'checked' : ''}> Adjust to my weight</label>`;
 }
 
 function fuelBarHtml(kind, label, consumed, target, unit){
@@ -346,6 +373,7 @@ function renderMealsAndTraining(main, bundle){
   const mealsHtml = bundle.day_type
     ? `<section class="panel">
         <h2 class="panel-title">Meals</h2>
+        ${nutritionNoteHtml()}
         <ul class="tick-list">${(bundle.meals || []).map((m, i) => mealRowHtml(m, bundle.day_type, !!checks[`meal:${bundle.day_type}:${m.slot_order}`], i + 1)).join('')}</ul>
       </section>`
     : '';
@@ -374,6 +402,16 @@ function renderMealsAndTraining(main, bundle){
 
   wirePicker(main, bundle);
   wireTodaySwap(main, bundle);
+
+  const adjust = qs('#adjustToggle', main);
+  if (adjust) {
+    adjust.addEventListener('change', async () => {
+      setAdjustEnabled(adjust.checked);
+      await applyNutrition(bundle);
+      renderMealsAndTraining(main, bundle);
+      computeTotals(main, bundle);
+    });
+  }
 
   // Expand/collapse a meal's foods list -- separate from the tick-box above,
   // and independent of the checked state (opening a meal to look at it
@@ -472,6 +510,12 @@ function renderWeight(main, bundle, weightCtx){
   input.addEventListener('blur', async () => {
     const val = input.value === '' ? null : Number(input.value);
     await saveLogField({ weight_kg: val }, statusEl);
+    // A new weigh-in rescales today's food (rice, sweet potato, oats, kcal target).
+    if (nutritionInfo) {
+      await applyNutrition(bundle);
+      renderMealsAndTraining(main, bundle);
+      computeTotals(main, bundle);
+    }
   });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
 }
@@ -551,6 +595,7 @@ export async function render(main){
 
   // Nutrition only exists inside Block 2. Outside it, hide the fuel panel
   // rather than showing empty bars.
+  await applyNutrition(bundle);
   if (!bundle.day_type) qs('#fuelSection', main).hidden = true;
 
   await loadSwapContext(bundle);

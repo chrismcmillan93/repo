@@ -1,62 +1,66 @@
 // The plan, read-only: the Edale 50km training plan week by week, the lift
-// sessions and lift modes, Block 2's nutrition (weekly targets, meal templates)
-// and the standing rules.
+// sessions and lift modes, and the nutrition plan (day types scaled to your
+// weight, plus its rules).
 import { qs, qsa, escapeHtml, formatDateShort, todayStr, round1 } from '../utils.js';
 import { mealAccordionHtml, wireMealAccordionToggles } from '../mealCard.js';
 import { planChipsHtml, planLinesHtml, planWeekHtml, modeLabel } from '../planDay.js';
+import { loadNutrition, buildDay, effectiveWeight, describeScaling, adjustEnabled, inNutritionPlan } from '../nutrition.js';
 import { db } from '../db.js';
 import { state } from '../state.js';
 
-const MEAL_DAY_TABS = [
-  { key: 'lift', tabLabel: 'Lift', heading: 'Lift days (Mon / Wed / Fri)' },
-  { key: 'run', tabLabel: 'Run', heading: 'Run days (Tue / Thu / Sat)' },
-  { key: 'rest', tabLabel: 'Rest', heading: 'Rest day (Sun)' }
-];
+// Module-level, not state.js -- purely "which tab is open", not worth a DB
+// round trip or persisting. Resets to the first day type on a hard reload.
+let activeMealTab = null;
 
-// Module-level, not state.js -- this is purely "which tab is open," not
-// data worth a DB round trip or persisting across sessions. Resets to
-// 'lift' on a hard reload; fine either way per the brief.
-let activeMealTab = 'lift';
-
-// Same idea for the training plan's week pager -- which week is showing is UI
-// state, not worth persisting. Starts null so render() can default it to
-// whichever plan week contains today (falling back to week 1) on first load.
+// Same idea for the training plan's week pager. Starts null so render() can
+// default it to the plan week containing today (falling back to week 1).
 let activeTrainingWeek = null;
 
-// Same Meal-N accordion Today uses (mealCard.js) -- read-only here (no
-// itemId/checked passed, so mealAccordionHtml omits the tick-box), each
-// meal's own foods and swap options shown the same way.
-function mealDayHtml(dayType, heading, meals){
-  const dayMeals = meals
-    .filter((m) => m.day_type === dayType && m.week_number === null)
-    .sort((a, b) => a.slot_order - b.slot_order);
-  // The day type's full total if every meal on it is eaten -- sums each
-  // meal's own kcal/protein_g/carbs_g/fat_g (already the "real foods only"
-  // total; swap options never count toward it), not a per-food re-sum.
-  const totals = dayMeals.reduce((acc, m) => ({
-    kcal: acc.kcal + Number(m.kcal),
-    protein: acc.protein + Number(m.protein_g),
-    carbs: acc.carbs + Number(m.carbs_g ?? 0),
-    fat: acc.fat + Number(m.fat_g ?? 0)
-  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+// Same Meal-N accordion Today uses (mealCard.js), read-only here.
+function mealDayHtml(day){
+  const t = day.totals;
   return `
     <div class="plan-meal-block">
-      <h3 class="plan-subhead">${escapeHtml(heading)}</h3>
-      <ul class="tick-list">${dayMeals.map((m, i) => mealAccordionHtml(m, i + 1)).join('')}</ul>
+      <h3 class="plan-subhead">${escapeHtml(day.label)}${day.appliesTo ? ` · ${escapeHtml(day.appliesTo)}` : ''}</h3>
+      <ul class="tick-list">${day.meals.map((m, i) => mealAccordionHtml(m, i + 1)).join('')}</ul>
       <div class="plan-day-totals">
         <span class="plan-day-totals-label">Day total</span>
-        <span class="plan-day-totals-figures">${round1(totals.kcal)} kcal · ${round1(totals.protein)}g protein · ${round1(totals.carbs)}g carbs · ${round1(totals.fat)}g fat</span>
+        <span class="plan-day-totals-figures">${t.kcal} kcal · ${round1(t.protein_g)}g protein · ${round1(t.carbs_g)}g carbs · ${round1(t.fat_g)}g fat</span>
       </div>
     </div>`;
 }
 
-function mealTabsHtml(active){
+function mealTabsHtml(list, active){
   return `
-    <div class="segmented" role="tablist" aria-label="Meal day type">
-      ${MEAL_DAY_TABS.map((t) => `
-        <button type="button" class="segmented-btn ${t.key === active ? 'is-active' : ''}" role="tab" aria-selected="${t.key === active}" data-tab="${t.key}">${t.tabLabel}</button>
+    <div class="segmented segmented-wrap" role="tablist" aria-label="Day type">
+      ${list.map((t) => `
+        <button type="button" class="segmented-btn ${t.key === active ? 'is-active' : ''}" role="tab" aria-selected="${t.key === active}" data-tab="${escapeHtml(t.key)}">${escapeHtml(t.label)}</button>
       `).join('')}
     </div>`;
+}
+
+function ruleList(items){
+  return `<ul class="plan-rule-list">${items.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`;
+}
+
+// The plan's own rules, grouped. Text comes straight from the plan data.
+function nutritionRulesHtml(plan){
+  const r = plan.rules || {};
+  const dinner = r.dinner_rule || {};
+  const lr = r.long_run_scaling || {};
+  const inRun = lr.in_run_carbs_g_per_hour || {};
+  const group = (title, body) => `<details class="plan-rule-group"><summary>${escapeHtml(title)}</summary>${body}</details>`;
+  return `
+    <section class="panel">
+      <h2 class="panel-title">Nutrition rules</h2>
+      ${group('Food rules', ruleList(r.food_rules || []))}
+      ${group('Dinner and the chicken swap', `<p>${escapeHtml(dinner.default || '')}</p><p>${escapeHtml(dinner.chicken_swap || '')}</p><p class="plan-ex-note">${escapeHtml(dinner.note || '')}</p>`)}
+      ${r.treat_slot ? group('Treat slot', `<p>${escapeHtml((r.treat_slot.days || []).join(' and '))}: ${escapeHtml(r.treat_slot.rule)}</p>`) : ''}
+      ${group('Long runs and gels', `<p>${escapeHtml(lr.reference || '')}</p><p>${escapeHtml(lr.how || '')} (${escapeHtml(lr.kcal_per_extra_mile)} kcal and ${escapeHtml(lr.carbs_g_per_extra_mile)} g carbs per extra mile.)</p><p>${escapeHtml(lr.gel_note || '')}</p>${ruleList(Object.entries(inRun).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v} g/h`))}<p class="plan-ex-note">${escapeHtml(lr.note || '')}</p>`)}
+      ${group('Phases', `<ul class="plan-rule-list">${(r.phase_rules || []).map((p) => `<li><strong>${escapeHtml(p.weeks)}</strong>: ${escapeHtml(p.rule)}</li>`).join('')}</ul>`)}
+      ${group('If the scale stalls or drops too fast', ruleList(r.adjust_rules || []))}
+      ${group('Assumptions to confirm', ruleList(r.assumptions_to_confirm || []))}
+    </section>`;
 }
 
 // ---- training plan (v2) ----------------------------------------------------
@@ -114,32 +118,30 @@ function liftSessionsHtml(templates, modes){
 }
 
 export async function render(main){
-  const block = await db.blocks.getLatest();
   if (!state.plan) state.plan = await db.trainingPlans.get('v2').catch(() => null);
   const plan = state.plan;
-  if (!block && !plan) {
+  const nut = await loadNutrition();
+  if (!plan && !nut) {
     main.innerHTML = '<div class="empty-state"><strong>No plan yet.</strong><p>Add one via a migration or SQL insert.</p></div>';
     return;
   }
 
-  const [weeks, targets, meals, rules, planWeeks, planDays, liftTemplates, liftModes] = await Promise.all([
-    block ? db.blockWeeks.list(block.id) : Promise.resolve([]),
-    block ? db.weekTargets.list(block.id) : Promise.resolve([]),
-    block ? db.mealTemplates.list(block.id) : Promise.resolve([]),
-    db.rules.list(),
+  const [planWeeks, planDays, liftTemplates, liftModes, weightInfo] = await Promise.all([
     plan ? db.planWeeks.list(plan.plan_version) : Promise.resolve([]),
     plan ? db.planDays.listRange(plan.plan_version, plan.start_date, plan.end_date) : Promise.resolve([]),
     plan ? db.liftTemplates.list(plan.plan_version).catch(() => []) : Promise.resolve([]),
-    plan ? db.liftModes.list(plan.plan_version).catch(() => []) : Promise.resolve([])
+    plan ? db.liftModes.list(plan.plan_version).catch(() => []) : Promise.resolve([]),
+    nut ? effectiveWeight(state.session.user.id, todayStr()) : Promise.resolve({ weight: null })
   ]);
 
-  const targetsByWeek = {};
-  targets.forEach((t) => {
-    targetsByWeek[t.week_number] = targetsByWeek[t.week_number] || {};
-    targetsByWeek[t.week_number][t.day_type] = t;
-  });
   const daysByWeek = {};
   planDays.forEach((d) => { (daysByWeek[d.week_number] = daysByWeek[d.week_number] || []).push(d); });
+
+  // Nutrition day types, scaled to your weight and shown for today's phase
+  // (or the first day of the plan if it hasn't started).
+  const refDate = nut && inNutritionPlan(nut, todayStr()) ? todayStr() : nut ? nut.plan.start_date : null;
+  const nutDays = nut ? nut.dayTypeList.map((t) => buildDay(nut, { date: refDate, key: t.key, weight: weightInfo.weight, enabled: adjustEnabled() })) : [];
+  if (nut && (!activeMealTab || !nut.dayTypes[activeMealTab])) activeMealTab = nut.dayTypeList[0].key;
 
   main.innerHTML = `
     ${plan ? `<section class="panel">
@@ -151,48 +153,24 @@ export async function render(main){
     </section>
     ${liftSessionsHtml(liftTemplates, liftModes)}` : ''}
 
-    ${block ? `<section class="panel">
-      <h2 class="panel-title">${escapeHtml(block.name)} — nutrition</h2>
-      <p class="plan-dates">${escapeHtml(formatDateShort(block.start_date))} – ${escapeHtml(formatDateShort(block.end_date))}</p>
-      ${block.goal ? `<p class="plan-goal">${escapeHtml(block.goal)}</p>` : ''}
-    </section>
-
-    <section class="panel">
-      <h2 class="panel-title">Weekly nutrition targets</h2>
-      <table class="plan-table plan-targets-table">
-        <thead><tr><th>Week</th><th>Lift</th><th>Run</th><th>Rest</th></tr></thead>
-        <tbody>
-          ${weeks.map((w) => {
-            const t = targetsByWeek[w.week_number] || {};
-            const cell = (dt) => t[dt] ? `${t[dt].kcal_target} kcal / ${t[dt].protein_floor_g}g` : '—';
-            return `<tr><td>Wk ${w.week_number}${w.focus ? `<div class="plan-week-focus">${escapeHtml(w.focus)}</div>` : ''}</td><td>${cell('lift')}</td><td>${cell('run')}</td><td>${cell('rest')}</td></tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </section>
-
-    <section class="panel">
-      <h2 class="panel-title">Meal templates</h2>
-      ${mealTabsHtml(activeMealTab)}
+    ${nut ? `<section class="panel">
+      <h2 class="panel-title">Nutrition</h2>
+      <p class="plan-dates">${escapeHtml(nut.plan.title)}</p>
+      <p class="plan-goal">About ${Number(nut.plan.planned_avg_kcal).toLocaleString('en-GB')} kcal a day on average (${Number(nut.plan.planned_deficit_kcal)} kcal under maintenance). Protein floor ${Number(nut.plan.protein_floor_g)} g, aim ${Number(nut.plan.protein_aim_g)} g.</p>
+      <p class="nutrition-note">${escapeHtml(nutDays[0] ? describeScaling(nutDays[0], weightInfo) : '')} Saturday also moves with that week's long run, which Today and Week apply.</p>
+      ${mealTabsHtml(nut.dayTypeList, activeMealTab)}
       <div id="mealTemplatesContent"></div>
-    </section>` : ''}
-
-    <section class="panel">
-      <h2 class="panel-title">Standing rules</h2>
-      <ol class="plan-rules-list">
-        ${rules.map((r) => `<li><strong>${escapeHtml(r.title)}</strong> — ${escapeHtml(r.detail)}</li>`).join('')}
-      </ol>
     </section>
+    ${nutritionRulesHtml(nut.plan)}` : ''}
   `;
 
-  if (block) {
+  if (nut) {
     const renderMealTab = () => {
-      const tab = MEAL_DAY_TABS.find((t) => t.key === activeMealTab);
-      qs('#mealTemplatesContent', main).innerHTML = mealDayHtml(tab.key, tab.heading, meals);
+      const day = nutDays.find((d) => d.key === activeMealTab) || nutDays[0];
+      qs('#mealTemplatesContent', main).innerHTML = mealDayHtml(day);
       wireMealAccordionToggles(qs('#mealTemplatesContent', main));
     };
     renderMealTab();
-
     qsa('.segmented-btn', main).forEach((btn) => {
       btn.addEventListener('click', () => {
         if (btn.dataset.tab === activeMealTab) return;

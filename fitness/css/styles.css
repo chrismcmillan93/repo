@@ -1054,3 +1054,14 @@ a { color: inherit; }
 }
 .theme-btn:hover { color: var(--paper); border-color: var(--slate); }
 .pick-session-field { margin-top: 10px; }
+
+/* ---------------- Nutrition plan v4 ---------------- */
+.nutrition-note { color: var(--slate); font-size: 0.84rem; margin: 0 0 8px; }
+.nutrition-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; margin: 0 0 10px; cursor: pointer; }
+.nutrition-toggle input { width: 20px; height: 20px; accent-color: var(--sage); }
+.segmented-wrap { flex-wrap: wrap; }
+.plan-rule-group { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.plan-rule-group > summary { cursor: pointer; font-weight: 600; }
+.plan-rule-group p { margin: 8px 0 0; font-size: 0.9rem; }
+.plan-rule-list { margin: 8px 0 0; padding-left: 20px; font-size: 0.9rem; }
+.plan-rule-list li { margin-bottom: 5px; }

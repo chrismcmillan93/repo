@@ -172,6 +172,25 @@ export const db = {
 
   // The v2 training plan (Edale 50km). Read-only to the app; every list is
   // scoped by plan_version, same belt-and-suspenders rule as the block tables.
+  // Nutrition plan (v4). Read-only to the app; quantities are scaled in js/nutrition.js.
+  nutrition: {
+    async getPlan(planVersion){
+      const { data, error } = await supabase.from('nutrition_plans').select('*').eq('plan_version', planVersion).maybeSingle();
+      checkError(error);
+      return data;
+    },
+    async listDayTypes(planVersion){
+      const { data, error } = await supabase.from('nutrition_day_types').select('*').eq('plan_version', planVersion).order('sort_order');
+      checkError(error);
+      return data || [];
+    },
+    async listPhases(planVersion){
+      const { data, error } = await supabase.from('nutrition_phases').select('*').eq('plan_version', planVersion).order('from_date');
+      checkError(error);
+      return data || [];
+    }
+  },
+
   trainingPlans: {
     async get(planVersion){
       const { data, error } = await supabase

@@ -8,6 +8,7 @@ import { qs, qsa, escapeHtml, startOfWeek, endOfWeek, addDays, dateRange, format
   resolveSessionsForDay } from '../utils.js';
 import { planChipsHtml, planLinesHtml, planWeekHtml } from '../planDay.js';
 import { mountCalendar } from '../calendar.js';
+import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, adjustEnabled } from '../nutrition.js';
 import { sourcesFor, effectiveDay, swapDays, resetWeek, dayOptionsHtml } from '../daySwap.js';
 import { dateBounds } from './today.js';
 import { db } from '../db.js';
@@ -300,6 +301,10 @@ export async function render(main){
     return weekNumber ? targets.find((t) => t.week_number === weekNumber && t.day_type === dayType) : null;
   }
 
+  // Nutrition plan (v4): each day's kcal / protein / meals, scaled to your weight.
+  const nut = await loadNutrition();
+  const weightInfo = nut && state.session ? await effectiveWeight(state.session.user.id, weekEnd) : { weight: null };
+
   // Day swaps: a day may show another day's planned session (same week only).
   const planByDate = Object.fromEntries(planDays.map((p) => [p.date, p]));
   const sources = sourcesFor(days, swaps);
@@ -322,8 +327,16 @@ export async function render(main){
       cardio: (pickNames.find((x) => x.log_date === d && x.kind === 'cardio') || {}).session
     };
     const training = trainingFor(planDay, dayPicks, dayPickNames) || { title: 'Pick a session', detail: '' };
-    const food = target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
-    const meals = dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
+    // Dates inside the nutrition plan use it; Block 2's own dates keep their old meal tables.
+    const nday = inNutritionPlan(nut, d) ? buildDay(nut, {
+      date: d, weight: weightInfo.weight, enabled: adjustEnabled(),
+      miles: planDay && planDay.kind === 'long' && planDay.distance_miles != null ? Number(planDay.distance_miles) : null,
+      isRaceDay: !!planDay && planDay.type === 'race'
+    }) : null;
+    const food = nday ? `${nday.totals.kcal} kcal · ${Math.round(nday.totals.protein_g)}g protein`
+      : target ? `${target.kcal_target} kcal · ${target.protein_floor_g}g protein` : '';
+    const meals = nday ? nday.meals.map((m) => ({ time_label: m.time_label, name: m.name }))
+      : dayType ? mealsForDay(dayType, weekNumber, mealTemplates) : [];
     return `
       <li class="week-day-row ${isToday ? 'is-today' : ''}" data-date="${d}">
         <button type="button" class="week-day-btn">
