@@ -5,7 +5,8 @@ import { toast } from '../fit/utils.js';
 import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush } from '../pwa.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
-import { todayStr } from '../fit/utils.js';
+import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
+import { isAway, awayUntil, startAway, endAway } from '../away.js';
 import { daysBetween } from '../lib.js';
 
 export async function render(root){
@@ -61,6 +62,12 @@ export async function render(root){
         ${devices.length ? `<p class="hint">Sending to ${devices.length} device${devices.length === 1 ? '' : 's'}: ${devices.map((d) => esc(d.device || 'device')).join(', ')}. Times are UK time.</p>` : ''}</section>
     </div><div class="stack">
       ${garminHtml()}
+      <section class="panel"><h2>Away mode ${isAway() ? pill('On', 'good') : ''}</h2>
+        ${isAway() ? `<p>Away until <b>${formatDateShort(awayUntil())}</b>. Reminders, review prompts and nudges are paused and nothing counts as missed. Everything is back to normal that day.</p>
+          <form class="add wrapf" data-act="awaystart"><label class="lab">Back on<input class="field" type="date" name="until" required min="${addDays(todayStr(), 1)}" value="${awayUntil()}"></label><button class="btn">Change date</button></form>
+          <div class="btns"><button class="btn" data-act="awayend">I'm back, switch it off now</button></div>`
+        : `<p class="hint">Going away? Pick the day you're back. Until then there are no reminders, review prompts or nudges, overdue tasks wait for you, and nothing counts as missed. Nothing you've logged is deleted.</p>
+          <form class="add wrapf" data-act="awaystart"><label class="lab">Back on<input class="field" type="date" name="until" required min="${addDays(todayStr(), 1)}"></label><button class="btn pri">Start away mode</button></form>`}</section>
       <section class="panel"><h2>Bring things over from the Goals app</h2><p class="hint">Copies your goals and milestones, wishlist, notes pages and Playbook progress. Anything already copied is skipped, so it's safe to run again. The Goals app itself isn't changed.</p>
         <div class="btns"><button class="btn" data-act="import">Import from Goals</button></div></section>
       <section class="panel"><h2>Other apps</h2><div class="btns"><a class="btn" href="../goals/">Goals</a><a class="btn" href="../fitness/">Fitness</a></div>
@@ -96,6 +103,14 @@ export async function render(root){
       await refresh();
     },
     async import(b){ b.disabled = true; toast(importSummary(await importFromGoalsApp())); b.disabled = false; },
+    async awaystart(f){
+      const back = formData(f).until;
+      if (!back || back <= todayStr()) { toast('Pick a date after today.'); return; }
+      const r = await startAway(back);
+      toast(`Away until ${formatDateShort(back)}${r.tasks ? `. ${r.tasks} overdue task${r.tasks === 1 ? '' : 's'} moved to that day` : ''}.`);
+      await refresh();
+    },
+    async awayend(){ await endAway(); toast('Away mode off. Welcome back.'); await refresh(); },
     signout(){ document.getElementById('signOut').click(); }
   });
   await refresh();

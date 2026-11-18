@@ -129,6 +129,9 @@ async function tick(vapid: unknown){
   let sent = 0;
   for (const [userId, list] of byUser) {
     const { data: set } = await life().from('settings').select('data').eq('user_id', userId).maybeSingle();
+    // Away mode (set in the app): nothing is sent until the return date.
+    const back = (set && set.data && (set.data as Record<string, any>).away || {}).until;
+    if (typeof back === 'string' && date < back) continue;
     const p = prefsOf(set ? set.data : null);
     // Due once a day, from the chosen time until 3 hours after (so a late cron run still sends, a very late one doesn't).
     const due = (on: boolean, at: string) => on && now >= minutes(at) && now < minutes(at) + 180;

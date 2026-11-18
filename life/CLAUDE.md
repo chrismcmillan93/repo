@@ -217,6 +217,44 @@ Same shape as Hevy: Garmin stays the source, an Edge Function fills read-only ta
   with stand-in data in Playwright, and auto-tick has not yet fired on a real planned run
   (the plan starts 2026-11-30).
 
+## Away mode (2026-11-18)
+
+A return date (`settings.data.away = { until: 'YYYY-MM-DD', applied: bool }`) after which
+everything is back to normal; **until then nothing counts against you and nothing nags**.
+Set from Settings → Away mode (start, change the date, or "I'm back"), or by writing the
+setting directly (as was done for the Nov 2026 trip abroad, `until` 2026-11-30): with
+`applied: false` the app does the one-off reset the next time it opens, then flips it to
+`true`. `js/away.js` holds all of it; `loadAway()` runs at sign-in before the first screen.
+Nothing logged is ever deleted except empty generated repeats (below). Away means
+`today < until`.
+
+- **No nudges:** Today shows one banner instead of every nudge (stalled goals, no
+  commitment, carried-over tasks, daily behind / monthly running out, review due, Garmin
+  key expiry). `paceInfo()` returns nothing, so no "N behind" or "days left" pills.
+- **No reviews due:** `dueReviews()` skips periods that ended on or before `until`
+  (weeks ending while away, the month that ends on the return date). The Review tab
+  says so; you can still start one by hand.
+- **No carry-over:** `carryOver()` does nothing while away, so overdue tasks wait and
+  `carried_count` doesn't climb.
+- **Goals can't go stalled:** `quietSince(goal)` = the later of the last progress and
+  `until`, so the 14-day "stalled" clock starts again on the return date. **Target dates
+  are not touched** (the Goals-app rule that dates never move silently still holds), so a
+  dated goal can show "Behind" pace on return; that is the real picture.
+- **No missed periods:** `ensureRecurring()` doesn't create a repeat's week or month that
+  was over by `until`, and `syncFit()` doesn't create or score Health's automatic weekly
+  commitments for those weeks, so the scorecard and 8-week average don't fill with zeros.
+- **The one-off reset** (`resetForBreak(until)`, on switching on): open tasks due before
+  `until` move to `until` (top-three flag and carry-over count cleared); repeat-generated
+  commitments with **nothing done** whose period was over by `until` are deleted (they
+  would otherwise show as 0% weeks). Commitments with progress, one-offs and Health's
+  rows are left alone.
+- **Push notifications:** `life-push` skips a user while `date < away.until` (London date),
+  so no morning brief, evening reminder or Sunday review prompt. Garmin sync is a
+  separate job and keeps running, so the data is there on return.
+- **Ending early** removes the setting only; nudges, carry-over and stalled goals work
+  again straight away from the real dates. `sw.js` `VERSION` bumped to `v3` for the new
+  `js/away.js` file.
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

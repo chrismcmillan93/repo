@@ -1,5 +1,6 @@
 // Goal maths and the shared "tick a task" behaviour.
 import * as store from './store.js';
+import { awayUntil, isAway, periodOver } from './away.js';
 import { todayStr, addDays, parseLocalDate, formatDateShort, startOfWeek, isoDow } from './fit/utils.js';
 
 const DAY = 86400000;
@@ -25,10 +26,16 @@ export function goalExpected(g, today = todayStr()){
   return span <= 0 ? 100 : clamp(100 * daysBetween(g.start_date, today) / span);
 }
 
+// When "no progress" starts counting: the last progress, or the day you're back from being away.
+export function quietSince(g){
+  const base = g.last_progress_on || g.start_date, back = awayUntil();
+  return back && back > base ? back : base;
+}
+
 // 'done' | 'stalled' (no progress for 14 days) | 'behind' (8+ points under pace) | 'on'
 export function goalState(g, pct, exp, today = todayStr()){
   if (pct >= 100) return 'done';
-  if (daysBetween(g.last_progress_on || g.start_date, today) >= 14) return 'stalled';
+  if (daysBetween(quietSince(g), today) >= 14) return 'stalled';
   if (exp != null && pct < exp - 8) return 'behind';
   return 'on';
 }
@@ -73,6 +80,7 @@ export async function setTaskDone(task, done){
 
 // Open tasks whose date has passed move to today and count one more carry-over.
 export async function carryOver(openTasks){
+  if (isAway()) return; // away mode: overdue tasks wait, nothing counts as carried over
   const today = todayStr();
   const late = openTasks.filter((t) => t.status === 'open' && t.due_date && t.due_date < today);
   await Promise.all(late.map((t) => store.tasks.set(t.id, { due_date: today, carried_count: t.carried_count + 1 })));
@@ -120,7 +128,8 @@ async function createDue(){
   }
   const have = await store.commitments.list((q) => q.in('rule_id', rules.map((r) => r.id)).gte('week_start', floorMonth));
   const seen = new Set(have.map((c) => `${c.rule_id}|${c.week_start}`));
-  await store.upsertIgnore('commitments', want.filter((w) => !seen.has(`${w.rule_id}|${w.week_start}`)), 'user_id,rule_id,week_start');
+  // Away mode: periods that were over by the time you're back are never created.
+  await store.upsertIgnore('commitments', want.filter((w) => !seen.has(`${w.rule_id}|${w.week_start}`) && !periodOver(w)), 'user_id,rule_id,week_start');
 }
 // Creates any recurring commitments that are due (this period and the missed ones since
 // the rule began, up to 8 weeks / 5 months back). Cheap to call: remembered for 30 s.
@@ -187,7 +196,7 @@ export async function setRuleCount(rule, n){
 //            share is also already done
 //   monthly: { left }              (days left in the month)
 export function paceInfo(c, today = todayStr()){
-  if (c.source) return null;
+  if (c.source || isAway(today)) return null; // away mode: no "behind" or "days left" while you're away
   if (c.cadence === 'daily' && c.week_start === startOfWeek(today)) {
     const perDay = c.target_count / 7, dow = isoDow(today);
     return { perDay, behind: Math.max(0, Math.ceil(perDay * (dow - 1)) - c.done_count), onTrack: c.done_count >= Math.ceil(perDay * dow) };

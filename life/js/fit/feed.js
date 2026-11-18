@@ -12,12 +12,15 @@ import { db } from './db.js';
 import { loadNutrition, inNutritionPlan } from './nutrition.js';
 import { todayStr, addDays, startOfWeek } from './utils.js';
 import * as store from '../store.js';
+import { awayUntil } from '../away.js';
 import { garminPrefs, garminCommitments } from './garmin.js';
 import { planWeeks } from './week.js';
 
 export async function syncFit(weekStart, goalRows = []){
   const today = todayStr();
   if (weekStart > today) return;
+  const back = awayUntil();
+  if (back && addDays(weekStart, 6) <= back) return; // away mode: weeks you're away are left empty, not scored
   try {
     const uid = store.userId();
     const weekEnd = addDays(weekStart, 6);

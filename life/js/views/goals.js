@@ -3,7 +3,7 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
-import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct, weekCommitments } from '../lib.js';
+import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct, weekCommitments, quietSince } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
 import { commitRow, commitFormHtml, commitActs } from './shared.js';
@@ -49,7 +49,7 @@ export async function render(root, params){
     const cs = d.commits.filter((c) => c.goal_id === g.id);
     const ts = d.tasks.filter((t) => t.goal_id === g.id && (t.due_date === today || t.done_on === today));
     const alerts = [];
-    if (st === 'stalled') alerts.push(`No progress in ${daysBetween(g.last_progress_on || g.start_date, today)} days.`);
+    if (st === 'stalled') alerts.push(`No progress in ${daysBetween(quietSince(g), today)} days.`);
     const need = needLine(g); if (need) alerts.push(need);
     if (!steps.length) alerts.push('No breakdown yet. Add what has to be true this year, this quarter and this month.');
     const rung = ([lvl, label]) => { const list = steps.filter((s) => s.level === lvl);
