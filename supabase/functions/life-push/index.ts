@@ -55,6 +55,16 @@ function prefsOf(data: Record<string, unknown> | null): Prefs {
   };
 }
 
+// On a break or trip (settings.data.breaks, set in the app; the old single settings.data.away
+// is still honoured until the app migrates it): `from` is the first day away (null = already
+// away), `until` is the day you're back, so you're away on every day before it.
+function awayNow(data: Record<string, unknown> | null, date: string): boolean {
+  const d = (data || {}) as Record<string, any>;
+  const list: Array<{ from?: string | null; until?: string }> = Array.isArray(d.breaks) ? [...d.breaks] : [];
+  if (d.away && typeof d.away.until === 'string') list.push({ from: null, until: d.away.until });
+  return list.some((b) => typeof b.until === 'string' && (typeof b.from === 'string' ? b.from : '0000-01-01') <= date && date < b.until);
+}
+
 async function morningBrief(userId: string, today: string, dow: string){
   const [tasks, plan, picks, events, races, night, gday] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
@@ -129,9 +139,8 @@ async function tick(vapid: unknown){
   let sent = 0;
   for (const [userId, list] of byUser) {
     const { data: set } = await life().from('settings').select('data').eq('user_id', userId).maybeSingle();
-    // Away mode (set in the app): nothing is sent until the return date.
-    const back = (set && set.data && (set.data as Record<string, any>).away || {}).until;
-    if (typeof back === 'string' && date < back) continue;
+    // On a break or trip: nothing is sent until you're back.
+    if (awayNow(set ? set.data : null, date)) continue;
     const p = prefsOf(set ? set.data : null);
     // Due once a day, from the chosen time until 3 hours after (so a late cron run still sends, a very late one doesn't).
     const due = (on: boolean, at: string) => on && now >= minutes(at) && now < minutes(at) + 180;

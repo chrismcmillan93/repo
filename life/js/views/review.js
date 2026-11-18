@@ -4,7 +4,7 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
-import { awayUntil, isAway } from '../away.js';
+import { awayUntil, isAway, endInBreak } from '../away.js';
 import { goalPct, goalExpected, goalState, STATE, keptPct } from '../lib.js';
 
 const TYPES = [['week', 'Week'], ['month', 'Month'], ['quarter', 'Quarter']];
@@ -37,8 +37,7 @@ export function periodLabel(type, start){
 // The finished week / month / quarter reviews still to do (for Today's nudge).
 export async function dueReviews(){
   const done = await store.reviews.list((q) => q.eq('status', 'complete').gte('period_start', addDays(todayStr(), -120)));
-  const back = awayUntil(); // reviews for periods that ended while away (or before the return date) are skipped
-  return TYPES.map(([t]) => ({ type: t, ...periods(t)[0] })).filter((p) => !done.some((r) => r.period_type === p.type && r.period_start === p.start) && !(back && p.end <= back));
+  return TYPES.map(([t]) => ({ type: t, ...periods(t)[0] })).filter((p) => !done.some((r) => r.period_type === p.type && r.period_start === p.start) && !endInBreak(p.end)); // periods that ended during a break are skipped
 }
 
 export async function render(root, params){
@@ -46,7 +45,7 @@ export async function render(root, params){
   const [list, due] = await Promise.all([store.reviews.list((q) => q.order('period_start', { ascending: false }).limit(60)), dueReviews()]);
   const pick = (type, p, hint) => `<button class="btn" data-act="start" data-type="${type}" data-start="${p.start}" data-end="${p.end}">${esc(periodLabel(type, p.start))}${hint ? ` <span class="hint">${hint}</span>` : ''}</button>`;
   root.innerHTML = `<section class="panel"><h2>Start a review</h2>
-      ${isAway() ? `<p class="hint">Away until ${formatDateShort(awayUntil())}: reviews for the weeks and months you're away are skipped. You can still start one below.</p>` : ''}
+      ${isAway() ? `<p class="hint">Away until ${formatDateShort(awayUntil())}: reviews for weeks and months that end while you're away are skipped. You can still start one below.</p>` : ''}
       ${due.length ? `<p class="sub">Ready now</p><div class="btns">${due.map((p) => pick(p.type, p, '')).join('')}</div>` : '<p class="hint">Every finished week, month and quarter has been reviewed.</p>'}
       <p class="sub">Or the one in progress</p><div class="btns">${TYPES.map(([t]) => pick(t, periods(t)[1], 'so far')).join('')}</div>
       <p class="hint">Sunday: review the week and set next week's commitments. First of the month: review the month.</p></section>

@@ -1,6 +1,7 @@
 // Goal maths and the shared "tick a task" behaviour.
 import * as store from './store.js';
-import { awayUntil, isAway, periodOver } from './away.js';
+import { isAway, periodOver, quietDays } from './away.js';
+export { quietDays };
 import { todayStr, addDays, parseLocalDate, formatDateShort, startOfWeek, isoDow } from './fit/utils.js';
 
 const DAY = 86400000;
@@ -26,16 +27,10 @@ export function goalExpected(g, today = todayStr()){
   return span <= 0 ? 100 : clamp(100 * daysBetween(g.start_date, today) / span);
 }
 
-// When "no progress" starts counting: the last progress, or the day you're back from being away.
-export function quietSince(g){
-  const base = g.last_progress_on || g.start_date, back = awayUntil();
-  return back && back > base ? back : base;
-}
-
 // 'done' | 'stalled' (no progress for 14 days) | 'behind' (8+ points under pace) | 'on'
 export function goalState(g, pct, exp, today = todayStr()){
   if (pct >= 100) return 'done';
-  if (daysBetween(quietSince(g), today) >= 14) return 'stalled';
+  if (quietDays(g, today) >= 14) return 'stalled';
   if (exp != null && pct < exp - 8) return 'behind';
   return 'on';
 }
@@ -128,7 +123,7 @@ async function createDue(){
   }
   const have = await store.commitments.list((q) => q.in('rule_id', rules.map((r) => r.id)).gte('week_start', floorMonth));
   const seen = new Set(have.map((c) => `${c.rule_id}|${c.week_start}`));
-  // Away mode: periods that were over by the time you're back are never created.
+  // Breaks: a week or month that ended during a break is never created.
   await store.upsertIgnore('commitments', want.filter((w) => !seen.has(`${w.rule_id}|${w.week_start}`) && !periodOver(w)), 'user_id,rule_id,week_start');
 }
 // Creates any recurring commitments that are due (this period and the missed ones since

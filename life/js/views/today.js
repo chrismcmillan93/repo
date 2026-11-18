@@ -3,8 +3,8 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty } from '../ui.js';
 import { todayStr, addDays, startOfWeek, isoDow, toast, formatDateShort } from '../fit/utils.js';
-import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, keptPct, weekCommitments, paceInfo, quietSince } from '../lib.js';
-import { isAway, awayUntil } from '../away.js';
+import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, keptPct, weekCommitments, paceInfo, quietDays } from '../lib.js';
+import { activeBreak } from '../away.js';
 import { syncFit } from '../fit/feed.js';
 import { mountDay } from '../fit/day.js';
 import { garmin, loadRecovery, recoveryHtml, syncSummary, syncError, garminPrefs } from '../fit/garmin.js';
@@ -39,8 +39,9 @@ export async function render(root){
   const tops = () => dueToday().filter((t) => t.top_date === today);
 
   function nudges(){
-    // Away mode: one calm banner instead of every nudge.
-    if (isAway(today)) return `<div class="nudge away"><p><b>Away until ${formatDateShort(awayUntil())}.</b> Reminders, review prompts and nudges are paused, and nothing counts as missed. Everything is back to normal that day.</p><div class="btns"><a class="btn sm" href="#/settings">Change</a></div></div>`;
+    // On a break or trip: one calm banner instead of every nudge.
+    const brk = activeBreak(today);
+    if (brk) return `<div class="nudge away"><p>${brk.name && brk.name !== 'Away' ? `${esc(brk.name)}. ` : ''}<b>Away until ${formatDateShort(brk.until)}.</b> Reminders, review prompts and nudges are paused, and nothing counts as missed. Everything is back to normal that day.</p><div class="btns"><a class="btn sm" href="#/settings">Breaks</a></div></div>`;
     const out = [];
     // The Garmin key only lasts up to a year, and the sync stops dead when it lapses.
     const keyEnds = garminPrefs(d.cfg).key_expires;
@@ -54,7 +55,7 @@ export async function render(root){
     d.goals.forEach((g) => {
       const pct = goalPct(g, d.steps);
       if (goalState(g, pct, goalExpected(g)) === 'stalled') {
-        out.push(`<div class="nudge"><p><b>${esc(g.title)}</b> has had no progress in ${daysBetween(quietSince(g), today)} days.</p><div class="btns"><a class="btn sm" href="#/goals/${g.id}">Open goal</a></div></div>`);
+        out.push(`<div class="nudge"><p><b>${esc(g.title)}</b> has had no progress in ${quietDays(g, today)} days.</p><div class="btns"><a class="btn sm" href="#/goals/${g.id}">Open goal</a></div></div>`);
       } else if (!d.commits.some((c) => c.goal_id === g.id)) {
         out.push(`<div class="nudge warn"><p><b>${esc(g.title)}</b> has no commitment this week.</p><div class="btns"><a class="btn sm" href="#/week">Set one</a></div></div>`);
       }
