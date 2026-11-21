@@ -189,7 +189,7 @@ export async function render(root){
     const el = root.querySelector('#recovery');
     try { const html = recoveryHtml(await loadRecovery(today)); el.innerHTML = html; el.hidden = !html; } catch (_) { el.hidden = true; }
   };
-  // What the trip apps say about today (Thailand, USA), loaded after the screen is up.
+  // What the trip apps say about today (USA), loaded after the screen is up.
   const trips = async () => {
     const el = root.querySelector('#trips');
     try {
