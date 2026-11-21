@@ -35,7 +35,9 @@ async function route(){
   const parts = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const name = TABS.some((t) => t[0] === parts[0]) ? parts[0] : 'today';
   const link = (k) => { const t = TABS.find((x) => x[0] === k); return `<a href="#/${k}" class="${k === name ? 'on' : ''}"${k === name ? ' aria-current="page"' : ''}>${t[1]}</a>`; };
-  $('#tabs').innerHTML = MENU.map(([group, keys]) => `<div class="menugroup"><h2>${group}</h2>${keys.map(link).join('')}</div>`).join('');
+  $('#tabs').innerHTML = MENU.map(([group, keys]) => keys.length === 1
+    ? `<div class="menugroup single">${link(keys[0])}</div>`
+    : `<details class="menugroup"${keys.includes(name) ? ' open' : ''}><summary>${group}</summary>${keys.map(link).join('')}</details>`).join('');
   $('#here').textContent = (TABS.find((t) => t[0] === name) || TABS[0])[1];
   closeMenu();
   const token = ++renderToken;
@@ -81,7 +83,7 @@ async function showApp(session){
 }
 
 // The menu: every section, grouped. Opens from the ☰ button; closes on a choice, Escape or a tap outside.
-const MENU = [['Daily', ['today', 'week', 'tasks']], ['Goals and growth', ['goals', 'review', 'career', 'playbook']], ['Life', ['health', 'lists', 'events', 'journal']], ['Private', ['quit']], ['App', ['settings']]];
+const MENU = [['Daily', ['today', 'week', 'tasks']], ['Goals and growth', ['goals', 'review', 'career', 'playbook']], ['Life', ['health', 'lists', 'events', 'journal']], ['Private', ['quit']], ['App', ['settings']]]  // a group of one is a plain link, not a dropdown;
 function closeMenu(){ const m = $('#tabs'); if (!m) return; m.hidden = true; $('#menuBtn').setAttribute('aria-expanded', 'false'); }
 let menuReady = false;
 function initMenu(){
