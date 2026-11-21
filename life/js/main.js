@@ -10,7 +10,7 @@ import { escapeHtml, formatDateFull, todayStr, toast } from './fit/utils.js';
 import { registerSw, clearOfflineData } from './pwa.js';
 import { loadAway } from './away.js';
 
-const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['playbook', 'Playbook'], ['settings', 'Settings']];
+const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['quit', 'Giving up'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['playbook', 'Playbook'], ['settings', 'Settings']];
 const $ = (s) => document.querySelector(s);
 let signedIn = false;
 let renderToken = 0;

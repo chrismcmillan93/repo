@@ -249,3 +249,10 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 #recovery .big { font-size: 28px }
 
 .nudge.away { border-left-color: var(--accent); background: var(--accent-soft) }
+
+/* giving up */
+.big.sm { font-size: 20px; margin-right: 2px }
+.big small { font: 500 14px var(--body); color: var(--muted) }
+.why { font-style: italic; color: var(--muted) }
+.slipform { background: var(--sunk); border-radius: 8px; padding: 12px }
+.slipform .field { background: var(--surface) }
