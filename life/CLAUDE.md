@@ -305,6 +305,43 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   and removes the quit and all its slips (`quit_slips.quit_id` cascades).
 - `sw.js` `VERSION` is `v4` (added `js/views/quit.js` and `js/streaks.js`).
 
+## Giving up, part two and other additions (2026-11-21)
+
+- **Sunday verdict** (`js/verdict.js`, shown on Week and at the top of a week's review):
+  `weekVerdict()` grades the share of commitments kept (A 90, B 75, C 60, D 40, else F;
+  monthly commitments ignored), names the weakest commitment and the goal losing most
+  ground, and gives one "Fix this" line. Final once the week is over or on Sunday,
+  otherwise "So far". Away weeks show a plain away panel, empty weeks say so.
+- **Craving timer + if-then plans** (`views/quit.js`): 20-minute timer; only `{id, at,
+  trigger}` is kept in localStorage (`life-craving`) so it survives a reload. "I held" /
+  "I slipped" write `life.quit_cravings`; slipped opens the slip form with the trigger
+  filled in. If-then plans live in `quits.plans` (jsonb, one line per trigger) and show
+  when that trigger is picked. Slips also record `slip_part` (time of day).
+- **Slip patterns** (`streaks.js` `slipPatterns`): weekday and time-of-day bars (need 3+
+  slips, a standout needs a single winner with 2+), plus Garmin sleep/HRV on slip days vs
+  other days (3+ slip days, 7+ other days).
+- **App lock** (`js/lock.js`): PIN hashed with PBKDF2-SHA256 (150k) in localStorage on
+  this device only (`life-lock*`). Scope is the whole app or just Giving up; an
+  away-minutes setting; escalating delay after 5 wrong PINs; sign-out clears it, and
+  "Forgot PIN" signs out and clears offline data. **A screen lock, not encryption.**
+  With the private scope Today doesn't even fetch quits while locked.
+- **Today in Thailand/USA** (`js/trip.js`, `js/tripmatch.js` pure helpers): the Thailand
+  tables only allow the `anon` role, so a signed-in session can't read them; `trip.js`
+  uses a separate session-less anon client (`storageKey: 'life-thailand-anon'`). Thailand
+  days are text labels like "22 Nov"; USA has real dates and per-user RLS via the signed-in
+  client. Panels never throw and are omitted when nothing is on today.
+- **Training depth**: Edale countdown (`js/training.js`, from the plan's end date), weekly
+  running miles vs plan (Garmin `garmin_activities`), plan weight targets on the Progress
+  chart, and a **Niggles** tab (`life.niggles`, severity 1-5, history log, resolve, "back
+  again"; `js/niggle.js` gives stop/book/watch advice and Today nudges).
+- **Backup** (`js/backup.js`, Settings): downloads/shares one JSON of every life table and
+  the fitness tables the app owns. Excludes push subscriptions and Hevy/Garmin mirrors.
+  Giving-up tables only if "Include Giving up" is ticked. Today nudges after 30 days
+  (`settings.last_backup`, falling back to `backup_started`).
+- Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
+  `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v5`.
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

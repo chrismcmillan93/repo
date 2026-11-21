@@ -12,6 +12,10 @@ import { taskRow, towardsSelect, towardsFields, commitRow, commitActs } from './
 import { loadCountdowns, countdownRow } from './events.js';
 import { dueReviews, periodLabel } from './review.js';
 import { streakInfo } from '../streaks.js';
+import { privateBlocked } from '../lock.js';
+import { loadTrips } from '../trip.js';
+import { niggleNudges } from '../niggle.js';
+import { raceCountdown, countdownText } from '../training.js';
 
 export async function render(root){
   const today = todayStr();
@@ -36,11 +40,15 @@ export async function render(root){
     // Giving up: only the ones set to show here, under the name you chose. Never blocks Today.
     let quits = [];
     try {
+      if (privateBlocked()) throw new Error('locked'); // locked: the panel stays empty and nothing is fetched
       const mine = (await store.quits.list((q) => q.eq('archived', false).eq('show_today', true).order('created_at')));
       const slips = mine.length ? await store.quitSlips.list() : [];
       quits = mine.map((q) => ({ id: q.id, label: q.alias || q.name, days: streakInfo(q, slips.filter((s) => s.quit_id === q.id), today).current }));
     } catch (_) { quits = []; }
-    d = { quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    if (cfg && !cfg.backup_started && !cfg.last_backup) { cfg.backup_started = today; store.settings.save({ ...cfg }).catch(() => {}); }
+    let niggles = [];
+    try { niggles = await store.niggles.list((q) => q.is('resolved_on', null)); } catch (_) { niggles = []; }
+    d = { niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -78,6 +86,11 @@ export async function render(root){
       if (p.behind >= 2) out.push(`<div class="nudge warn"><p><b>${esc(c.title)}</b> is ${p.behind} behind. Do ${p.behind + p.perDay} today to get back on track.</p></div>`);
       if (p.left != null && p.left <= 7) out.push(`<div class="nudge warn"><p><b>${esc(c.title)}</b> is still open and the month ends in ${p.left} day${p.left === 1 ? '' : 's'}.</p></div>`);
     });
+    // A backup nudge (up the list, so other nudges can't crowd it out): 30 days since the last one (or since the app first noticed there was none).
+    const base = d.cfg && (d.cfg.last_backup || d.cfg.backup_started);
+    if (base && daysBetween(base, today) >= 30) out.unshift(`<div class="nudge warn"><p>${d.cfg.last_backup ? `Your last backup was ${daysBetween(base, today)} days ago.` : `You have never backed this up (${daysBetween(base, today)} days of data).`} One tap in Settings.</p><div class="btns"><a class="btn sm" href="#/settings">Back up</a></div></div>`);
+    // Aches that have lasted or got worse: first in line, because they cost the most.
+    niggleNudges(d.niggles || [], today).reverse().forEach((t) => out.unshift(`<div class="nudge"><p>${esc(t)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`));
     return out.slice(0, 6).join('');
   }
 
@@ -125,10 +138,11 @@ export async function render(root){
   }
 
   root.innerHTML = `<div id="nudges" class="stack"></div><div class="cols"><div class="stack" id="left"></div><div class="stack">
+    <div id="trips" class="stack"></div>
     <section class="panel" id="recovery" hidden></section>
     <section class="panel" id="weekcard"></section>
     <section class="panel" id="commits"></section>
-    <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><div id="fit"></div></section>
+    <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><p class="push" id="edale" hidden></p><div id="fit"></div></section>
     <section class="panel" id="habits"></section><section class="panel" id="quits" hidden></section><section class="panel" id="coming"></section></div></div>`;
 
   const refresh = async () => { await load(); draw(); };
@@ -175,6 +189,20 @@ export async function render(root){
     const el = root.querySelector('#recovery');
     try { const html = recoveryHtml(await loadRecovery(today)); el.innerHTML = html; el.hidden = !html; } catch (_) { el.hidden = true; }
   };
+  // What the trip apps say about today (Thailand, USA), loaded after the screen is up.
+  const trips = async () => {
+    const el = root.querySelector('#trips');
+    try {
+      const list = await loadTrips(today);
+      el.innerHTML = list.map((t) => `<section class="panel"><h2>${esc(t.title)} <small><a href="${t.link}">Open the app</a></small></h2>
+        ${t.stay ? `<p><b>${esc(t.stay.name)}</b> · ${esc(t.stay.note)}${t.stay.address ? `<br><span class="hint">${esc(t.stay.address)}</span>` : ''}</p>` : ''}
+        ${t.moves.map((m) => `<div class="row"><span class="rt"><span class="rtitle">${m.icon} ${esc(m.route)}</span><span class="rmeta">${esc(m.when)}${m.detail ? ` · ${esc(m.detail)}` : ''}</span></span></div>`).join('')}
+        ${t.rows.map((r) => `<div class="row ${r.dim ? 'dim' : ''}"><span class="dow">${esc(r.time)}</span><span class="rt"><span class="rtitle">${esc(r.text)}</span>${r.tag ? `<span class="rmeta">${pill(r.tag, r.tag === 'FIXED' ? 'good' : r.tag === 'NEEDS BOOKING' ? 'warn' : '')}</span>` : ''}</span></div>`).join('')}</section>`).join('');
+    } catch (_) { el.innerHTML = ''; }
+  };
+  // Weeks to the Edale 50km.
+  raceCountdown(today).then((c) => { const el = root.querySelector('#edale'); if (el && c) { el.textContent = countdownText(c); el.hidden = false; } });
   recovery();
+  trips();
   mountFit();
 }

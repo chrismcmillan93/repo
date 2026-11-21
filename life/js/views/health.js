@@ -9,9 +9,11 @@ import { buildExercises, findPrs, exerciseSummaries, weightLabel, monthSummary }
 import { ensureFonts, prStory, monthStory, carouselSlides, shareOrDownload } from '../fit/posters.js';
 import { dateRange, endOfWeek } from '../fit/utils.js';
 import { userId } from '../store.js';
+import { raceCountdown, countdownText, weekRunMiles } from '../training.js';
+import { renderNiggles } from './niggles.js';
 import { garmin, loadTrends, trendsHtml, syncSummary, syncError } from '../fit/garmin.js';
 
-const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['progress', 'Progress'], ['checkin', 'Check-in'], ['lifts', 'Lifts']];
+const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['progress', 'Progress'], ['niggles', 'Niggles'], ['checkin', 'Check-in'], ['lifts', 'Lifts']];
 const shortDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 function spark(values, w = 96, h = 28){
@@ -64,6 +66,16 @@ export async function render(root, params){
     const ws = startOfWeek(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today);
     const w = await loadWeek(ws);
     const pw = w.planWeek;
+    const [cd, rm] = await Promise.all([raceCountdown(today), pw ? weekRunMiles(ws) : null]);
+    const milesHtml = (() => {
+      if (!pw || !rm) return '';
+      const plan = Number(pw.run_miles), pct = plan ? 100 * rm.miles / plan : 0, now = ws === startOfWeek(today);
+      const exp = now ? Math.round(100 * (new Date(today) - new Date(ws) + 864e5) / (7 * 864e5)) : null;
+      const cls = now ? (pct >= exp - 5 ? 'good' : pct >= exp - 25 ? 'warn' : 'bad') : (pct >= 90 ? 'good' : pct >= 60 ? 'warn' : 'bad');
+      const short = Math.round(10 * Math.max(0, plan - rm.miles)) / 10;
+      return `<p><b>Running: ${rm.miles} of ${plan} mi</b> <span class="hint">${rm.n} run${rm.n === 1 ? '' : 's'} from Garmin</span></p>${bar(pct, exp, cls)}
+        <p class="hint">${ws > today ? '' : now ? (pct >= exp - 5 ? 'On pace for the week.' : `Behind the plan so far. ${short} mi still to find.`) : short > 0.4 ? `Short by ${short} mi. It does not come back.` : 'Week done.'}</p>`;
+    })();
     const rows = w.days.map((d) => {
       const state = d.trained ? pill('Done', 'good') : d.rested ? pill('Rested', 'good') : d.date < today && d.titles.length && !d.plans.every((p) => ['rest', 'travel'].includes(p.type)) ? pill('Missed', 'bad') : '';
       return `<a class="row dayrow ${d.date === today ? 'today' : ''}" href="#/health/day/${d.date}"><span class="dow"><b>${formatDayLabel(d.date).slice(0, 3)}</b>${shortDate(d.date)}</span>
@@ -73,7 +85,7 @@ export async function render(root, params){
     const kcal = w.days.filter((d) => d.day).map((d) => d.day.totals.kcal);
     body.innerHTML = `<div class="weeknav"><a class="btn sm" href="#/health/week/${addDays(ws, -7)}" aria-label="Previous week">‹</a><b>${pw ? `Week ${pw.week_number} of ${weeks.length} · ` : ''}${formatDateShort(ws)} to ${formatDateShort(w.weekEnd)}</b><a class="btn sm" href="#/health/week/${addDays(ws, 7)}" aria-label="Next week">›</a>
       ${weekSelect(ws)}<label class="lab inline">or a date<input class="field" type="date" data-act="jumpdate" data-to="week" value="${ws}"></label>${ws !== startOfWeek(today) ? `<a class="btn sm" href="#/health/week/${startOfWeek(today)}">This week</a>` : ''}</div>
-      ${pw ? `<section class="panel"><h2>${esc(pw.phase)} <small>${esc(pw.load)} load · ${pw.run_miles} mi (${pw.run_km} km) of running</small></h2>${pw.notes ? `<p>${esc(pw.notes)}</p>` : ''}
+      ${pw ? `<section class="panel"><h2>${esc(pw.phase)} <small>${esc(pw.load)} load · ${pw.run_miles} mi (${pw.run_km} km) of running</small></h2>${cd ? `<p class="push">${esc(countdownText(cd))}</p>` : ''}${milesHtml}${pw.notes ? `<p>${esc(pw.notes)}</p>` : ''}
         ${pw.weight_target_kg_monday != null ? `<p class="hint">Monday weigh-in target ${Number(pw.weight_target_kg_monday).toFixed(1)} kg</p>` : ''}</section>` : `<section class="panel"><p class="hint">This week is outside the Edale 50km plan (${weeks.length ? `${formatDateShort(weeks[0].start_date)} to ${formatDateShort(weeks[weeks.length - 1].end_date)}` : 'not loaded'}). Pick sessions day by day.</p></section>`}
       <section class="panel"><h2>Day by day <small>${kcal.length ? `Average ${Math.round(kcal.reduce((a, b) => a + b, 0) / kcal.length)} kcal a day` : ''}</small></h2>${rows}</section>`;
     return;
@@ -114,7 +126,8 @@ export async function render(root, params){
     const dates = dateRange(start, end);
     const pts = dates.map((d) => (byDate[d] && byDate[d].weight_kg != null ? Number(byDate[d].weight_kg) : null));
     const avg = pts.map((_, i) => { const w = pts.slice(Math.max(0, i - 6), i + 1).filter((v) => v != null); return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null; });
-    const vals = pts.concat(avg).filter((v) => v != null);
+    const tgts = weeks.filter((w) => w.weight_target_kg_monday != null && w.start_date >= start && w.start_date <= end).map((w) => ({ i: dates.indexOf(w.start_date), v: Number(w.weight_target_kg_monday) })).filter((t) => t.i >= 0);
+    const vals = pts.concat(avg).concat(tgts.map((t) => t.v)).filter((v) => v != null);
     let chart = empty('No weigh-ins yet. Log one on Today or Health → Day.');
     if (vals.length) {
       const W = 640, H = 210, L = 38, R = 10, T = 12, Bm = 24;
@@ -126,6 +139,7 @@ export async function render(root, params){
       chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight over the last ${dates.length} days with a 7-day average">
         ${ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
         ${pts.map((v, i) => (v == null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="2.2" fill="var(--muted)"/>`)).join('')}
+        ${tgts.map((t) => `<rect x="${x(t.i) - 4}" y="${y(t.v) - 4}" width="8" height="8" transform="rotate(45 ${x(t.i)} ${y(t.v)})" fill="var(--warn)"><title>Plan target ${t.v.toFixed(1)} kg</title></rect>`).join('')}
         <polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="${line(avg)}"/>
         ${lastI >= 0 ? `<circle cx="${x(lastI)}" cy="${y(avg[lastI])}" r="4" fill="var(--accent)"/><text x="${Math.min(x(lastI), W - R - 4)}" y="${y(avg[lastI]) - 9}" text-anchor="end" class="strong">${round1(avg[lastI])} kg</text>` : ''}
         <text x="${L}" y="${H - 6}">${shortDate(start)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Today</text></svg>`;
@@ -142,9 +156,12 @@ export async function render(root, params){
       const share = (key) => { const n = ds.length || 1; const c = (v) => ds.filter((d) => byDate[d] && byDate[d][key] === v).length; return `<span class="adh"><i class="s-yes" style="flex-grow:${c('yes')}"></i><i class="s-partial" style="flex-grow:${c('partial')}"></i><i class="s-no" style="flex-grow:${c('no')}"></i><i class="s-none" style="flex-grow:${n - c('yes') - c('partial') - c('no')}"></i></span>`; };
       weekRows.unshift(`<div class="adhrow"><span>${pw ? `Wk ${pw.week_number}` : shortDate(ws)}</span>${share('nutrition_status')}${share('training_status')}</div>`);
     }
-    const nextTarget = weeks.find((w) => w.weight_target_kg_monday != null && w.start_date >= startOfWeek(today));
+    const lastAvg = avg.filter((v) => v != null).slice(-1)[0];
+    const upcoming = weeks.filter((w) => w.weight_target_kg_monday != null && w.start_date >= startOfWeek(today)).slice(0, 6);
+    const targetsHtml = upcoming.length ? `<p class="sub">Plan weight targets (Monday weigh-ins)</p>${upcoming.map((w) => { const t = Number(w.weight_target_kg_monday), gap = lastAvg != null ? Math.round(10 * (lastAvg - t)) / 10 : null;
+      return `<div class="row"><span class="rt"><span class="rtitle">${formatDateShort(w.start_date)}: ${t.toFixed(1)} kg</span></span><span class="right">${gap == null ? '' : gap > 0 ? pill(`${gap} kg to lose`, 'warn') : pill(`${-gap} kg under`, 'good')}</span></div>`; }).join('')}<p class="hint">Measured from your latest 7-day average${lastAvg != null ? ` (${round1(lastAvg)} kg)` : ''}. Orange diamonds on the chart are the plan's targets.</p>` : '';
     body.innerHTML = `<section class="panel"><h2>Weight <small>Dots are daily readings, the line is the 7-day average</small></h2>${chart}
-        ${nextTarget ? `<p class="hint">Next Monday target: ${Number(nextTarget.weight_target_kg_monday).toFixed(1)} kg (${formatDateShort(nextTarget.start_date)})</p>` : ''}</section>
+        ${targetsHtml}</section>
       <div class="cols"><section class="panel"><h2>Day by day <small>Top: food. Bottom: training.</small></h2>
         <div class="hgrid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l) => `<span class="hw">${l}</span>`).join('')}${gDates.map(cell).join('')}</div>
         <p class="legend"><i class="s-yes"></i>Yes <i class="s-partial"></i>Partly <i class="s-no"></i>No <i class="s-none"></i>Not logged</p></section>
@@ -187,6 +204,9 @@ export async function render(root, params){
     });
     return;
   }
+
+  // ---- Niggles ----
+  if (tab === 'niggles') { await renderNiggles(body); return; }
 
   // ---- Lifts (Hevy) ----
   let L = null, open = null;

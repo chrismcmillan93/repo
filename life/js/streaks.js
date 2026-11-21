@@ -62,3 +62,38 @@ export function pushLine(current, today = new Date().toISOString().slice(0, 10))
   const day = Math.floor(Date.parse(today + 'T12:00:00Z') / 864e5);
   return pool[(day + current) % pool.length].replace('{n}', current).replace('{days}', current === 1 ? 'day' : 'days').replace('{them}', current === 1 ? 'it' : 'them');
 }
+
+// ---------------- patterns ----------------
+const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const PARTS = ['Morning', 'Afternoon', 'Evening', 'Late night'];
+const avg = (rows, f) => { const v = rows.map(f).filter((x) => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; };
+const standout = (counts, names) => { // the one clear winner with at least 2 hits, else null (a tie is not a pattern)
+  const max = Math.max(...counts);
+  const at = counts.map((c, i) => (c === max ? i : -1)).filter((i) => i >= 0);
+  return max >= 2 && at.length === 1 ? { name: names[at[0]], n: max } : null;
+};
+
+// slips: [{ slip_date, slip_part }]; sleep: [{ day, sleep_s, hrv_last_night }] (the night that
+// ended on `day`, i.e. the night before a slip on that date). Needs 3+ slips to say anything
+// about weekdays or times; sleep needs 3+ slip days and 7+ other days with data, and says so
+// when the sample is small. Describes, never explains: it is a pattern, not a cause.
+export function slipPatterns(slips, sleep, started, today){
+  const valid = slips.filter((s) => s.slip_date >= started && s.slip_date <= today);
+  const n = valid.length;
+  const byDow = Array(7).fill(0);
+  valid.forEach((s) => { byDow[new Date(s.slip_date + 'T12:00:00Z').getUTCDay()] += 1; });
+  const byPart = PARTS.map((p) => valid.filter((s) => s.slip_part === p).length);
+  const partN = byPart.reduce((a, b) => a + b, 0);
+  const slipDays = new Set(valid.map((s) => s.slip_date));
+  const rows = (sleep || []).filter((r) => r.day >= started && r.day <= today && r.sleep_s);
+  const a = rows.filter((r) => slipDays.has(r.day)), b = rows.filter((r) => !slipDays.has(r.day));
+  const sleepInfo = a.length >= 3 && b.length >= 7
+    ? { slipN: a.length, otherN: b.length, slipH: avg(a, (r) => r.sleep_s / 3600), otherH: avg(b, (r) => r.sleep_s / 3600), slipHrv: avg(a, (r) => r.hrv_last_night), otherHrv: avg(b, (r) => r.hrv_last_night), small: a.length < 6 }
+    : null;
+  return {
+    n, byDow, dowNames: DOW, byPart, partNames: PARTS, partN,
+    topDow: n >= 3 ? standout(byDow, DOW) : null,
+    topPart: partN >= 3 ? standout(byPart, PARTS) : null,
+    sleep: sleepInfo
+  };
+}
