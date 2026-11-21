@@ -5,19 +5,43 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, formatDateShort, toast } from '../fit/utils.js';
-import { streakInfo, topTrigger, milestoneLabel, pushLine } from '../streaks.js';
+import { streakInfo, topTrigger, milestoneLabel, pushLine, slipPatterns, PARTS } from '../streaks.js';
+import { supabase as fitSb } from '../fit/supabaseClient.js';
 
 const TRIGGERS = ['Stress', 'Boredom', 'Tired', 'Lonely', 'Social pressure', 'Celebrating', 'Craving', 'Other'];
 
+// The craving timer: 20 minutes, kept in localStorage (just the item's id and the start time,
+// never a name) so a reload or a locked phone doesn't lose it. Cleared when it ends.
+const CRAVE_KEY = 'life-craving';
+const CRAVE_MS = 20 * 60 * 1000;
+const CRAVE_LINES = ['This is the moment that decides it. Wait it out.', 'A craving is not an instruction. Ignore it for 20 minutes.', 'You have done this before. Do not hand it back now.', 'It peaks, then it passes. Stay put until it does.'];
+function readCraving(){
+  try { const v = JSON.parse(localStorage.getItem(CRAVE_KEY) || 'null'); return v && v.id && Date.now() - v.at < 3600000 ? v : null; } catch (_) { return null; }
+}
+function saveCraving(v){
+  try { if (v) localStorage.setItem(CRAVE_KEY, JSON.stringify(v)); else localStorage.removeItem(CRAVE_KEY); } catch (_) { /* the timer just won't survive a reload */ }
+}
+const clock = (ms) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+const PART_WORDS = { Morning: 'in the morning', Afternoon: 'in the afternoon', Evening: 'in the evening', 'Late night': 'late at night' };
+
 export async function render(root, params){
   const today = todayStr();
-  let quits = [], slipsBy = {}, openSlip = params[0] || null, editing = null, adding = false, confirmDelete = null;
+  let quits = [], slipsBy = {}, cravBy = {}, sleepRows = [], openSlip = params[0] || null, slipTrigger = '', editing = null, adding = false, confirmDelete = null, craving = readCraving(), timer = null;
 
   async function load(){
     quits = await store.quits.list((q) => q.order('created_at'));
     const slips = quits.length ? await store.quitSlips.list((q) => q.order('slip_date', { ascending: false })) : [];
     slipsBy = {};
     slips.forEach((s) => { (slipsBy[s.quit_id] = slipsBy[s.quit_id] || []).push(s); });
+    const cravings = quits.length ? await store.quitCravings.list() : [];
+    cravBy = {};
+    cravings.forEach((c) => { (cravBy[c.quit_id] = cravBy[c.quit_id] || []).push(c); });
+    // Last nights from Garmin, only to compare slip days with other days (never leaves the device).
+    sleepRows = [];
+    const first = quits.filter((q) => !q.archived).map((q) => q.started_on).sort()[0];
+    if (first) {
+      try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', first).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
+    }
     if (!quits.length) adding = true;
   }
 
@@ -32,13 +56,37 @@ export async function render(root, params){
       : info.next ? `${toGo} day${toGo === 1 ? '' : 's'} to ${milestoneLabel(info.next)}` : 'Past every milestone';
     const trig = topTrigger(slipsOf(q));
     const mine = slipsOf(q);
+    const cr = cravBy[q.id] || [], beaten = cr.filter((c) => c.outcome === 'held').length;
+    const plans = q.plans || {};
+    const planRows = Object.entries(plans).filter(([, t]) => t);
+    const live = craving && craving.id === q.id ? craving : null;
+    const pat = mine.length >= 3 ? slipPatterns(mine, sleepRows, q.started_on, today) : null;
+    const patterns = pat ? (() => {
+      const max = Math.max(...pat.byDow, 1), order = [1, 2, 3, 4, 5, 6, 0], letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      const sl = pat.sleep;
+      return `<details class="drop" data-k="p-${q.id}"><summary>Patterns</summary>
+        <div class="dowbars" role="img" aria-label="Slips by weekday">${order.map((d) => `<span class="dowcol"><i style="height:${Math.round(100 * pat.byDow[d] / max)}%"></i><em>${pat.byDow[d] || ''}</em><b>${letters[d]}</b></span>`).join('')}</div>
+        <p>${pat.topDow ? `Most slips are on ${pat.topDow.name}s (${pat.topDow.n} of ${pat.n}).` : 'No single weekday stands out.'}${pat.topPart ? ` Mostly ${PART_WORDS[pat.topPart.name]}.` : ''}</p>
+        ${sl ? `<p>You had slept <b>${sl.slipH}h</b> before slip days, against ${sl.otherH}h on other days${sl.slipHrv != null && sl.otherHrv != null ? `, and your HRV was ${sl.slipHrv} against ${sl.otherHrv}` : ''}. ${sl.slipH + 0.5 <= sl.otherH ? 'Bad sleep is a weak spot. Protect it.' : 'Sleep does not explain it.'}${sl.small ? ' Small sample: treat it as a hint, not a fact.' : ''}</p>` : '<p class="hint">Sleep comparison appears once Garmin has enough nights around your slips.</p>'}
+        <p class="hint">A pattern, not a cause. Use it to plan the risky hour, not to excuse it.</p></details>`;
+    })() : '';
+    const cravePanel = live ? `<div class="craving" id="cravepanel"><p class="push">${esc(CRAVE_LINES[Math.floor(live.at / 60000) % CRAVE_LINES.length])}</p>
+        <div class="countdown"><b id="cd">${clock(Math.max(0, CRAVE_MS - (Date.now() - live.at)))}</b><span id="cdmsg">Wait it out. It peaks, then it passes.</span></div>
+        <div class="bar good"><span id="cdbar" style="width:${Math.min(100, 100 * (Date.now() - live.at) / CRAVE_MS)}%"></span></div>
+        ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
+        <p class="sub">What is it about?</p>
+        <div class="seg">${TRIGGERS.map((t) => `<button type="button" class="${live.trigger === t ? 'on' : ''}" data-act="cravtrig" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+        ${live.trigger ? (plans[live.trigger] ? `<p><b>Your plan:</b> ${esc(plans[live.trigger])}</p>` : '<p class="hint">No plan for this one yet. Make one after: Edit, then If-then plans.</p>')
+          : planRows.length ? `<p class="hint">${planRows.map(([t, p]) => `<b>${esc(t)}:</b> ${esc(p)}`).join(' · ')}</p>` : ''}
+        <div class="btns"><button class="btn pri" data-act="cravheld" data-id="${q.id}">I held</button><button class="btn" data-act="cravslip" data-id="${q.id}">I slipped</button><button class="btn ghost" data-act="cravcancel">Cancel</button></div></div>` : '';
     const form = openSlip === q.id ? `<form class="slipform stack" data-act="slipsave" data-id="${q.id}">
         <p class="hint">Log it straight. What set it off, and what will you do differently next time?</p>
         <div class="wrapf"><label class="lab">When<input class="field" type="date" name="slip_date" required min="${q.started_on}" max="${today}" value="${today}"></label>
-          <label class="lab">What set it off? (optional)<select class="field" name="trigger">${options(TRIGGERS.map((t) => [t, t]), null, 'Rather not say')}</select></label></div>
+          <label class="lab">Roughly what time? (optional)<select class="field" name="slip_part">${options(PARTS.map((t) => [t, t]), null, 'Not sure')}</select></label>
+          <label class="lab">What set it off? (optional)<select class="field" name="trigger">${options(TRIGGERS.map((t) => [t, t]), slipTrigger || null, 'Rather not say')}</select></label></div>
         <label class="lab">Anything to remember? (optional)<textarea class="field" rows="2" name="note"></textarea></label>
         <div class="btns"><button class="btn pri">Log it</button><button type="button" class="btn" data-act="slipcancel">Cancel</button></div></form>` : '';
-    const history = mine.length ? `<details class="drop" data-k="h-${q.id}"><summary>Slips (${mine.length})</summary>${mine.map((s) => `<div class="row"><span class="rt"><span class="rtitle">${formatDateShort(s.slip_date)}${s.trigger ? ` · ${esc(s.trigger)}` : ''}</span>${s.note ? `<span class="hint">${esc(s.note)}</span>` : ''}</span>
+    const history = mine.length ? `<details class="drop" data-k="h-${q.id}"><summary>Slips (${mine.length})</summary>${mine.map((s) => `<div class="row"><span class="rt"><span class="rtitle">${formatDateShort(s.slip_date)}${s.slip_part ? ` · ${esc(s.slip_part.toLowerCase())}` : ''}${s.trigger ? ` · ${esc(s.trigger)}` : ''}</span>${s.note ? `<span class="hint">${esc(s.note)}</span>` : ''}</span>
         <button class="btn sm ghost" data-act="slipdel" data-id="${s.id}" aria-label="Delete this slip">×</button></div>`).join('')}
         ${trig ? `<p class="hint">Most common trigger so far: ${esc(trig.name)} (${trig.n} times). Knowing it makes it easier to plan for.</p>` : ''}</details>` : '';
     return `<section class="panel quitcard" id="q-${q.id}">
@@ -46,13 +94,15 @@ export async function render(root, params){
       <div class="stats"><div><b class="big">${info.current}</b><span>${info.current === 1 ? 'day' : 'days'} since${info.current === 0 ? ' (day zero)' : ''}</span></div>
         <div><b class="big">${info.longest}</b><span>best run</span></div>
         <div><b class="big">${info.clean30}<small>/${info.span30}</small></b><span>clean days, last 30</span></div>
-        <div><b class="big">${info.slips}</b><span>slip${info.slips === 1 ? '' : 's'} in total</span></div></div>
+        <div><b class="big">${info.slips}</b><span>slip${info.slips === 1 ? '' : 's'} in total</span></div>
+        ${cr.length ? `<div><b class="big">${beaten}<small>/${cr.length}</small></b><span>cravings beaten</span></div>` : ''}</div>
       ${bar(pct, null, 'good')}<p class="hint">${nextText}</p>
       <p class="push">${esc(pushLine(info.current, today))}</p>
       ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
-      ${form}
-      ${openSlip === q.id ? '' : `<div class="btns"><button class="btn" data-act="slipopen" data-id="${q.id}">I slipped</button><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>`}
-      ${history}</section>`;
+      ${cravePanel}${form}
+      ${openSlip === q.id || live ? '' : `<div class="btns"><button class="btn pri" data-act="cravstart" data-id="${q.id}">I have a craving</button><button class="btn" data-act="slipopen" data-id="${q.id}">I slipped</button><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>`}
+      ${planRows.length ? `<details class="drop" data-k="pl-${q.id}"><summary>Your if-then plans (${planRows.length})</summary>${planRows.map(([t, p]) => `<div class="row"><span class="rt"><span class="rtitle">If ${esc(t.toLowerCase())}</span><span>then ${esc(p)}</span></span></div>`).join('')}</details>` : ''}
+      ${patterns}${history}</section>`;
   }
 
   function formHtml(q){
@@ -65,6 +115,9 @@ export async function render(root, params){
         <label class="lab">Why it matters to you (optional)<input class="field" name="why" value="${esc(v.why)}" placeholder="A line you'll want to read on a hard day"></label>
         <div class="wrapf"><label class="check"><input type="checkbox" name="show_today" ${v.show_today ? 'checked' : ''}> Show on Today</label>
           <label class="lab" style="flex:1 1 200px">Show on Today as (optional)<input class="field" name="alias" value="${esc(v.alias)}" placeholder="a different word, so it's discreet"></label></div>
+        <details class="drop" data-k="plans"><summary>If-then plans (optional)</summary>
+          <p class="hint">Decide now what you will do when it hits. Short and specific beats clever.</p>
+          ${TRIGGERS.map((t, i) => `<label class="lab">If it is ${esc(t.toLowerCase())}, then I will…<input class="field" name="plan_${i}" maxlength="140" value="${esc((v.plans || {})[t] || '')}" placeholder="e.g. walk round the block, no shop, no phone"></label>`).join('')}</details>
         <p class="hint">If you started on a past date, use it: the count starts from the day you really stopped. Nothing here is ever sent in a notification.</p>
         <div class="btns"><button class="btn pri">${q ? 'Save' : 'Start tracking'}</button>${q || quits.length ? '<button type="button" class="btn" data-act="cancel">Cancel</button>' : ''}</div></form></section>`;
   }
@@ -83,9 +136,20 @@ export async function render(root, params){
       <section class="panel"><details class="drop" data-k="support"><summary>If it gets hard</summary>
         <p class="hint">Cravings peak and pass in 20 to 30 minutes. Do not negotiate with it. Leave the room, do something else, wait it out.</p></details></section>`;
     root.querySelectorAll('details').forEach((d) => { if (wasOpen.has(d.dataset.k)) d.open = true; });
+    clearInterval(timer);
+    if (craving) { timer = setInterval(tick, 1000); tick(); }
     if (openSlip) { const el = root.querySelector(`#q-${openSlip}`); if (el && params[0]) el.scrollIntoView({ block: 'start' }); }
   }
 
+  function tick(){
+    if (!root.isConnected) { clearInterval(timer); return; }
+    if (!craving) return;
+    const gone = Date.now() - craving.at, left = Math.max(0, CRAVE_MS - gone);
+    const cd = root.querySelector('#cd'), b = root.querySelector('#cdbar'), msg = root.querySelector('#cdmsg');
+    if (cd) cd.textContent = clock(left);
+    if (b) b.style.width = `${Math.min(100, 100 * gone / CRAVE_MS)}%`;
+    if (msg && left === 0) msg.textContent = 'Twenty minutes. It has passed. Log that you held.';
+  }
   const refresh = async () => { await load(); draw(); };
   wire(root, {
     add(){ adding = true; editing = null; draw(); },
@@ -93,23 +157,41 @@ export async function render(root, params){
     cancel(){ editing = null; adding = false; draw(); },
     async quitsave(f){
       const v = formData(f);
-      const row = { name: v.name.trim(), started_on: v.started_on, target_days: v.target_days ? Math.max(1, Math.min(3650, Number(v.target_days))) : null, why: v.why.trim(), show_today: !!v.show_today, alias: v.alias.trim() };
+      const plans = {}; TRIGGERS.forEach((t, i) => { const x = (v['plan_' + i] || '').trim(); if (x) plans[t] = x; });
+      const row = { plans, name: v.name.trim(), started_on: v.started_on, target_days: v.target_days ? Math.max(1, Math.min(3650, Number(v.target_days))) : null, why: v.why.trim(), show_today: !!v.show_today, alias: v.alias.trim() };
       if (row.started_on > today) { toast('The quit date can\'t be in the future.'); return; }
       if (f.dataset.id) await store.quits.set(f.dataset.id, row); else await store.quits.add(row);
       toast(f.dataset.id ? 'Saved' : 'Started. One day at a time.');
       editing = null; adding = false;
       await refresh();
     },
-    slipopen(n){ openSlip = n.dataset.id; draw(); },
-    slipcancel(){ openSlip = null; draw(); },
+    slipopen(n){ openSlip = n.dataset.id; slipTrigger = ''; draw(); },
+    slipcancel(){ openSlip = null; slipTrigger = ''; draw(); },
+    cravstart(n){ craving = { id: n.dataset.id, at: Date.now(), trigger: '' }; saveCraving(craving); draw(); },
+    cravtrig(n){ craving = { ...craving, trigger: craving.trigger === n.dataset.t ? '' : n.dataset.t }; saveCraving(craving); draw(); },
+    cravcancel(){ craving = null; saveCraving(null); draw(); },
+    async cravheld(n){
+      const c = craving; craving = null; saveCraving(null);
+      await store.quitCravings.add({ quit_id: n.dataset.id, outcome: 'held', trigger: c.trigger || '', started_at: new Date(c.at).toISOString() });
+      await load();
+      const beaten = (cravBy[n.dataset.id] || []).filter((x) => x.outcome === 'held').length;
+      toast(`Held. That is ${beaten} craving${beaten === 1 ? '' : 's'} beaten. Do it again next time.`);
+      draw();
+    },
+    async cravslip(n){
+      const c = craving; craving = null; saveCraving(null);
+      await store.quitCravings.add({ quit_id: n.dataset.id, outcome: 'slipped', trigger: c.trigger || '', started_at: new Date(c.at).toISOString() });
+      openSlip = n.dataset.id; slipTrigger = c.trigger || '';
+      await refresh();
+    },
     async slipsave(f){
       const q = quits.find((x) => x.id === f.dataset.id), v = formData(f);
       if (v.slip_date > today || v.slip_date < q.started_on) { toast('Pick a date between your quit date and today.'); return; }
       const before = streakInfo(q, slipsOf(q), today);
-      await store.quitSlips.add({ quit_id: q.id, slip_date: v.slip_date, trigger: v.trigger || '', note: (v.note || '').trim() });
+      await store.quitSlips.add({ quit_id: q.id, slip_date: v.slip_date, slip_part: v.slip_part || '', trigger: v.trigger || '', note: (v.note || '').trim() });
       const ran = before.runBefore(v.slip_date);
       toast(ran > 0 ? `Logged. ${ran} day${ran === 1 ? '' : 's'}, thrown away. Your best run stands, so beat it. Day zero starts now. Do not make it two.` : 'Logged. Day zero starts now. Do not make it two.');
-      openSlip = null;
+      openSlip = null; slipTrigger = '';
       await refresh();
     },
     async slipdel(n){ await store.quitSlips.del(n.dataset.id); toast('Removed'); await refresh(); },

@@ -1,12 +1,14 @@
 // Settings: install, notifications, theme, bringing data over from Goals, sign out.
 import * as store from '../store.js';
-import { esc, pill, wire, formData } from '../ui.js';
+import { esc, pill, wire, formData, options } from '../ui.js';
 import { toast } from '../fit/utils.js';
 import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush } from '../pwa.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
 import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
 import { breakList, addBreak, updateBreak, removeBreak } from '../away.js';
+import { lockConfig, setPin, turnOff, lockNow } from '../lock.js';
+import { buildBackup, saveBackup } from '../backup.js';
 import { daysBetween } from '../lib.js';
 
 export async function render(root){
@@ -38,6 +40,30 @@ export async function render(root){
         <div class="btns"><button class="btn">Save Garmin settings</button></div></form></section>`;
   }
   const n = () => ({ morning_on: true, morning: '07:00', evening_on: true, evening: '21:00', ...(cfg.notify || {}) });
+
+  function backupPanel(){
+    const last = cfg.last_backup;
+    const days = last ? daysBetween(last, todayStr()) : null;
+    return `<section class="panel"><h2>Back up your data ${last ? pill(`${days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'} ago`}`, days > 30 ? 'warn' : 'good') : pill('Never', 'warn')}</h2>
+      <p class="hint">One file with your goals, tasks, commitments, journal, lists, career, events, notes, reviews, niggles and your own Fitness records. It is made on this device and goes nowhere until you save it. Hevy and Garmin data aren't included (they re-sync), and neither are your sign-in or notification keys. The file isn't encrypted, so keep it somewhere safe.</p>
+      <label class="check"><input type="checkbox" id="backupPrivate"> Include Giving up (private; anyone with the file can read it)</label>
+      <div class="btns"><button class="btn pri" data-act="backup">Download a backup</button></div></section>`;
+  }
+
+  function lockPanel(){
+    const cfg = lockConfig();
+    if (cfg) return `<section class="panel"><h2>App lock ${pill('On', 'good')}</h2>
+      <p class="hint">A PIN on this device. It covers ${cfg.scope === 'app' ? 'the whole app' : 'only Giving up'} ${cfg.minutes ? `once you've been away for ${cfg.minutes} minute${cfg.minutes === 1 ? '' : 's'}` : 'as soon as you leave it'}. It stops casual glances at an unlocked phone. It is not encryption.</p>
+      <div class="btns"><button class="btn" data-act="locknow">Lock now</button></div>
+      <form class="add wrapf" data-act="lockoff"><label class="lab">Your PIN, to turn it off<input class="field" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" required></label><button class="btn">Turn off</button></form></section>`;
+    return `<section class="panel"><h2>App lock</h2>
+      <p class="hint">Put a PIN on this device so nobody can browse the app (or just Giving up) on your unlocked phone. It is per device: set it on each one. If you forget it, signing out clears it.</p>
+      <form class="stack" data-act="lockon"><div class="wrapf"><label class="lab">PIN (4 to 8 digits)<input class="field" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required></label>
+        <label class="lab">Again<input class="field" name="pin2" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required></label></div>
+        <div class="wrapf"><label class="lab">Covers<select class="field" name="scope">${options([['app', 'The whole app'], ['private', 'Only Giving up']], 'app')}</select></label>
+          <label class="lab">Locks<select class="field" name="minutes">${options([['0', 'As soon as I leave'], ['1', 'After 1 minute away'], ['5', 'After 5 minutes away'], ['15', 'After 15 minutes away']], '1')}</select></label></div>
+        <div class="btns"><button class="btn pri">Turn on</button></div></form></section>`;
+  }
 
   function breaksPanel(){
     const today = todayStr();
@@ -88,6 +114,8 @@ export async function render(root){
         ${devices.length ? `<p class="hint">Sending to ${devices.length} device${devices.length === 1 ? '' : 's'}: ${devices.map((d) => esc(d.device || 'device')).join(', ')}. Times are UK time.</p>` : ''}</section>
     </div><div class="stack">
       ${garminHtml()}
+      ${backupPanel()}
+      ${lockPanel()}
       ${breaksPanel()}
       <section class="panel"><h2>Bring things over from the Goals app</h2><p class="hint">Copies your goals and milestones, wishlist, notes pages and Playbook progress. Anything already copied is skipped, so it's safe to run again. The Goals app itself isn't changed.</p>
         <div class="btns"><button class="btn" data-act="import">Import from Goals</button></div></section>
@@ -130,6 +158,32 @@ export async function render(root){
       toast(f.dataset.id ? 'Saved' : `Added. Reminders and nudges pause from ${formatDateShort(v.from)} until ${formatDateShort(v.until)}.`);
       editing = null;
       await refresh();
+    },
+    async lockon(f){
+      const v = formData(f);
+      if (v.pin !== v.pin2) { toast('The two PINs do not match.'); return; }
+      await setPin(v.pin, v.scope, v.minutes);
+      toast('Lock on. It applies from the next time you leave the app.');
+      draw();
+    },
+    async lockoff(f){
+      const r = await turnOff(formData(f).pin);
+      toast(r.ok ? 'Lock off' : r.wait ? `Too many wrong tries. Wait ${r.wait} seconds.` : 'Wrong PIN.');
+      draw();
+    },
+    locknow(){ lockNow(); },
+    async backup(b){
+      b.disabled = true; b.textContent = 'Collecting everything…';
+      try {
+        const { backup, rows } = await buildBackup({ includePrivate: root.querySelector('#backupPrivate').checked });
+        const how = await saveBackup(backup);
+        if (how !== 'cancelled') {
+          cfg = { ...cfg, last_backup: todayStr() };
+          await store.settings.save(cfg);
+          toast(how === 'shared' ? `Backup of ${rows} records ready to save.` : `Backup of ${rows} records downloaded.`);
+        }
+      } catch (err) { toast(`Backup failed: ${err.message}`); }
+      draw();
     },
     breakedit(n){ editing = n.dataset.id; draw(); },
     breakcancel(){ editing = null; draw(); },

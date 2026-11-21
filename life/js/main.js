@@ -9,14 +9,29 @@ import { state as fitState } from './fit/state.js';
 import { escapeHtml, formatDateFull, todayStr, toast } from './fit/utils.js';
 import { registerSw, clearOfflineData } from './pwa.js';
 import { loadAway } from './away.js';
+import { initLock, appBlocked, privateBlocked, lockFormHtml, bindLockForm, clearLock } from './lock.js';
 
 const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['quit', 'Giving up'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['playbook', 'Playbook'], ['settings', 'Settings']];
 const $ = (s) => document.querySelector(s);
 let signedIn = false;
 let renderToken = 0;
 
+// Forgotten PIN: signing out clears the lock on this device.
+async function forgotPin(){
+  clearLock(); clearOfflineData(); await signOut(); toast('Signed out. The lock is cleared on this device.');
+  $('#lock').hidden = true; $('#lock').innerHTML = '';
+}
+
 async function route(){
   if (!signedIn) return;
+  const lockEl = $('#lock');
+  if (appBlocked()) {
+    lockEl.hidden = false;
+    lockEl.innerHTML = `<div class="panel lockpanel">${lockFormHtml()}</div>`;
+    bindLockForm(lockEl, { onUnlock: () => { lockEl.hidden = true; lockEl.innerHTML = ''; route(); }, onForgot: forgotPin });
+    return;
+  }
+  lockEl.hidden = true; lockEl.innerHTML = '';
   const parts = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const name = TABS.some((t) => t[0] === parts[0]) ? parts[0] : 'today';
   $('#tabs').innerHTML = TABS.map(([k, label]) => `<a href="#/${k}" class="${k === name ? 'on' : ''}">${label}</a>`).join('');
@@ -28,6 +43,11 @@ async function route(){
   root.innerHTML = '<p class="hint">Loading…</p>';
   $('#main').replaceChildren(root);
   window.scrollTo(0, 0);
+  if (name === 'quit' && privateBlocked()) {
+    root.innerHTML = `<section class="panel">${lockFormHtml('Giving up is locked.')}</section>`;
+    bindLockForm(root, { onUnlock: route, onForgot: forgotPin });
+    return;
+  }
   try {
     const view = await import(`./views/${name}.js`);
     if (token !== renderToken) return;
@@ -54,6 +74,7 @@ async function showApp(session){
   fitState.session = session;
   $('#date').textContent = formatDateFull(todayStr());
   try { await loadAway(); } catch (err) { console.warn('Away mode not loaded:', err.message); }
+  initLock(route);
   route();
 }
 
@@ -86,7 +107,7 @@ function initAuthForm(){
 async function boot(){
   initTheme($('#themeBtn'));
   initAuthForm();
-  $('#signOut').addEventListener('click', async () => { clearOfflineData(); await signOut(); toast('Signed out'); });
+  $('#signOut').addEventListener('click', async () => { clearLock(); clearOfflineData(); await signOut(); toast('Signed out'); });
   registerSw();
   const net = () => { $('#offline').hidden = navigator.onLine; };
   window.addEventListener('online', () => { net(); route(); });

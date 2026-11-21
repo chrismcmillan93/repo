@@ -6,6 +6,7 @@ import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
 import { awayUntil, isAway, endInBreak } from '../away.js';
 import { goalPct, goalExpected, goalState, STATE, keptPct } from '../lib.js';
+import { weekVerdict } from '../verdict.js';
 
 const TYPES = [['week', 'Week'], ['month', 'Month'], ['quarter', 'Quarter']];
 const DECISIONS = [['continue', 'Keep going as is'], ['adjust', 'Adjust the plan or target'], ['pause', 'Pause it'], ['complete', 'Mark it achieved'], ['stop', 'Drop it']];
@@ -81,12 +82,15 @@ async function flow(outer, id){
   const byGoal = Object.fromEntries(rgs.map((x) => [x.goal_id, x]));
   const rank = { stalled: 0, behind: 1, on: 2, done: 3 };
   const rows = goals.map((g) => { const pct = goalPct(g, steps), exp = goalExpected(g); return { g, pct, exp, st: goalState(g, pct, exp) }; }).sort((a, b) => rank[a.st] - rank[b.st]);
+  // A week review opens with the verdict on that week, same as the Week tab.
+  const wv = r.period_type === 'week' ? weekVerdict({ commits, tasksDone: tasks.length, closedDays: closes.length, misses: misses.length, goals: rows.map(({ g, pct, exp, st }) => ({ title: g.title, pct, exp, quiet: 0, state: st })), away: endInBreak(r.period_end) }) : null;
   const locked = r.status === 'complete';
   const dis = locked ? 'disabled' : '';
   const days = Math.round((new Date(Math.min(new Date(r.period_end), new Date(today))) - new Date(r.period_start)) / 864e5) + 1;
 
   root.innerHTML = `<div class="weeknav"><a class="btn sm" href="#/review">‹ All reviews</a><b>${esc(periodLabel(r.period_type, r.period_start))}</b>${pill(locked ? 'Complete' : 'Draft', locked ? 'good' : 'warn')}</div>
     <section class="panel"><h2>1. Look back <small>${formatDateShort(r.period_start)} to ${formatDateShort(r.period_end)}</small></h2>
+      ${wv && wv.kind === 'graded' ? `<div class="vrow"><b class="grade g-${wv.grade}">${wv.grade}</b><div><p class="push">${esc(wv.headline)}</p><p>${esc(wv.line)}</p><p><b>Fix this:</b> ${esc(wv.fix)}</p></div></div>` : ''}
       <div class="stats"><div><b class="big">${keptPct(commits)}%</b><span>commitments kept</span></div><div><b class="big">${tasks.length}</b><span>tasks done</span></div>
         <div><b class="big">${closes.length}/${days}</b><span>days closed</span></div><div><b class="big">${wins.length}</b><span>wins logged</span></div></div>
       ${commits.length ? `<p class="sub">Commitments</p>${commits.map((c) => `<div class="row"><span class="rt"><span class="rtitle">${esc(c.title)}</span><span class="rmeta"><span>Week of ${formatDateShort(c.week_start)}</span></span></span><span class="right"><b>${c.done_count}/${c.target_count}</b></span></div>`).join('')}` : ''}
