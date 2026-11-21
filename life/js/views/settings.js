@@ -5,11 +5,12 @@ import { toast } from '../fit/utils.js';
 import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush } from '../pwa.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
-import { todayStr } from '../fit/utils.js';
+import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
+import { breakList, addBreak, updateBreak, removeBreak } from '../away.js';
 import { daysBetween } from '../lib.js';
 
 export async function render(root){
-  let cfg = {}, sub = null, devices = [], gstate = null;
+  let cfg = {}, sub = null, devices = [], gstate = null, editing = null;
   async function load(){ [cfg, sub, devices, gstate] = await Promise.all([store.settings.get(), currentSubscription().catch(() => null), store.pushSubs.list((q) => q.order('created_at')), garmin.state().catch(() => null)]); }
   const when = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -38,6 +39,32 @@ export async function render(root){
   }
   const n = () => ({ morning_on: true, morning: '07:00', evening_on: true, evening: '21:00', ...(cfg.notify || {}) });
 
+  function breaksPanel(){
+    const today = todayStr();
+    const stage = (b) => ((b.from || '0000-01-01') <= today && today < b.until ? 0 : b.until <= today ? 2 : 1); // now, then coming up, then done
+    const items = [...breakList()].sort((a, b) => stage(a) - stage(b) || ((a.from || '') < (b.from || '') ? -1 : 1));
+    const status = (b) => {
+      const from = b.from || '0000-01-01';
+      if (from <= today && today < b.until) return pill('Away now', 'good');
+      if (from > today) { const n = daysBetween(today, from); return pill(`In ${n} day${n === 1 ? '' : 's'}`, 'goal'); }
+      return pill('Done');
+    };
+    const when = (b) => (b.from ? `Leaves ${formatDateShort(b.from)} · back ${formatDateShort(b.until)}` : `Back ${formatDateShort(b.until)}`);
+    const cur = editing ? items.find((b) => b.id === editing) : null;
+    const rows = items.map((b) => `<div class="row"><span class="rt"><span class="rtitle">${esc(b.name)}</span><span class="rmeta">${status(b)}<span>${when(b)}</span>${b.event_id ? pill('In Events') : ''}</span></span>
+      <span class="step"><button class="btn sm ghost" data-act="breakedit" data-id="${b.id}">Edit</button><button class="btn sm ghost" data-act="breakremove" data-id="${b.id}" aria-label="Remove ${esc(b.name)}">×</button></span></div>`).join('');
+    return `<section class="panel"><h2>Breaks and trips <small>${items.length ? `${items.length} added` : ''}</small></h2>
+      <p class="hint">Going away or taking time off? Add the dates. While you're away there are no reminders, review prompts or nudges, overdue tasks wait for you, and nothing counts as missed. Everything is back to normal on the day you return. Nothing you've logged is deleted.</p>
+      ${rows || '<p class="hint">Nothing added yet.</p>'}
+      <p class="sub">${cur ? `Edit ${esc(cur.name)}` : 'Add a break or trip'}</p>
+      <form class="stack" data-act="breaksave" data-id="${cur ? cur.id : ''}">
+        <div class="wrapf"><label class="lab" style="flex:1 1 150px">Name<input class="field" name="name" required value="${cur ? esc(cur.name) : ''}" placeholder="e.g. USA trip"></label>
+          <label class="lab">Leaving<input class="field" type="date" name="from" required value="${cur ? cur.from || today : today}"></label>
+          <label class="lab">Back on<input class="field" type="date" name="until" required value="${cur ? cur.until : ''}"></label></div>
+        <label class="check"><input type="checkbox" name="countdown" ${cur ? (cur.event_id ? 'checked' : '') : 'checked'}> Show a countdown in Events</label>
+        <div class="btns"><button class="btn pri">${cur ? 'Save changes' : 'Add'}</button>${cur ? '<button type="button" class="btn" data-act="breakcancel">Cancel</button>' : ''}</div></form></section>`;
+  }
+
   function draw(){
     const p = n();
     const installed = isStandalone();
@@ -61,6 +88,7 @@ export async function render(root){
         ${devices.length ? `<p class="hint">Sending to ${devices.length} device${devices.length === 1 ? '' : 's'}: ${devices.map((d) => esc(d.device || 'device')).join(', ')}. Times are UK time.</p>` : ''}</section>
     </div><div class="stack">
       ${garminHtml()}
+      ${breaksPanel()}
       <section class="panel"><h2>Bring things over from the Goals app</h2><p class="hint">Copies your goals and milestones, wishlist, notes pages and Playbook progress. Anything already copied is skipped, so it's safe to run again. The Goals app itself isn't changed.</p>
         <div class="btns"><button class="btn" data-act="import">Import from Goals</button></div></section>
       <section class="panel"><h2>Other apps</h2><div class="btns"><a class="btn" href="../goals/">Goals</a><a class="btn" href="../fitness/">Fitness</a></div>
@@ -96,6 +124,16 @@ export async function render(root){
       await refresh();
     },
     async import(b){ b.disabled = true; toast(importSummary(await importFromGoalsApp())); b.disabled = false; },
+    async breaksave(f){
+      const v = formData(f), input = { name: v.name, from: v.from, until: v.until, countdown: !!v.countdown };
+      if (f.dataset.id) await updateBreak(f.dataset.id, input); else await addBreak(input);
+      toast(f.dataset.id ? 'Saved' : `Added. Reminders and nudges pause from ${formatDateShort(v.from)} until ${formatDateShort(v.until)}.`);
+      editing = null;
+      await refresh();
+    },
+    breakedit(n){ editing = n.dataset.id; draw(); },
+    breakcancel(){ editing = null; draw(); },
+    async breakremove(n){ await removeBreak(n.dataset.id); toast('Removed'); if (editing === n.dataset.id) editing = null; await refresh(); },
     signout(){ document.getElementById('signOut').click(); }
   });
   await refresh();

@@ -8,6 +8,7 @@ import { initTheme } from './theme.js';
 import { state as fitState } from './fit/state.js';
 import { escapeHtml, formatDateFull, todayStr, toast } from './fit/utils.js';
 import { registerSw, clearOfflineData } from './pwa.js';
+import { loadAway } from './away.js';
 
 const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['playbook', 'Playbook'], ['settings', 'Settings']];
 const $ = (s) => document.querySelector(s);
@@ -44,7 +45,7 @@ async function route(){
   }
 }
 
-function showApp(session){
+async function showApp(session){
   signedIn = !!session;
   $('#auth').hidden = signedIn;
   $('#app').hidden = !signedIn;
@@ -52,6 +53,7 @@ function showApp(session){
   setUser(session.user.id);
   fitState.session = session;
   $('#date').textContent = formatDateFull(todayStr());
+  try { await loadAway(); } catch (err) { console.warn('Away mode not loaded:', err.message); }
   route();
 }
 

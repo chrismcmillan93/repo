@@ -217,6 +217,54 @@ Same shape as Hevy: Garmin stays the source, an Edge Function fills read-only ta
   with stand-in data in Playwright, and auto-tick has not yet fired on a real planned run
   (the plan starts 2026-11-30).
 
+## Breaks and trips (2026-11-18)
+
+Dates you're away. **While you're in one, nothing counts against you and nothing nags.**
+Add them in Settings → Breaks and trips: a name, the day you leave, the day you're back,
+and optionally a countdown in Events. `js/away.js` holds all of it; `loadAway()` runs at
+sign-in before the first screen. Nothing logged is ever deleted except empty generated
+repeats (below).
+
+- **Storage:** `settings.data.breaks = [{ id, name, from, until, started, settled, event_id? }]`.
+  `from` = first day away (`null` = already away); `until` = the day you're back, so you're
+  away on every day before it. Overlapping or back-to-back breaks are joined into one stretch
+  for every check. The old single `settings.data.away = { until, applied }` (used for the
+  Nov 2026 trip, written straight to the row) is migrated into the list on the next open
+  (as a break named "Away" with `from: null`, which forgives everything before the return
+  date) and the `away` key is removed. `life-push` understands both shapes.
+- **Countdown:** with "Show a countdown in Events" ticked, a `life.events` row (`kind`
+  `trip`, last day away as `end_date`) is created, kept in step when the break is edited, and
+  deleted when it's removed (`event_id` links them).
+- **No nudges:** Today shows one banner (with the break's name) instead of every nudge
+  (stalled goals, no commitment, carried-over tasks, daily behind / monthly running out,
+  review due, Garmin key expiry). `paceInfo()` returns nothing, so no "N behind" or "days
+  left" pills.
+- **No reviews due:** `dueReviews()` skips any week, month or quarter whose last day falls
+  inside a break (`endInBreak()`; the return day counts). The Review tab says so; you can
+  still start one by hand.
+- **No carry-over:** `carryOver()` does nothing while away, so overdue tasks wait and
+  `carried_count` doesn't climb.
+- **Goals can't go stalled:** `quietDays(goal)` is the days since the last progress **minus
+  the days inside breaks**, so the 14-day "stalled" rule only counts days you could have
+  acted. **Target dates are never moved** (the Goals-app rule that dates don't shift silently
+  still holds), so a dated goal can show "Behind" pace on return; that is the real picture.
+- **No missed periods:** `ensureRecurring()` doesn't create a repeat's week or month that
+  ended inside a break (`periodOver()`), and `syncFit()` doesn't create or score Health's
+  automatic weekly commitments for such weeks, so the scorecard and the 8-week average don't
+  fill with zeros.
+- **Tidy-up, once at each end** (`resetForBreak()`; per-break flags `started` / `settled`,
+  run by `reconcile()` at load and whenever the list changes): when a break is underway
+  (or already over) its open tasks due before the return date move to the return date (or
+  to today if that has passed), with the top-three flag and carry-over count cleared, and
+  repeat-generated commitments with **nothing done** whose period ended inside that break
+  are deleted (they would show as 0% weeks). Anything with progress, one-offs and Health's
+  rows are left alone. A break that hasn't started yet changes nothing until it does.
+- **Push notifications:** `life-push` (`awayNow()`) skips a user on any day inside a break
+  (London date): no morning brief, evening reminder or Sunday review prompt. Garmin sync is
+  a separate job and keeps running, so the data is there on return.
+- **Removing** a break (or the whole list) brings everything back immediately from the real
+  dates. `sw.js` `VERSION` is `v3` (the `js/away.js` file was added to the shell list).
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

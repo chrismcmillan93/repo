@@ -247,3 +247,5 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .stats div span + span { font-size: 12px }
 #recovery .stats { gap: 16px 22px }
 #recovery .big { font-size: 28px }
+
+.nudge.away { border-left-color: var(--accent); background: var(--accent-soft) }
