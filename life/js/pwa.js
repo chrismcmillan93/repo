@@ -9,7 +9,26 @@ export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (nav
 export function registerSw(){
   if (!('serviceWorker' in navigator)) return;
   if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
-  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker not registered:', err.message));
+  // A new worker takes over by itself (sw.js calls skipWaiting). If one replaces the worker this
+  // page was loaded under, reload once so the page and its files are the same version.
+  const had = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js').then((reg) => { reg.update().catch(() => {}); }).catch((err) => console.warn('Service worker not registered:', err.message));
+}
+
+// Which build this page is (shown in Settings). Bump with sw.js VERSION on every release.
+export const BUILD = '2026-11-21c';
+
+// Force the newest version: drop the worker and its file caches, then reload. Data and sign-in stay.
+export async function refreshApp(){
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k.startsWith('life-shell-')).map((k) => caches.delete(k)));
+  } catch (_) {}
+  location.reload();
 }
 
 // Wipe cached data (on sign-out), so the next person on this device never sees it offline.

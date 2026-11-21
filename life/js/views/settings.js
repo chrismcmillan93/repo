@@ -2,7 +2,7 @@
 import * as store from '../store.js';
 import { esc, pill, wire, formData, options } from '../ui.js';
 import { toast } from '../fit/utils.js';
-import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush } from '../pwa.js';
+import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush, BUILD, refreshApp } from '../pwa.js';
 import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
 import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
@@ -40,6 +40,12 @@ export async function render(root){
         <div class="btns"><button class="btn">Save Garmin settings</button></div></form></section>`;
   }
   const n = () => ({ morning_on: true, morning: '07:00', evening_on: true, evening: '21:00', ...(cfg.notify || {}) });
+
+  function versionPanel(){
+    return `<section class="panel"><h2>App version ${pill(BUILD, '')}</h2>
+      <p class="hint">The app checks for a new version every time you open it. If this build number looks old, this clears the saved copy and loads the latest. Your data and sign-in stay.</p>
+      <div class="btns"><button class="btn" data-act="refreshapp">Get the latest version</button></div></section>`;
+  }
 
   function backupPanel(){
     const last = cfg.last_backup;
@@ -114,6 +120,7 @@ export async function render(root){
         ${devices.length ? `<p class="hint">Sending to ${devices.length} device${devices.length === 1 ? '' : 's'}: ${devices.map((d) => esc(d.device || 'device')).join(', ')}. Times are UK time.</p>` : ''}</section>
     </div><div class="stack">
       ${garminHtml()}
+      ${versionPanel()}
       ${backupPanel()}
       ${lockPanel()}
       ${breaksPanel()}
@@ -172,6 +179,7 @@ export async function render(root){
       draw();
     },
     locknow(){ lockNow(); },
+    refreshapp(b){ b.disabled = true; b.textContent = 'Refreshing…'; refreshApp(); },
     async backup(b){
       b.disabled = true; b.textContent = 'Collecting everything…';
       try {
