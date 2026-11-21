@@ -256,3 +256,4 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .why { font-style: italic; color: var(--muted) }
 .slipform { background: var(--sunk); border-radius: 8px; padding: 12px }
 .slipform .field { background: var(--surface) }
+.push { font-weight: 700; font-size: 15px; line-height: 1.35 }

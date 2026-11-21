@@ -274,16 +274,21 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
 - **Counting** is all in `js/streaks.js` (pure functions, unit-tested on their own in
   scratch, not checked in): a slip on a date restarts the current run from that date;
   the **best run**, slip count and **clean days in the last 30** are kept, so one slip never
-  erases the run before it. A quit date of today shows 0 days ("a fresh start"). Slips before
+  erases the run before it. A quit date of today shows 0 days ("day zero"). Slips before
   the quit date or in the future are ignored; several slips on one day count once for the run
   and separately as slips. Milestones are 1, 3, 7, 14, 30, 60, 90, 180, 365, 730 days; an
   optional goal in days replaces them as the progress target. The slip log has an optional
   trigger (Stress, Boredom, Tired, ...) and note; the most common trigger is shown from
   2 slips on.
-- **Tone:** no shaming. Logging a slip says how long the run before it was ("the 10 days
-  before it still count. Today is a fresh start"). There's a collapsed "If it gets hard"
-  with Drinkline (0300 123 1110), FRANK (0300 123 6600) and Samaritans (116 123) and a note
-  that stopping alcohol or some drugs suddenly after heavy use can be medically risky.
+- **Tone: blunt, by request** (Chris prefers harsh and to the point). Each card has a
+  motivation line (`pushLine()` in `streaks.js`, bold, picked by where the current run is:
+  day zero, under 7, under 30, 30+; steady for the day, changes day to day) and logging a
+  slip says it straight ("10 days, thrown away. Your best run stands, so beat it. Day zero
+  starts now. Do not make it two."). The slip form asks "What set it off, and what will you
+  do differently?". It is harsh about the *next decision*, never about who he is: keep it
+  that way. The collapsed "If it gets hard" has only a short craving tip. **No helpline
+  numbers and no medical/withdrawal note**: both were added and then removed at Chris's
+  request, so don't add them back.
 - **Privacy (deliberate, keep it):**
   - RLS own-rows for signed-in users, anon and **service_role have no access**, so the
     notification and sync Edge Functions can't read these tables. `life-push` never mentions

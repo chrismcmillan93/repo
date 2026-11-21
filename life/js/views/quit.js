@@ -5,7 +5,7 @@
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, formatDateShort, toast } from '../fit/utils.js';
-import { streakInfo, topTrigger, milestoneLabel } from '../streaks.js';
+import { streakInfo, topTrigger, milestoneLabel, pushLine } from '../streaks.js';
 
 const TRIGGERS = ['Stress', 'Boredom', 'Tired', 'Lonely', 'Social pressure', 'Celebrating', 'Craving', 'Other'];
 
@@ -33,7 +33,7 @@ export async function render(root, params){
     const trig = topTrigger(slipsOf(q));
     const mine = slipsOf(q);
     const form = openSlip === q.id ? `<form class="slipform stack" data-act="slipsave" data-id="${q.id}">
-        <p class="hint">No judgement. Logging it keeps the picture honest, and the days before it still count.</p>
+        <p class="hint">Log it straight. What set it off, and what will you do differently next time?</p>
         <div class="wrapf"><label class="lab">When<input class="field" type="date" name="slip_date" required min="${q.started_on}" max="${today}" value="${today}"></label>
           <label class="lab">What set it off? (optional)<select class="field" name="trigger">${options(TRIGGERS.map((t) => [t, t]), null, 'Rather not say')}</select></label></div>
         <label class="lab">Anything to remember? (optional)<textarea class="field" rows="2" name="note"></textarea></label>
@@ -43,11 +43,12 @@ export async function render(root, params){
         ${trig ? `<p class="hint">Most common trigger so far: ${esc(trig.name)} (${trig.n} times). Knowing it makes it easier to plan for.</p>` : ''}</details>` : '';
     return `<section class="panel quitcard" id="q-${q.id}">
       <h2>${esc(q.name)} <small>since ${formatDateShort(q.started_on)}${info.slipDays ? `, last slip ${formatDateShort(info.lastSlip)}` : ''}</small></h2>
-      <div class="stats"><div><b class="big">${info.current}</b><span>${info.current === 1 ? 'day' : 'days'} since${info.current === 0 ? ' (a fresh start today)' : ''}</span></div>
+      <div class="stats"><div><b class="big">${info.current}</b><span>${info.current === 1 ? 'day' : 'days'} since${info.current === 0 ? ' (day zero)' : ''}</span></div>
         <div><b class="big">${info.longest}</b><span>best run</span></div>
         <div><b class="big">${info.clean30}<small>/${info.span30}</small></b><span>clean days, last 30</span></div>
         <div><b class="big">${info.slips}</b><span>slip${info.slips === 1 ? '' : 's'} in total</span></div></div>
       ${bar(pct, null, 'good')}<p class="hint">${nextText}</p>
+      <p class="push">${esc(pushLine(info.current, today))}</p>
       ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
       ${form}
       ${openSlip === q.id ? '' : `<div class="btns"><button class="btn" data-act="slipopen" data-id="${q.id}">I slipped</button><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>`}
@@ -73,16 +74,14 @@ export async function render(root, params){
     const live = quits.filter((q) => !q.archived), stopped = quits.filter((q) => q.archived);
     const editQ = editing ? quits.find((q) => q.id === editing) : null;
     root.innerHTML = `<section class="panel"><h2>Giving up <small>Private to you</small></h2>
-        <p class="hint">Days since, your best run, and a place to log slips honestly. A slip restarts the count but doesn't erase the run before it. The name can be hidden on Today, and nothing here appears in notifications.</p>
+        <p class="hint">Days since, your best run, and an honest log of slips. A slip restarts the count; your best run stays as the number to beat. The name can be hidden on Today, and nothing here appears in notifications.</p>
         ${editQ || adding ? '' : '<div class="btns"><button class="btn pri" data-act="add">Give something up</button></div>'}</section>
       ${editQ ? formHtml(editQ) : adding ? formHtml(null) : ''}
       ${live.map(cardHtml).join('')}
       ${stopped.length ? `<section class="panel"><h2>Stopped tracking <small>${stopped.length}</small></h2>${stopped.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.name)}</span><span class="rmeta">since ${formatDateShort(q.started_on)} · ${slipsOf(q).length} slip${slipsOf(q).length === 1 ? '' : 's'}</span></span>
         <span class="step"><button class="btn sm" data-act="restore" data-id="${q.id}">Restore</button>${confirmDelete === q.id ? `<button class="btn sm" data-act="deleteyes" data-id="${q.id}">Delete everything, for good</button><button class="btn sm ghost" data-act="deleteno">Keep</button>` : `<button class="btn sm ghost" data-act="deleteask" data-id="${q.id}">Delete</button>`}</span></div>`).join('')}</section>` : ''}
       <section class="panel"><details class="drop" data-k="support"><summary>If it gets hard</summary>
-        <p class="hint">Cravings pass, usually within 20 to 30 minutes. Delay, drink some water, change room, message someone. If you're struggling, these are free and confidential in the UK:</p>
-        <ul class="steps"><li><b>Drinkline</b> (alcohol): 0300 123 1110</li><li><b>FRANK</b> (drugs): 0300 123 6600</li><li><b>Samaritans</b> (any time, 24 hours): 116 123</li></ul>
-        <p class="hint">Stopping alcohol or some drugs suddenly after heavy use can be medically risky. Talk to a GP or one of these services first.</p></details></section>`;
+        <p class="hint">Cravings peak and pass in 20 to 30 minutes. Do not negotiate with it. Leave the room, do something else, wait it out.</p></details></section>`;
     root.querySelectorAll('details').forEach((d) => { if (wasOpen.has(d.dataset.k)) d.open = true; });
     if (openSlip) { const el = root.querySelector(`#q-${openSlip}`); if (el && params[0]) el.scrollIntoView({ block: 'start' }); }
   }
@@ -109,7 +108,7 @@ export async function render(root, params){
       const before = streakInfo(q, slipsOf(q), today);
       await store.quitSlips.add({ quit_id: q.id, slip_date: v.slip_date, trigger: v.trigger || '', note: (v.note || '').trim() });
       const ran = before.runBefore(v.slip_date);
-      toast(ran > 0 ? `Logged. The ${ran} day${ran === 1 ? '' : 's'} before it still count. Today is a fresh start.` : 'Logged. Today is a fresh start.');
+      toast(ran > 0 ? `Logged. ${ran} day${ran === 1 ? '' : 's'}, thrown away. Your best run stands, so beat it. Day zero starts now. Do not make it two.` : 'Logged. Day zero starts now. Do not make it two.');
       openSlip = null;
       await refresh();
     },
