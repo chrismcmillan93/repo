@@ -265,6 +265,41 @@ repeats (below).
 - **Removing** a break (or the whole list) brings everything back immediately from the real
   dates. `sw.js` `VERSION` is `v3` (the `js/away.js` file was added to the shell list).
 
+## Giving up (2026-11-21)
+
+A private tracker for things being given up (alcohol, porn, drugs, gambling, anything):
+days since, best run, and a log of slips. Tab **Giving up** (`views/quit.js`), plus a small
+panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_tracker`).
+
+- **Counting** is all in `js/streaks.js` (pure functions, unit-tested on their own in
+  scratch, not checked in): a slip on a date restarts the current run from that date;
+  the **best run**, slip count and **clean days in the last 30** are kept, so one slip never
+  erases the run before it. A quit date of today shows 0 days ("a fresh start"). Slips before
+  the quit date or in the future are ignored; several slips on one day count once for the run
+  and separately as slips. Milestones are 1, 3, 7, 14, 30, 60, 90, 180, 365, 730 days; an
+  optional goal in days replaces them as the progress target. The slip log has an optional
+  trigger (Stress, Boredom, Tired, ...) and note; the most common trigger is shown from
+  2 slips on.
+- **Tone:** no shaming. Logging a slip says how long the run before it was ("the 10 days
+  before it still count. Today is a fresh start"). There's a collapsed "If it gets hard"
+  with Drinkline (0300 123 1110), FRANK (0300 123 6600) and Samaritans (116 123) and a note
+  that stopping alcohol or some drugs suddenly after heavy use can be medically risky.
+- **Privacy (deliberate, keep it):**
+  - RLS own-rows for signed-in users, anon and **service_role have no access**, so the
+    notification and sync Edge Functions can't read these tables. `life-push` never mentions
+    them (a test greps its source), so no push ever names a quit.
+  - Each quit can be **hidden from Today** (`show_today`) or shown there under another word
+    (`alias`, e.g. "Habit A"). Today never shows the real name when an alias is set.
+  - `sw.js` **never caches** the `quits` / `quit_slips` requests, so nothing about them is
+    kept offline on the device (the rest of the app is). Offline, the Giving up screen and
+    Today's panel simply don't load.
+  - Not in Journal, reviews, exports, Events or the morning brief.
+- **Breaks and trips don't pause it:** the counter just keeps counting real days; it has no
+  nudges to pause.
+- **Stop tracking** archives (kept, restorable); **Delete** needs a second confirming click
+  and removes the quit and all its slips (`quit_slips.quit_id` cascades).
+- `sw.js` `VERSION` is `v4` (added `js/views/quit.js` and `js/streaks.js`).
+
 ## Not built yet
 
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old

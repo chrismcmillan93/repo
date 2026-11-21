@@ -11,6 +11,7 @@ import { garmin, loadRecovery, recoveryHtml, syncSummary, syncError, garminPrefs
 import { taskRow, towardsSelect, towardsFields, commitRow, commitActs } from './shared.js';
 import { loadCountdowns, countdownRow } from './events.js';
 import { dueReviews, periodLabel } from './review.js';
+import { streakInfo } from '../streaks.js';
 
 export async function render(root){
   const today = todayStr();
@@ -32,7 +33,14 @@ export async function render(root){
     await carryOver(tasks);
     await syncFit(weekStart, goals);
     const [commits, steps] = await Promise.all([weekCommitments(weekStart), store.steps.list()]);
-    d = { cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    // Giving up: only the ones set to show here, under the name you chose. Never blocks Today.
+    let quits = [];
+    try {
+      const mine = (await store.quits.list((q) => q.eq('archived', false).eq('show_today', true).order('created_at')));
+      const slips = mine.length ? await store.quitSlips.list() : [];
+      quits = mine.map((q) => ({ id: q.id, label: q.alias || q.name, days: streakInfo(q, slips.filter((s) => s.quit_id === q.id), today).current }));
+    } catch (_) { quits = []; }
+    d = { quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -107,6 +115,9 @@ export async function render(root){
       ${bar(wk, gone, wk + 10 < gone ? 'warn' : 'good')}<div class="btns"><a class="btn sm" href="#/week">Open the week</a></div>`;
     const manual = d.commits.filter((c) => !c.source);
     root.querySelector('#commits').innerHTML = `<h2>Commitments <small><a href="#/week">Add or change</a></small></h2>${manual.length ? manual.map((c) => commitRow(c, { tools: false })).join('') : empty('Nothing set. Add one on the Week tab, e.g. 1 chapter a day.')}`;
+    const qEl = root.querySelector('#quits');
+    qEl.hidden = !d.quits.length;
+    qEl.innerHTML = d.quits.length ? `<h2>Giving up <small><a href="#/quit">Open</a></small></h2>${d.quits.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.label)}</span></span><span class="right"><b class="big sm">${q.days}</b> day${q.days === 1 ? '' : 's'}</span><a class="btn sm ghost" href="#/quit/${q.id}">I slipped</a></div>`).join('')}` : '';
     root.querySelector('#habits').innerHTML = `<h2>Habits</h2>${d.habits.length ? d.habits.map((h) => { const s = streak(h);
       return `<label class="row ${s.on ? 'done' : ''}"><input type="checkbox" data-act="habit" data-id="${h.id}" ${s.on ? 'checked' : ''}><span class="rt"><span class="rtitle">${esc(h.title)}</span></span><span class="right">${s.n ? `${s.n} day streak` : 'No streak'}</span></label>`; }).join('') : empty('No habits yet.')}
       <form class="add" data-act="addhabit"><input class="field" name="title" placeholder="Add a daily habit" aria-label="Add a daily habit" required><button class="btn">Add</button></form>`;
@@ -118,7 +129,7 @@ export async function render(root){
     <section class="panel" id="weekcard"></section>
     <section class="panel" id="commits"></section>
     <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><div id="fit"></div></section>
-    <section class="panel" id="habits"></section><section class="panel" id="coming"></section></div></div>`;
+    <section class="panel" id="habits"></section><section class="panel" id="quits" hidden></section><section class="panel" id="coming"></section></div></div>`;
 
   const refresh = async () => { await load(); draw(); };
   const mountFit = () => mountDay(root.querySelector('#fit'), today, { compact: true, onChange: async () => { await syncFit(weekStart, d.goals); d.commits = await weekCommitments(weekStart); draw(); } });
