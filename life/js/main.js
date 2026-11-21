@@ -34,9 +34,10 @@ async function route(){
   lockEl.hidden = true; lockEl.innerHTML = '';
   const parts = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const name = TABS.some((t) => t[0] === parts[0]) ? parts[0] : 'today';
-  $('#tabs').innerHTML = TABS.map(([k, label]) => `<a href="#/${k}" class="${k === name ? 'on' : ''}">${label}</a>`).join('');
-  const active = $('#tabs a.on');
-  if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+  const link = (k) => { const t = TABS.find((x) => x[0] === k); return `<a href="#/${k}" class="${k === name ? 'on' : ''}"${k === name ? ' aria-current="page"' : ''}>${t[1]}</a>`; };
+  $('#tabs').innerHTML = MENU.map(([group, keys]) => `<div class="menugroup"><h2>${group}</h2>${keys.map(link).join('')}</div>`).join('');
+  $('#here').textContent = (TABS.find((t) => t[0] === name) || TABS[0])[1];
+  closeMenu();
   const token = ++renderToken;
   const root = document.createElement('div');
   root.className = 'view';
@@ -70,6 +71,7 @@ async function showApp(session){
   $('#auth').hidden = signedIn;
   $('#app').hidden = !signedIn;
   if (!signedIn) return;
+  initMenu();
   setUser(session.user.id);
   fitState.session = session;
   $('#date').textContent = formatDateFull(todayStr());
@@ -78,6 +80,18 @@ async function showApp(session){
   route();
 }
 
+// The menu: every section, grouped. Opens from the ☰ button; closes on a choice, Escape or a tap outside.
+const MENU = [['Daily', ['today', 'week', 'tasks']], ['Goals and growth', ['goals', 'review', 'career', 'playbook']], ['Life', ['health', 'lists', 'events', 'journal']], ['Private', ['quit']], ['App', ['settings']]];
+function closeMenu(){ const m = $('#tabs'); if (!m) return; m.hidden = true; $('#menuBtn').setAttribute('aria-expanded', 'false'); }
+let menuReady = false;
+function initMenu(){
+  if (menuReady) return; menuReady = true;
+  const btn = $('#menuBtn'), menu = $('#tabs');
+  btn.addEventListener('click', (e) => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (open) { const a = menu.querySelector('a.on') || menu.querySelector('a'); if (a) a.focus(); } });
+  menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMenu(); });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !e.target.closest('#tabs')) closeMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { closeMenu(); btn.focus(); } });
+}
 function initAuthForm(){
   const msg = $('#authMsg');
   let email = '';

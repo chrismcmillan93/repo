@@ -338,7 +338,15 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   (`settings.last_backup`, falling back to `backup_started`).
 - Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
-  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v6`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v7`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+
+## Menu (2026-11-21)
+
+Thirteen sections no longer fit a scrolling tab strip, so navigation is a **☰ menu** in the header
+(`#menuBtn` opens `#tabs`, a dropdown grouped Daily / Goals and growth / Life / Private / App; the
+current section's name sits next to "Life" as `#here`). `MENU` in `main.js` defines the groups; the
+routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. Tests must wait for
+`#tabs a` with `state: 'attached'` because the menu is hidden until opened.
 
 ## Not built yet
 
