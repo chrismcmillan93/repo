@@ -325,6 +325,12 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   away-minutes setting; escalating delay after 5 wrong PINs; sign-out clears it, and
   "Forgot PIN" signs out and clears offline data. **A screen lock, not encryption.**
   With the private scope Today doesn't even fetch quits while locked.
+- **Biometric unlock** (`lock.js`, Settings → App lock): optional on top of the PIN, per device.
+  WebAuthn platform authenticator (`userVerification: 'required'`, `rpId` = hostname); only the
+  credential id is stored in the `life-lock` config (`bio`). The device does the face/finger
+  match and the app only learns it succeeded, so it is still a screen lock, not encryption.
+  The PIN always works; turning the lock off or signing out removes it. Tested with Chromium's
+  virtual authenticator (`WebAuthn.addVirtualAuthenticator`); needs a secure context.
 - **Today on a trip** (`js/trip.js`, pure `js/tripmatch.js`): shows your USA trip plan for today
   (stay, flights, items) via the signed-in session. **Thailand is deliberately not read** — that
   trip is isolated from this app (removed 2026-11-21); don't reconnect it. Panels never throw.
@@ -338,7 +344,7 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   (`settings.last_backup`, falling back to `backup_started`).
 - Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
-  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v8`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v9`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
 
 ## Menu (2026-11-21)
 

@@ -7,7 +7,7 @@ import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
 import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
 import { breakList, addBreak, updateBreak, removeBreak } from '../away.js';
-import { lockConfig, setPin, turnOff, lockNow } from '../lock.js';
+import { lockConfig, setPin, turnOff, lockNow, biometricSupported, biometricOn, enableBiometric, disableBiometric } from '../lock.js';
 import { buildBackup, saveBackup } from '../backup.js';
 import { daysBetween } from '../lib.js';
 
@@ -56,11 +56,14 @@ export async function render(root){
       <div class="btns"><button class="btn pri" data-act="backup">Download a backup</button></div></section>`;
   }
 
+  let bioOk = false;
+  biometricSupported().then((ok) => { if (ok !== bioOk) { bioOk = ok; if (root.isConnected) draw(); } });
   function lockPanel(){
     const cfg = lockConfig();
     if (cfg) return `<section class="panel"><h2>App lock ${pill('On', 'good')}</h2>
       <p class="hint">A PIN on this device. It covers ${cfg.scope === 'app' ? 'the whole app' : 'only Giving up'} ${cfg.minutes ? `once you've been away for ${cfg.minutes} minute${cfg.minutes === 1 ? '' : 's'}` : 'as soon as you leave it'}. It stops casual glances at an unlocked phone. It is not encryption.</p>
-      <div class="btns"><button class="btn" data-act="locknow">Lock now</button></div>
+      <div class="btns"><button class="btn" data-act="locknow">Lock now</button>${bioOk ? (biometricOn() ? '<button class="btn" data-act="biooff">Remove Face ID / fingerprint</button>' : '<button class="btn" data-act="bioon">Add Face ID / fingerprint</button>') : ''}</div>
+      ${biometricOn() ? '<p class="hint">Face ID / fingerprint unlock is on for this device. Your PIN always still works.</p>' : bioOk ? '<p class="hint">You can also unlock with Face ID or your fingerprint. The PIN stays as the backup.</p>' : ''}
       <form class="add wrapf" data-act="lockoff"><label class="lab">Your PIN, to turn it off<input class="field" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" required></label><button class="btn">Turn off</button></form></section>`;
     return `<section class="panel"><h2>App lock</h2>
       <p class="hint">Put a PIN on this device so nobody can browse the app (or just Giving up) on your unlocked phone. It is per device: set it on each one. If you forget it, signing out clears it.</p>
@@ -179,6 +182,8 @@ export async function render(root){
       draw();
     },
     locknow(){ lockNow(); },
+    async bioon(b){ b.disabled = true; try { await enableBiometric(); toast('Face ID / fingerprint added'); } catch (err) { toast(err.message); } draw(); },
+    biooff(){ disableBiometric(); toast('Removed. The PIN still works.'); draw(); },
     refreshapp(b){ b.disabled = true; b.textContent = 'Refreshing…'; refreshApp(); },
     async backup(b){
       b.disabled = true; b.textContent = 'Collecting everything…';
