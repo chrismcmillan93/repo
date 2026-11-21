@@ -325,11 +325,9 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   away-minutes setting; escalating delay after 5 wrong PINs; sign-out clears it, and
   "Forgot PIN" signs out and clears offline data. **A screen lock, not encryption.**
   With the private scope Today doesn't even fetch quits while locked.
-- **Today in Thailand/USA** (`js/trip.js`, `js/tripmatch.js` pure helpers): the Thailand
-  tables only allow the `anon` role, so a signed-in session can't read them; `trip.js`
-  uses a separate session-less anon client (`storageKey: 'life-thailand-anon'`). Thailand
-  days are text labels like "22 Nov"; USA has real dates and per-user RLS via the signed-in
-  client. Panels never throw and are omitted when nothing is on today.
+- **Today on a trip** (`js/trip.js`, pure `js/tripmatch.js`): shows your USA trip plan for today
+  (stay, flights, items) via the signed-in session. **Thailand is deliberately not read** — that
+  trip is isolated from this app (removed 2026-11-21); don't reconnect it. Panels never throw.
 - **Training depth**: Edale countdown (`js/training.js`, from the plan's end date), weekly
   running miles vs plan (Garmin `garmin_activities`), plan weight targets on the Progress
   chart, and a **Niggles** tab (`life.niggles`, severity 1-5, history log, resolve, "back
