@@ -7,7 +7,12 @@
 // Locks on a fresh open, and again once you've been away from the app longer than the chosen
 // time ("0" = as soon as you leave). Wrong PINs slow down: after 5, a growing wait.
 // Signing out clears the lock on this device, which is also the way back in if the PIN is forgotten.
-const KEY = 'life-lock';           // { salt, hash, scope: 'app' | 'private', minutes }
+//
+// Biometric unlock (Face ID, fingerprint, Windows Hello) is an optional extra on top of the PIN, via
+// WebAuthn with a platform authenticator that must verify you. The device does the face/finger match;
+// this app only learns that it succeeded, and keeps just the credential id. The PIN always still works.
+// Like the PIN, it is a screen lock on this device, not encryption.
+const KEY = 'life-lock';           // { salt, hash, scope: 'app' | 'private', minutes, bio?: credential id }
 const HIDDEN = 'life-lock-hidden'; // when the app was last put away
 const TRIES = 'life-lock-tries';   // { n, until } wrong-PIN counter
 
@@ -92,6 +97,49 @@ export async function turnOff(pin){
   return { ok: true };
 }
 
+// ---- Biometric (WebAuthn platform authenticator) ----
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64 = (str) => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+export async function biometricSupported(){
+  try { return !!(window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch (_) { return false; }
+}
+export const biometricOn = () => !!(lockConfig() && lockConfig().bio);
+
+export async function enableBiometric(){
+  const cfg = lockConfig();
+  if (!cfg) throw new Error('Turn the PIN lock on first.');
+  let cred;
+  try {
+    cred = await navigator.credentials.create({ publicKey: {
+      challenge: rand(32), rp: { name: 'Life', id: location.hostname },
+      user: { id: rand(16), name: 'life-lock', displayName: 'Life lock' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+      timeout: 60000, attestation: 'none'
+    } });
+  } catch (err) { throw new Error(err && err.name === 'NotAllowedError' ? 'Cancelled, or this device did not confirm it was you.' : 'This device could not set up biometric unlock.'); }
+  if (!cred) throw new Error('This device could not set up biometric unlock.');
+  write(KEY, { ...cfg, bio: b64(cred.rawId) });
+}
+
+export function disableBiometric(){ const cfg = lockConfig(); if (cfg) { const { bio, ...rest } = cfg; write(KEY, rest); } }
+
+// Resolves { ok: true } once the device has verified you, else { ok: false, msg }.
+export async function biometricUnlock(){
+  const cfg = lockConfig();
+  if (!cfg || !cfg.bio) return { ok: false, msg: 'Biometric unlock is not set up here.' };
+  try {
+    const a = await navigator.credentials.get({ publicKey: {
+      challenge: rand(32), rpId: location.hostname, userVerification: 'required', timeout: 60000,
+      allowCredentials: [{ type: 'public-key', id: unb64(cfg.bio), transports: ['internal'] }]
+    } });
+    if (!a) return { ok: false, msg: 'Not confirmed. Use your PIN.' };
+    write(TRIES, null); locked = false; return { ok: true };
+  } catch (err) { return { ok: false, msg: err && err.name === 'NotAllowedError' ? 'Not confirmed. Try again or use your PIN.' : 'Biometric unlock is not available right now. Use your PIN.' }; }
+}
+
 export function lockNow(){ if (lockConfig()) { locked = true; onChange(); } }
 export function clearLock(){ write(KEY, null); write(TRIES, null); write(HIDDEN, null); locked = false; cover(false); }
 
@@ -99,7 +147,7 @@ export function clearLock(){ write(KEY, null); write(TRIES, null); write(HIDDEN,
 export function lockFormHtml(note){
   return `<form class="lockform stack" data-lockform><h2>Locked</h2><p class="hint">${note || 'Enter your PIN to carry on.'}</p>
     <input class="field" id="lockPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="PIN" required>
-    <div class="btns"><button class="btn pri">Unlock</button></div><p class="hint" data-lockmsg aria-live="polite"></p>
+    <div class="btns"><button class="btn pri">Unlock</button>${biometricOn() ? '<button class="btn" type="button" data-lockbio>Use Face ID / fingerprint</button>' : ''}</div><p class="hint" data-lockmsg aria-live="polite"></p>
     <p class="hint"><a href="#" data-lockforgot>Forgot your PIN? Sign out.</a> That clears the lock on this device.</p></form>`;
 }
 
@@ -114,6 +162,8 @@ export function bindLockForm(host, { onUnlock, onForgot }){
     f.querySelector('#lockPin').value = '';
     msg.textContent = r.wait ? `Too many wrong tries. Wait ${r.wait} second${r.wait === 1 ? '' : 's'}.` : `Wrong PIN. ${r.left} tr${r.left === 1 ? 'y' : 'ies'} before it slows you down.`;
   });
+  const bio = f.querySelector('[data-lockbio]');
+  if (bio) bio.addEventListener('click', async () => { const r = await biometricUnlock(); if (r.ok) onUnlock(); else msg.textContent = r.msg; });
   f.querySelector('[data-lockforgot]').addEventListener('click', (e) => { e.preventDefault(); onForgot(); });
   const pin = f.querySelector('#lockPin'); if (pin) pin.focus();
 }
