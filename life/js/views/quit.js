@@ -80,9 +80,8 @@ export async function render(root, params){
       ${stopped.length ? `<section class="panel"><h2>Stopped tracking <small>${stopped.length}</small></h2>${stopped.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.name)}</span><span class="rmeta">since ${formatDateShort(q.started_on)} · ${slipsOf(q).length} slip${slipsOf(q).length === 1 ? '' : 's'}</span></span>
         <span class="step"><button class="btn sm" data-act="restore" data-id="${q.id}">Restore</button>${confirmDelete === q.id ? `<button class="btn sm" data-act="deleteyes" data-id="${q.id}">Delete everything, for good</button><button class="btn sm ghost" data-act="deleteno">Keep</button>` : `<button class="btn sm ghost" data-act="deleteask" data-id="${q.id}">Delete</button>`}</span></div>`).join('')}</section>` : ''}
       <section class="panel"><details class="drop" data-k="support"><summary>If it gets hard</summary>
-        <p class="hint">Cravings pass, usually within 20 to 30 minutes. Delay, drink some water, change room, message someone. If you're struggling, these are free and confidential in the UK:</p>
-        <ul class="steps"><li><b>Drinkline</b> (alcohol): 0300 123 1110</li><li><b>FRANK</b> (drugs): 0300 123 6600</li><li><b>Samaritans</b> (any time, 24 hours): 116 123</li></ul>
-        <p class="hint">Stopping alcohol or some drugs suddenly after heavy use can be medically risky. Talk to a GP or one of these services first.</p></details></section>`;
+        <p class="hint">Cravings pass, usually within 20 to 30 minutes. Delay, drink some water, change room, message someone.</p>
+        <p class="hint">Stopping alcohol or some drugs suddenly after heavy use can be medically risky. Talk to a GP first.</p></details></section>`;
     root.querySelectorAll('details').forEach((d) => { if (wasOpen.has(d.dataset.k)) d.open = true; });
     if (openSlip) { const el = root.querySelector(`#q-${openSlip}`); if (el && params[0]) el.scrollIntoView({ block: 'start' }); }
   }

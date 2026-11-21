@@ -282,8 +282,9 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   2 slips on.
 - **Tone:** no shaming. Logging a slip says how long the run before it was ("the 10 days
   before it still count. Today is a fresh start"). There's a collapsed "If it gets hard"
-  with Drinkline (0300 123 1110), FRANK (0300 123 6600) and Samaritans (116 123) and a note
-  that stopping alcohol or some drugs suddenly after heavy use can be medically risky.
+  with a short craving tip and a note that stopping alcohol or some drugs suddenly after
+  heavy use can be medically risky (talk to a GP first). **No helpline numbers**: they were
+  added and then removed at Chris's request, so don't add them back.
 - **Privacy (deliberate, keep it):**
   - RLS own-rows for signed-in users, anon and **service_role have no access**, so the
     notification and sync Edge Functions can't read these tables. `life-push` never mentions
