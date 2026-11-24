@@ -43,7 +43,7 @@ export async function render(root){
       if (privateBlocked()) throw new Error('locked'); // locked: the panel stays empty and nothing is fetched
       const mine = (await store.quits.list((q) => q.eq('archived', false).eq('show_today', true).order('created_at')));
       const slips = mine.length ? await store.quitSlips.list() : [];
-      quits = mine.map((q) => ({ id: q.id, label: q.alias || q.name, days: streakInfo(q, slips.filter((s) => s.quit_id === q.id), today).current }));
+      quits = mine.map((q) => ({ id: q.id, label: q.alias || q.name, days: streakInfo(q, slips.filter((s) => s.quit_id === q.id), today).current, upcoming: streakInfo(q, [], today).upcoming || 0 }));
     } catch (_) { quits = []; }
     if (cfg && !cfg.backup_started && !cfg.last_backup) { cfg.backup_started = today; store.settings.save({ ...cfg }).catch(() => {}); }
     let niggles = [];
@@ -130,7 +130,7 @@ export async function render(root){
     root.querySelector('#commits').innerHTML = `<h2>Commitments <small><a href="#/week">Add or change</a></small></h2>${manual.length ? manual.map((c) => commitRow(c, { tools: false })).join('') : empty('Nothing set. Add one on the Week tab, e.g. 1 chapter a day.')}`;
     const qEl = root.querySelector('#quits');
     qEl.hidden = !d.quits.length;
-    qEl.innerHTML = d.quits.length ? `<h2>Giving up <small><a href="#/quit">Open</a></small></h2>${d.quits.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.label)}</span></span><span class="right"><b class="big sm">${q.days}</b> day${q.days === 1 ? '' : 's'}</span><a class="btn sm ghost" href="#/quit/${q.id}">I slipped</a></div>`).join('')}` : '';
+    qEl.innerHTML = d.quits.length ? `<h2>Giving up <small><a href="#/quit">Open</a></small></h2>${d.quits.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.label)}</span></span>${q.upcoming ? `<span class="right">Starts ${q.upcoming === 1 ? 'tomorrow' : `in ${q.upcoming} days`}</span>` : `<span class="right"><b class="big sm">${q.days}</b> day${q.days === 1 ? '' : 's'}</span><a class="btn sm ghost" href="#/quit/${q.id}">I slipped</a>`}</div>`).join('')}` : '';
     root.querySelector('#habits').innerHTML = `<h2>Habits</h2>${d.habits.length ? d.habits.map((h) => { const s = streak(h);
       return `<label class="row ${s.on ? 'done' : ''}"><input type="checkbox" data-act="habit" data-id="${h.id}" ${s.on ? 'checked' : ''}><span class="rt"><span class="rtitle">${esc(h.title)}</span></span><span class="right">${s.n ? `${s.n} day streak` : 'No streak'}</span></label>`; }).join('') : empty('No habits yet.')}
       <form class="add" data-act="addhabit"><input class="field" name="title" placeholder="Add a daily habit" aria-label="Add a daily habit" required><button class="btn">Add</button></form>`;

@@ -299,6 +299,11 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
     kept offline on the device (the rest of the app is). Offline, the Giving up screen and
     Today's panel simply don't load.
   - Not in Journal, reviews, exports, Events or the morning brief.
+- **Future start date:** the Start date can be tomorrow or later (no schema change, `started_on`
+  is just a date). `streakInfo` returns `upcoming` (days until it starts) and zeros while the date
+  is in the future; the card shows "Starts tomorrow / in N days" with no craving or slip buttons
+  (nothing to slip against), and Today shows "Starts tomorrow" under the alias. On the start date it
+  becomes day zero and counts normally. Slips are still limited to start date through today.
 - **Breaks and trips don't pause it:** the counter just keeps counting real days; it has no
   nudges to pause.
 - **Stop tracking** archives (kept, restorable); **Delete** needs a second confirming click
@@ -344,7 +349,7 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   (`settings.last_backup`, falling back to `backup_started`).
 - Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
-  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v9`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v10`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
 
 ## Menu (2026-11-21)
 

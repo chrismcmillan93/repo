@@ -89,6 +89,15 @@ export async function render(root, params){
     const history = mine.length ? `<details class="drop" data-k="h-${q.id}"><summary>Slips (${mine.length})</summary>${mine.map((s) => `<div class="row"><span class="rt"><span class="rtitle">${formatDateShort(s.slip_date)}${s.slip_part ? ` · ${esc(s.slip_part.toLowerCase())}` : ''}${s.trigger ? ` · ${esc(s.trigger)}` : ''}</span>${s.note ? `<span class="hint">${esc(s.note)}</span>` : ''}</span>
         <button class="btn sm ghost" data-act="slipdel" data-id="${s.id}" aria-label="Delete this slip">×</button></div>`).join('')}
         ${trig ? `<p class="hint">Most common trigger so far: ${esc(trig.name)} (${trig.n} times). Knowing it makes it easier to plan for.</p>` : ''}</details>` : '';
+    const pending = info.upcoming > 0;
+    const when = pending ? (info.upcoming === 1 ? 'tomorrow' : `in ${info.upcoming} days`) : '';
+    if (pending) return `<section class="panel quitcard" id="q-${q.id}">
+      <h2>${esc(q.name)} <small>starts ${formatDateShort(q.started_on)}</small></h2>
+      <div class="stats"><div><b class="big">${info.upcoming}</b><span>day${info.upcoming === 1 ? '' : 's'} until you start</span></div></div>
+      <p class="push">Starts ${when}. Use the time: get it out of reach, tell someone, and write your if-then plans.</p>
+      ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
+      <div class="btns"><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>
+      ${planRows.length ? `<details class="drop" data-k="pl-${q.id}"><summary>Your if-then plans (${planRows.length})</summary>${planRows.map(([t, p]) => `<div class="row"><span class="rt"><span class="rtitle">If ${esc(t.toLowerCase())}</span><span>then ${esc(p)}</span></span></div>`).join('')}</details>` : ''}</section>`;
     return `<section class="panel quitcard" id="q-${q.id}">
       <h2>${esc(q.name)} <small>since ${formatDateShort(q.started_on)}${info.slipDays ? `, last slip ${formatDateShort(info.lastSlip)}` : ''}</small></h2>
       <div class="stats"><div><b class="big">${info.current}</b><span>${info.current === 1 ? 'day' : 'days'} since${info.current === 0 ? ' (day zero)' : ''}</span></div>
@@ -110,7 +119,7 @@ export async function render(root, params){
     return `<section class="panel"><h2>${q ? `Edit ${esc(q.name)}` : 'Give something up'}</h2>
       <form class="stack" data-act="quitsave" data-id="${q ? q.id : ''}">
         <div class="wrapf"><label class="lab" style="flex:1 1 180px">What are you giving up?<input class="field" name="name" required value="${esc(v.name)}" placeholder="e.g. Alcohol"></label>
-          <label class="lab">Quit date<input class="field" type="date" name="started_on" required max="${today}" value="${v.started_on}"></label>
+          <label class="lab">Start date<input class="field" type="date" name="started_on" required value="${v.started_on}"></label>
           <label class="lab">Goal in days (optional)<input class="field" style="width:9em" type="number" min="1" max="3650" name="target_days" value="${v.target_days || ''}"></label></div>
         <label class="lab">Why it matters to you (optional)<input class="field" name="why" value="${esc(v.why)}" placeholder="A line you'll want to read on a hard day"></label>
         <div class="wrapf"><label class="check"><input type="checkbox" name="show_today" ${v.show_today ? 'checked' : ''}> Show on Today</label>
@@ -118,7 +127,7 @@ export async function render(root, params){
         <details class="drop" data-k="plans"><summary>If-then plans (optional)</summary>
           <p class="hint">Decide now what you will do when it hits. Short and specific beats clever.</p>
           ${TRIGGERS.map((t, i) => `<label class="lab">If it is ${esc(t.toLowerCase())}, then I will…<input class="field" name="plan_${i}" maxlength="140" value="${esc((v.plans || {})[t] || '')}" placeholder="e.g. walk round the block, no shop, no phone"></label>`).join('')}</details>
-        <p class="hint">If you started on a past date, use it: the count starts from the day you really stopped. Nothing here is ever sent in a notification.</p>
+        <p class="hint">Starting later? Pick a future date and it waits, then counts from that day. Already stopped? Use the past date you really stopped. Nothing here is ever sent in a notification.</p>
         <div class="btns"><button class="btn pri">${q ? 'Save' : 'Start tracking'}</button>${q || quits.length ? '<button type="button" class="btn" data-act="cancel">Cancel</button>' : ''}</div></form></section>`;
   }
 
@@ -159,9 +168,8 @@ export async function render(root, params){
       const v = formData(f);
       const plans = {}; TRIGGERS.forEach((t, i) => { const x = (v['plan_' + i] || '').trim(); if (x) plans[t] = x; });
       const row = { plans, name: v.name.trim(), started_on: v.started_on, target_days: v.target_days ? Math.max(1, Math.min(3650, Number(v.target_days))) : null, why: v.why.trim(), show_today: !!v.show_today, alias: v.alias.trim() };
-      if (row.started_on > today) { toast('The quit date can\'t be in the future.'); return; }
       if (f.dataset.id) await store.quits.set(f.dataset.id, row); else await store.quits.add(row);
-      toast(f.dataset.id ? 'Saved' : 'Started. One day at a time.');
+      toast(f.dataset.id ? 'Saved' : row.started_on > today ? `Set. It starts ${formatDateShort(row.started_on)}.` : 'Started. One day at a time.');
       editing = null; adding = false;
       await refresh();
     },
