@@ -8,7 +8,7 @@
 //     Cached data is wiped on sign-out (main.js posts 'clear-data').
 //  3. Show push notifications from the life-push Edge Function.
 // Bump VERSION to clear old caches after adding or removing shell files.
-const VERSION = 'v9';
+const VERSION = 'v10';
 const SHELL = `life-shell-${VERSION}`;
 const DATA = 'life-data';
 const FILES = [

@@ -17,9 +17,12 @@ export function milestoneLabel(n){
 }
 
 // quit: { started_on }, slips: [{ slip_date }], today: 'YYYY-MM-DD'.
-// Slips before the quit date or after today are ignored.
+// Slips before the quit date or after today are ignored. A quit date in the future gives
+// `upcoming` = days until it starts (undefined once it has started).
 export function streakInfo(quit, slips, today){
   const start = quit.started_on;
+  // Not started yet (a future quit date): nothing to count, nothing to slip against.
+  if (start > today) return { current: 0, longest: 0, since: start, slips: 0, slipDays: 0, lastSlip: null, span30: 0, clean30: 0, next: null, prev: 0, upcoming: diffDays(today, start), runBefore: () => 0 };
   const valid = slips.filter((s) => s.slip_date >= start && s.slip_date <= today);
   const slipDays = [...new Set(valid.map((s) => s.slip_date))].sort();
   const points = [start, ...slipDays.filter((d) => d > start)]; // where a run begins
