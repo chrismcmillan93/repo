@@ -13,7 +13,7 @@ import { registerSw, clearOfflineData } from './pwa.js';
 import { loadAway } from './away.js';
 import { initLock, appBlocked, privateBlocked, lockFormHtml, bindLockForm, clearLock } from './lock.js';
 
-const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['quit', 'Giving up'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['wrapped', 'Wrapped'], ['playbook', 'Playbook'], ['settings', 'Settings']];
+const TABS = [['today', 'Today'], ['goals', 'Goals'], ['week', 'Week'], ['review', 'Review'], ['tasks', 'To-dos'], ['health', 'Health'], ['quit', 'Giving up'], ['lists', 'Lists'], ['career', 'Career'], ['events', 'Events'], ['journal', 'Journal'], ['wrapped', 'Wrapped'], ['money', 'Money'], ['playbook', 'Playbook'], ['settings', 'Settings']];
 const $ = (s) => document.querySelector(s);
 let signedIn = false;
 let renderToken = 0;
@@ -48,8 +48,8 @@ async function route(){
   root.innerHTML = '<p class="hint">Loading…</p>';
   $('#main').replaceChildren(root);
   window.scrollTo(0, 0);
-  if (name === 'quit' && privateBlocked()) {
-    root.innerHTML = `<section class="panel">${lockFormHtml('Giving up is locked.')}</section>`;
+  if ((name === 'quit' || name === 'money') && privateBlocked()) {
+    root.innerHTML = `<section class="panel">${lockFormHtml(name === 'money' ? 'Money is locked.' : 'Giving up is locked.')}</section>`;
     bindLockForm(root, { onUnlock: route, onForgot: forgotPin });
     return;
   }
@@ -95,7 +95,7 @@ async function showApp(session){
 }
 
 // The menu: every section, grouped. Opens from the ☰ button; closes on a choice, Escape or a tap outside.
-const MENU = [['Daily', ['today', 'week', 'tasks']], ['Goals and growth', ['goals', 'review', 'career', 'playbook']], ['Life', ['health', 'lists', 'events', 'journal', 'wrapped']], ['Private', ['quit']], ['App', ['settings']]]  // a group of one is a plain link, not a dropdown;
+const MENU = [['Daily', ['today', 'week', 'tasks']], ['Goals and growth', ['goals', 'review', 'career', 'playbook']], ['Life', ['health', 'lists', 'events', 'journal', 'wrapped', 'money']], ['Private', ['quit']], ['App', ['settings']]]  // a group of one is a plain link, not a dropdown;
 function closeMenu(){ const m = $('#tabs'); if (!m) return; m.hidden = true; $('#menuBtn').setAttribute('aria-expanded', 'false'); }
 let menuReady = false;
 function initMenu(){
