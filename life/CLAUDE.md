@@ -488,7 +488,14 @@ A goal's page (`views/goals.js`) now has two clearly separate things to do towar
 - **Repeating**: the existing commitment form (how many, every day / week / month, "Repeat automatically"), unchanged underneath
   (`commitments` + `commitment_rules`, see "Recurring commitments"); only its heading changed ("Repeating", "Add a repeating action").
 - Verified in Chromium with Supabase stubbed: the list order, the due labels, and the saved rows (`due_date` set or null, `goal_id`).
-  `sw.js` `VERSION` is `v20`, `BUILD` `2026-11-27j`.
+- **Notifications for due dates (2026-11-27):** the 7am morning brief (`supabase/functions/life-push`) now names goal actions that are
+  **overdue, due today and due tomorrow**, each with its goal (`goalbrief.js`, plain JS with no Deno APIs so `life/tests/goalbrief.test.mjs`
+  can test it): e.g. "Overdue: Pack the rucksack (Hike 1x per month)", "Goal actions today: ...", "Tomorrow: ...", three lines at most, three names
+  per line then "+N more". Only open actions on **active** goals count (paused or dropped goals are silent). It is part of the existing morning
+  brief, so it follows the same switch and time in Settings, stays silent before 30 Nov and on breaks, and the "N tasks due today" count is
+  unchanged. There is no separate push for a due date: dates have no time of day, so the brief is the right moment. Redeployed as v9 (files:
+  `index.ts`, `goalbrief.js`, `webpush.js`); the "Send test" button in Settings sends a real brief, which is the quickest live check.
+  `sw.js` `VERSION` is `v21`, `BUILD` `2026-11-27k`.
 
 ## Not built yet
 

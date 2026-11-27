@@ -71,7 +71,7 @@ export async function render(root, params){
           <form class="add wrapf" data-act="addtask"><input class="field" name="title" required placeholder="A one-off action, e.g. Book the hike" aria-label="One-off action">
             <label class="lab">Due (optional)<input class="field" type="date" name="due" min="${LIFE_START}"></label><button class="btn">Add action</button></form>
           ${acts.done.length ? `<details class="drop" data-k="actdone"><summary>Done (${acts.done.length})</summary>${acts.done.map(actRow).join('')}</details>` : ''}
-          <p class="hint">One-offs with a date show on Today when they're due. Undated ones wait here and in To-dos.</p></div></div>
+          <p class="hint">One-offs with a date show on Today when they're due, and the morning notification names them (overdue, due today and due tomorrow). Undated ones wait here and in To-dos.</p></div></div>
         <div class="rung live"><div class="lv">Repeating</div><div class="body">${cs.length ? cs.map((c) => commitRow(c)).join('') + bar(keptPct(cs))
           : `<span>${pill('Nothing repeating', 'bad')} A goal with nothing to do this week does not move.</span>`}
           <p class="sub">Add a repeating action</p>${commitFormHtml({ goalId: g.id })}</div></div>

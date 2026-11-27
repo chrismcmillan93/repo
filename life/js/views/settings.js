@@ -114,7 +114,7 @@ export async function render(root){
     root.innerHTML = `<div class="cols"><div class="stack">
       <section class="panel"><h2>Install on your phone</h2><p class="hint">Opens full screen like an app, works with no signal (read-only), and is needed for notifications on iPhone.</p>${installHtml}</section>
       <section class="panel"><h2>Notifications</h2>${pushHtml}
-        <form data-act="times" class="stack"><label class="row"><input type="checkbox" name="morning_on" ${p.morning_on ? 'checked' : ''}><span class="rt"><span class="rtitle">Morning brief</span><span class="rmeta">Today's session, top three, tasks due and the next event</span></span>
+        <form data-act="times" class="stack"><label class="row"><input type="checkbox" name="morning_on" ${p.morning_on ? 'checked' : ''}><span class="rt"><span class="rtitle">Morning brief</span><span class="rmeta">Today's session, top three, tasks due, goal actions that are overdue, due today or due tomorrow, and the next event</span></span>
           <input class="field" type="time" name="morning" value="${esc(p.morning)}" aria-label="Morning brief time"></label>
           <label class="row"><input type="checkbox" name="evening_on" ${p.evening_on ? 'checked' : ''}><span class="rt"><span class="rtitle">Evening reminder</span><span class="rmeta">Only if the day isn't closed yet. Sundays add the weekly review.</span></span>
           <input class="field" type="time" name="evening" value="${esc(p.evening)}" aria-label="Evening reminder time"></label>
