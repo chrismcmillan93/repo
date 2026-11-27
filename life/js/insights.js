@@ -24,7 +24,7 @@ export function habitSleep(habits, checks, sleep, today){
     const rate = (list) => Math.round(100 * list.filter((r) => done.has(`${h.id}|${r.day}`)).length / list.length);
     out.push({ title: h.title, afterGood: rate(good), afterPoor: rate(poor), n: mine.length, diff: rate(good) - rate(poor) });
   });
-  return { medianH: Math.round(10 * med / 360) / 10, habits: out.sort((a, b) => b.diff - a.diff) };
+  return { medianH: Math.round(10 * med / 3600) / 10, habits: out.sort((a, b) => b.diff - a.diff) };
 }
 
 export async function habitSleepHtml(){
