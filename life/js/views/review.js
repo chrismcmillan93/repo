@@ -1,6 +1,7 @@
 // Review: a guided look back over a week, month or quarter. Step through every
 // active goal (worst first) with a rating and a decision, then reflect. Decisions
 // are applied to the goals when the review is completed. Drafts save as you go.
+import { LIFE_START } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
@@ -38,7 +39,9 @@ export function periodLabel(type, start){
 // The finished week / month / quarter reviews still to do (for Today's nudge).
 export async function dueReviews(){
   const done = await store.reviews.list((q) => q.eq('status', 'complete').gte('period_start', addDays(todayStr(), -120)));
-  return TYPES.map(([t]) => ({ type: t, ...periods(t)[0] })).filter((p) => !done.some((r) => r.period_type === p.type && r.period_start === p.start) && !endInBreak(p.end)); // periods that ended during a break are skipped
+  return TYPES.map(([t]) => ({ type: t, ...periods(t)[0] }))
+    .filter((p) => p.start >= LIFE_START) // no reviews for anything before the start
+    .filter((p) => !done.some((r) => r.period_type === p.type && r.period_start === p.start) && !endInBreak(p.end)); // periods that ended during a break are skipped
 }
 
 export async function render(root, params){

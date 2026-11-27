@@ -1,5 +1,6 @@
 // Health: one day (session picker, lift exercises, meals and foods), one week,
 // the full Edale 50km plan with jump-to-week, and lift progress from Hevy.
+import { floorDate, LIFE_START } from '../start.js';
 import { esc, pill, wire, empty, options, bar } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateFull, formatDateShort, formatDayLabel, round1, toast } from '../fit/utils.js';
 import { db } from '../fit/db.js';
@@ -53,9 +54,9 @@ export async function render(root, params){
 
   // ---- Day ----
   if (tab === 'day') {
-    const date = /^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today;
+    const date = floorDate(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today);
     body.innerHTML = `<div class="weeknav"><a class="btn sm" href="#/health/day/${addDays(date, -1)}" aria-label="Previous day">‹</a><b>${esc(formatDateFull(date))}${date === today ? ' (today)' : ''}</b><a class="btn sm" href="#/health/day/${addDays(date, 1)}" aria-label="Next day">›</a>
-      <label class="lab inline">Jump to<input class="field" type="date" data-act="jumpdate" data-to="day" value="${date}"></label><a class="btn sm" href="#/health/week/${startOfWeek(date)}">This day's week</a></div>
+      <label class="lab inline">Jump to<input class="field" type="date" data-act="jumpdate" data-to="day" min="${LIFE_START}" value="${date}"></label><a class="btn sm" href="#/health/week/${startOfWeek(date)}">This day's week</a></div>
       <section class="panel"><div id="day"></div></section>`;
     mountDay(body.querySelector('#day'), date, {});
     return;
@@ -63,7 +64,7 @@ export async function render(root, params){
 
   // ---- Week ----
   if (tab === 'week') {
-    const ws = startOfWeek(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today);
+    const ws = floorDate(startOfWeek(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today));
     const w = await loadWeek(ws);
     const pw = w.planWeek;
     const [cd, rm] = await Promise.all([raceCountdown(today), pw ? weekRunMiles(ws) : null]);
@@ -84,7 +85,7 @@ export async function render(root, params){
         <span class="right">${state}</span></a>`; }).join('');
     const kcal = w.days.filter((d) => d.day).map((d) => d.day.totals.kcal);
     body.innerHTML = `<div class="weeknav"><a class="btn sm" href="#/health/week/${addDays(ws, -7)}" aria-label="Previous week">‹</a><b>${pw ? `Week ${pw.week_number} of ${weeks.length} · ` : ''}${formatDateShort(ws)} to ${formatDateShort(w.weekEnd)}</b><a class="btn sm" href="#/health/week/${addDays(ws, 7)}" aria-label="Next week">›</a>
-      ${weekSelect(ws)}<label class="lab inline">or a date<input class="field" type="date" data-act="jumpdate" data-to="week" value="${ws}"></label>${ws !== startOfWeek(today) ? `<a class="btn sm" href="#/health/week/${startOfWeek(today)}">This week</a>` : ''}</div>
+      ${weekSelect(ws)}<label class="lab inline">or a date<input class="field" type="date" data-act="jumpdate" data-to="week" min="${LIFE_START}" value="${ws}"></label>${ws !== startOfWeek(today) ? `<a class="btn sm" href="#/health/week/${startOfWeek(today)}">This week</a>` : ''}</div>
       ${pw ? `<section class="panel"><h2>${esc(pw.phase)} <small>${esc(pw.load)} load · ${pw.run_miles} mi (${pw.run_km} km) of running</small></h2>${cd ? `<p class="push">${esc(countdownText(cd))}</p>` : ''}${milesHtml}${pw.notes ? `<p>${esc(pw.notes)}</p>` : ''}
         ${pw.weight_target_kg_monday != null ? `<p class="hint">Monday weigh-in target ${Number(pw.weight_target_kg_monday).toFixed(1)} kg</p>` : ''}</section>` : `<section class="panel"><p class="hint">This week is outside the Edale 50km plan (${weeks.length ? `${formatDateShort(weeks[0].start_date)} to ${formatDateShort(weeks[weeks.length - 1].end_date)}` : 'not loaded'}). Pick sessions day by day.</p></section>`}
       <section class="panel"><h2>Day by day <small>${kcal.length ? `Average ${Math.round(kcal.reduce((a, b) => a + b, 0) / kcal.length)} kcal a day` : ''}</small></h2>${rows}</section>`;
@@ -119,7 +120,7 @@ export async function render(root, params){
 
   // ---- Progress: weight, streaks, day by day, adherence by week ----
   if (tab === 'progress') {
-    const start = weeks.length ? (today < weeks[0].start_date ? addDays(today, -83) : addDays(weeks[0].start_date, -21)) : addDays(today, -83);
+    const start = floorDate(weeks.length ? (today < weeks[0].start_date ? addDays(today, -83) : addDays(weeks[0].start_date, -21)) : addDays(today, -83));
     const end = today;
     const logs = await db.dailyLogs.listRange(userId(), start, end);
     const byDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
