@@ -353,21 +353,21 @@ current section's name sits next to "Life" as `#here`). `MENU` in `main.js` defi
 routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. Tests must wait for
 `#tabs a` with `state: 'attached'` because the menu is hidden until opened.
 
-## Fresh start on 30 Nov 2026 (2026-11-27)
+## Fresh start: Life begins 28 Nov 2026 (set 2026-11-27)
 
-Life is a new plan that begins on **30 November 2026**, with no reference to anything earlier.
+Life is a new plan that begins on **28 November 2026** (it was first set to 30 Nov and brought forward; the Edale plan itself still starts 30 Nov), with no reference to anything earlier.
 It also replaced the Goals and Fitness apps (retired the same day).
 
 - **One constant:** `LIFE_START` in `js/start.js` (and the same date in
   `supabase/functions/life-push`). Change both together.
-- **Before the start:** every screen except Settings shows a "Life starts on Monday 30 November"
+- **Before the start:** every screen except Settings shows a "Life starts on <date>"
   holding screen with a day count; nothing is fetched or written, and `life-push` sends nothing
   (the cron call returns `before the start date`).
 - **After the start:** history reads are floored to the start (`floorDate` / `floorIso`) so
   nothing earlier is shown: weigh-ins and day checks (`fit/db.js`), Hevy sets and workouts,
   Garmin ranges (`fit/garmin.js`, `training.js`, the sleep comparison), weekly check-ins (by
   `created_at`), Health's Progress chart and day/week pages, and Week can't step back before the
-  week of 30 Nov. `dueReviews()` ignores any period starting before the start, so there is no
+  week containing the start. `dueReviews()` and the Sunday evening push ignores any period starting before the start, so there is no
   review prompt for the week before. Goal and Giving up start dates can't be earlier either.
 - **Existing data was archived, not deleted:** migration `20261127120000_life_fresh_start.sql`
   copied every user-data row into the private schema **`life_archive`** (RLS on, no policies, no
@@ -376,7 +376,7 @@ It also replaced the Goals and Fitness apps (retired the same day).
   `last_backup` were removed. To look at the old rows: `select * from life_archive.goals` in
   the SQL editor. To delete them for good, drop the schema (ask first; it is irreversible).
 - **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
-  never shown. The Edale plan already starts on 30 Nov, so the plan itself is unchanged.
+  never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
 - **Retired apps:** `/goals/` and `/fitness/` are now redirect pages to Life (the Fitness one
   also keeps its manifest and icons and ships a service worker that clears its old caches and
   unregisters itself, so an installed home-screen icon lands in Life). The `fitness` schema, the
@@ -385,7 +385,7 @@ It also replaced the Goals and Fitness apps (retired the same day).
   seed data and importers to `supabase/seed/fitness/`. "Import from Goals" and the "Other apps"
   panel are gone.
 - **Testing:** the suites run against a copy of `life/` whose `start.js` says 2000-01-01
-  (otherwise everything is a holding screen until 30 Nov); the gate and the floors are tested
+  (otherwise everything is a holding screen until the start); the gate and the floors are tested
   separately against the real file, with a fixed clock for the "after" half.
 
 ## Not built yet

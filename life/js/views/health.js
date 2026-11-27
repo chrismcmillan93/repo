@@ -1,6 +1,6 @@
 // Health: one day (session picker, lift exercises, meals and foods), one week,
 // the full Edale 50km plan with jump-to-week, and lift progress from Hevy.
-import { floorDate, LIFE_START } from '../start.js';
+import { floorDate, floorWeek, LIFE_START } from '../start.js';
 import { esc, pill, wire, empty, options, bar } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateFull, formatDateShort, formatDayLabel, round1, toast } from '../fit/utils.js';
 import { db } from '../fit/db.js';
@@ -64,7 +64,7 @@ export async function render(root, params){
 
   // ---- Week ----
   if (tab === 'week') {
-    const ws = floorDate(startOfWeek(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today));
+    const ws = floorWeek(startOfWeek(/^\d{4}-\d\d-\d\d$/.test(params[1] || '') ? params[1] : today));
     const w = await loadWeek(ws);
     const pw = w.planWeek;
     const [cd, rm] = await Promise.all([raceCountdown(today), pw ? weekRunMiles(ws) : null]);

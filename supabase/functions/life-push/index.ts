@@ -55,8 +55,8 @@ function prefsOf(data: Record<string, unknown> | null): Prefs {
   };
 }
 
-// Life is a fresh plan that starts on 30 Nov 2026: nothing is sent before then (same date as life/js/start.js).
-const LIFE_START = '2026-11-30';
+// Life is a fresh plan that starts on 28 Nov 2026: nothing is sent before then (same date as life/js/start.js).
+const LIFE_START = '2026-11-28';
 
 // On a break or trip (settings.data.breaks, set in the app; the old single settings.data.away
 // is still honoured until the app migrates it): `from` is the first day away (null = already
@@ -111,7 +111,7 @@ async function eveningReminder(userId: string, today: string, dow: string){
     const done = all.filter((x) => x.status === 'done').length;
     lines.push(all.length ? `${done} of ${all.length} tasks done. Close the day and give a reason for anything missed.` : 'Close the day before bed.');
   }
-  if (dow === 'Sun') {
+  if (dow === 'Sun' && mondayOf(today) >= LIFE_START) { // no review prompt for a week that began before the start
     const { data } = await life().from('reviews').select('status').eq('user_id', userId).eq('period_type', 'week').eq('period_start', mondayOf(today)).eq('status', 'complete').limit(1);
     if (!(data || []).length) lines.push('Sunday: do your weekly review and set next week\'s commitments.');
   }
