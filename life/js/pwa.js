@@ -18,7 +18,7 @@ export function registerSw(){
 }
 
 // Which build this page is (shown in Settings). Bump with sw.js VERSION on every release.
-export const BUILD = '2026-11-27q';
+export const BUILD = '2026-11-27r';
 
 // Force the newest version. The service worker is network-first and revalidates every file
 // (`cache: 'no-cache'`, see sw.js), so while it is running a reload always gets fresh files. The old

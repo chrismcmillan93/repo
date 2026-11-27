@@ -393,11 +393,12 @@ export const db = {
       checkError(error);
       return data || [];
     },
-    async upsert(userId, raceId, finishSeconds, notes){
+    // `row` is races.js cleanResult(): { finish_time_text, finish_time_seconds (or null), notes }. The time is free text.
+    async upsert(userId, raceId, row){
       const { data, error } = await supabase
         .from('race_results')
         .upsert(
-          { user_id: userId, race_id: raceId, finish_time_seconds: finishSeconds, notes: notes || null, updated_at: new Date().toISOString() },
+          { user_id: userId, race_id: raceId, finish_time_text: row.finish_time_text, finish_time_seconds: row.finish_time_seconds, notes: row.notes || null, updated_at: new Date().toISOString() },
           { onConflict: 'user_id,race_id' }
         )
         .select()

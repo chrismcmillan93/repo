@@ -61,7 +61,8 @@ foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps a
 - **Session picker decides the food.** Same rule as Fitness: Weights or Both gives lift-day
   meals, Cardio gives run-day meals (long-run day when the session is "Long run").
 - **Events** are `life.events` (trip, event, renewal, birthday; birthdays repeat yearly)
-  merged with Fitness `races`, soonest first.
+  merged with Fitness `races`, soonest first. Races have their own add form, a Planned/Booked toggle and a Race results
+  tab (see "Races" below).
 - **Routes** are `#/<tab>/<...>`: e.g. `#/health/day/2026-12-02`, `#/health/week/<monday>`,
   `#/health/plan`, `#/health/lifts`, `#/lists/packing`, `#/goals/<id>`. Each view exports
   `render(root, params)` and gets a fresh root element, so `ui.js wire()` listeners never
@@ -527,6 +528,28 @@ authenticated only, **no grant to service_role** (checked), cascades with the qu
   Today still shows only the alias/name and a day count, never a reason.
 - Verified in Chromium with Supabase stubbed: the card pick, the panel list, saving a quote (with author) and a reason (author dropped), and the
   craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v27`, `BUILD` `2026-11-27q`.
+
+## Races: add, planned or booked, free-text results (2026-11-27)
+
+Events (`views/events.js`) has two tabs, **Upcoming** and **Race results** (`#/events`, `#/events/results`). Data is in the `fitness` schema:
+`races` (your training plan's races, `user_id` null and read-only, plus any you add, which are yours and can be deleted), `race_booked`
+(your per-race booked flag) and `race_results`.
+- **Add a race:** name, date, distance (free text, e.g. "10K"), Planned or Booked, optional note (`cleanRace()` in `races.js`, saved with
+  `plan_version 'v2'` so it appears with the plan's races). Booked is stored in `race_booked`; the toggle button on every race row ("Booked ✓" /
+  "Mark booked") sets it, plan races included. **Effective booked = your flag if you set one, else the plan's `status = 'entered'`**
+  (`raceState()`), so Edale starts booked and an explicit "not booked" beats that. A Planned/Booked pill also shows on Today's "Coming up".
+- **Results:** a race dated today or earlier with no result appears in **Races to log** at the top of Upcoming with an inline form: a plain text
+  box (`type=text inputmode=text`, so the normal keyboard, not a number pad) for the time and an optional note. Saving **moves the race to Race
+  results** (newest first, with an Edit and a remove ×; removing sends it back to Races to log). Races with a result also drop out of "Coming up".
+- **The time is free text** (`race_results.finish_time_text`, up to 40 characters, kept exactly as typed: "49:30 chip", "1h 52m", "DNF at 8k").
+  `finish_time_seconds` was the old required column; migration `20261127160000_fitness_race_results_free_text_time.sql` (applied) made it optional,
+  added the text column, and a check that a result has one or the other. Seconds are filled in only when the text is clearly a time (`parseTime()`:
+  "52:14" is minutes:seconds, write "1:52:00" for hours; anything else is null) and nothing depends on them. Older results (seconds only, like the
+  Windmill 10k) display via `resultText()` as "50:41" / "1:52:14".
+- `db.raceResults.upsert(userId, raceId, row)` now takes a `cleanResult()` row. Race results are in the backup (`FITNESS_TABLES`).
+- Verified in Chromium (Supabase stubbed, clock set to 10 Dec) with the real races: Santa Dash under Races to log, saving "49:30 chip" (text kept, seconds
+  null), adding a race as Booked (insert plus `race_booked`), toggling a plan race, and the Race results tab. 7 unit tests (`races.test.mjs`).
+  `sw.js` `VERSION` is `v28`, `BUILD` `2026-11-27r`.
 
 ## Not built yet
 
