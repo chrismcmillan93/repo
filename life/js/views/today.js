@@ -7,6 +7,7 @@ import { goalPct, goalExpected, goalState, daysBetween, setTaskDone, carryOver, 
 import { activeBreak } from '../away.js';
 import { syncFit } from '../fit/feed.js';
 import { mountDay } from '../fit/day.js';
+import { db as fitDb } from '../fit/db.js';
 import { garmin, loadRecovery, recoveryHtml, syncSummary, syncError, garminPrefs } from '../fit/garmin.js';
 import { taskRow, towardsSelect, towardsFields, commitRow, commitActs } from './shared.js';
 import { loadCountdowns, countdownRow } from './events.js';
@@ -187,7 +188,9 @@ export async function render(root){
   // Last night's sleep, HRV and resting heart rate from Garmin. Hidden until Garmin is connected.
   const recovery = async () => {
     const el = root.querySelector('#recovery');
-    try { const html = recoveryHtml(await loadRecovery(today)); el.innerHTML = html; el.hidden = !html; } catch (_) { el.hidden = true; }
+    let sessions = [];
+    try { sessions = (await fitDb.getDayBundle(today)).sessions || []; } catch (_) { /* readiness still shows, just without session advice */ }
+    try { const html = recoveryHtml(await loadRecovery(today, sessions)); el.innerHTML = html; el.hidden = !html; } catch (_) { el.hidden = true; }
   };
   // What the trip apps say about today (USA), loaded after the screen is up.
   const trips = async () => {

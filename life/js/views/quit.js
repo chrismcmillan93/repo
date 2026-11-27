@@ -22,11 +22,20 @@ function saveCraving(v){
   try { if (v) localStorage.setItem(CRAVE_KEY, JSON.stringify(v)); else localStorage.removeItem(CRAVE_KEY); } catch (_) { /* the timer just won't survive a reload */ }
 }
 const clock = (ms) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+const addDaysIso = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const PART_WORDS = { Morning: 'in the morning', Afternoon: 'in the afternoon', Evening: 'in the evening', 'Late night': 'late at night' };
+
+// Stress the day before and resting heart rate on the slip day, against other days. Describes only.
+function bodyLine(b){
+  const bits = [];
+  if (b.slipStress != null && b.otherStress != null) bits.push(`the day before a slip your stress averaged <b>${b.slipStress}</b> against ${b.otherStress} otherwise${b.slipStress >= b.otherStress + 5 ? ' (a high-stress day is a warning sign)' : ''}`);
+  if (b.slipRhr != null && b.otherRhr != null) bits.push(`your resting heart rate on slip days was <b>${b.slipRhr}</b> against ${b.otherRhr}${b.slipRhr >= b.otherRhr + 3 ? ' (run down)' : ''}`);
+  return bits.length ? `<p>Garmin shows ${bits.join(', and ')}.${b.small ? ' Small sample: treat it as a hint, not a fact.' : ''}</p>` : '';
+}
 
 export async function render(root, params){
   const today = todayStr();
-  let quits = [], slipsBy = {}, cravBy = {}, sleepRows = [], openSlip = params[0] || null, slipTrigger = '', editing = null, adding = false, confirmDelete = null, craving = readCraving(), timer = null;
+  let quits = [], slipsBy = {}, cravBy = {}, sleepRows = [], dayRows = [], openSlip = params[0] || null, slipTrigger = '', editing = null, adding = false, confirmDelete = null, craving = readCraving(), timer = null;
 
   async function load(){
     quits = await store.quits.list((q) => q.order('created_at'));
@@ -37,10 +46,11 @@ export async function render(root, params){
     cravBy = {};
     cravings.forEach((c) => { (cravBy[c.quit_id] = cravBy[c.quit_id] || []).push(c); });
     // Last nights from Garmin, only to compare slip days with other days (never leaves the device).
-    sleepRows = [];
+    sleepRows = []; dayRows = [];
     const first = quits.filter((q) => !q.archived).map((q) => q.started_on).sort()[0];
     if (first) {
       try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', first).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
+      try { const { data, error } = await fitSb.from('garmin_days').select('day,avg_stress,resting_hr').eq('user_id', store.userId()).gte('day', addDaysIso(first, -1)).limit(2000); if (!error && data) dayRows = data; } catch (_) { /* no Garmin, no body comparison */ }
     }
     if (!quits.length) adding = true;
   }
@@ -60,7 +70,7 @@ export async function render(root, params){
     const plans = q.plans || {};
     const planRows = Object.entries(plans).filter(([, t]) => t);
     const live = craving && craving.id === q.id ? craving : null;
-    const pat = mine.length >= 3 ? slipPatterns(mine, sleepRows, q.started_on, today) : null;
+    const pat = mine.length >= 3 ? slipPatterns(mine, sleepRows, q.started_on, today, dayRows) : null;
     const patterns = pat ? (() => {
       const max = Math.max(...pat.byDow, 1), order = [1, 2, 3, 4, 5, 6, 0], letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
       const sl = pat.sleep;
@@ -68,6 +78,7 @@ export async function render(root, params){
         <div class="dowbars" role="img" aria-label="Slips by weekday">${order.map((d) => `<span class="dowcol"><i style="height:${Math.round(100 * pat.byDow[d] / max)}%"></i><em>${pat.byDow[d] || ''}</em><b>${letters[d]}</b></span>`).join('')}</div>
         <p>${pat.topDow ? `Most slips are on ${pat.topDow.name}s (${pat.topDow.n} of ${pat.n}).` : 'No single weekday stands out.'}${pat.topPart ? ` Mostly ${PART_WORDS[pat.topPart.name]}.` : ''}</p>
         ${sl ? `<p>You had slept <b>${sl.slipH}h</b> before slip days, against ${sl.otherH}h on other days${sl.slipHrv != null && sl.otherHrv != null ? `, and your HRV was ${sl.slipHrv} against ${sl.otherHrv}` : ''}. ${sl.slipH + 0.5 <= sl.otherH ? 'Bad sleep is a weak spot. Protect it.' : 'Sleep does not explain it.'}${sl.small ? ' Small sample: treat it as a hint, not a fact.' : ''}</p>` : '<p class="hint">Sleep comparison appears once Garmin has enough nights around your slips.</p>'}
+        ${pat.body ? bodyLine(pat.body) : ''}
         <p class="hint">A pattern, not a cause. Use it to plan the risky hour, not to excuse it.</p></details>`;
     })() : '';
     const cravePanel = live ? `<div class="craving" id="cravepanel"><p class="push">${esc(CRAVE_LINES[Math.floor(live.at / 60000) % CRAVE_LINES.length])}</p>

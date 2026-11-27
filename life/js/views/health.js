@@ -11,6 +11,7 @@ import { dateRange, endOfWeek } from '../fit/utils.js';
 import { userId } from '../store.js';
 import { raceCountdown, countdownText, weekRunMiles } from '../training.js';
 import { renderNiggles } from './niggles.js';
+import { habitSleepHtml } from '../insights.js';
 import { garmin, loadTrends, trendsHtml, syncSummary, syncError } from '../fit/garmin.js';
 
 const TABS = [['day', 'Day'], ['week', 'Week'], ['plan', 'Full plan'], ['progress', 'Progress'], ['niggles', 'Niggles'], ['checkin', 'Check-in'], ['lifts', 'Lifts']];
@@ -168,9 +169,10 @@ export async function render(root, params){
       <div class="stack"><section class="panel"><h2>Streaks</h2><div class="stats"><div><b class="big">${streak('nutrition_status')}</b><span>day food streak</span></div><div><b class="big">${streak('training_status')}</b><span>day training streak</span></div><div><b class="big">${logged}/${dates.length}</b><span>days logged</span></div></div>
         <p class="hint">A streak counts days answered "Yes" to "How did today go?". Partly or no breaks it.</p></section>
         <section class="panel"><h2>Adherence by week <small>Food · Training</small></h2>${weekRows.join('')}</section></div></div>
-      <div id="garminTrends" class="stack"></div>`;
+      <div id="garminTrends" class="stack"></div><div id="habitSleep"></div>`;
     // Garmin trends load after the rest, and simply stay empty if Garmin isn't connected.
     const span = [84, 182, 365].includes(Number(params[1])) ? Number(params[1]) : 84;
+    habitSleepHtml().then((h) => { const host = body.querySelector('#habitSleep'); if (host) host.innerHTML = h; }).catch(() => {});
     loadTrends(span, weeks).then((t) => { const host = body.querySelector('#garminTrends'); if (host && t.state) host.innerHTML = trendsHtml(t, span); }).catch(() => {});
     return;
   }
