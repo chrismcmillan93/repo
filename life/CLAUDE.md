@@ -343,7 +343,7 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   (`settings.last_backup`, falling back to `backup_started`).
 - Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
-  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v11`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v11`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: compares `BUILD` with the server's `js/pwa.js`; if newer, asks the worker to update, re-fetches every file in `sw.js` `FILES` with `cache: 'reload'`, then reloads; if already latest it just says so. **Never unregister the worker there**: without it the reload is served from the browser's HTTP/memory cache (GitHub Pages: `max-age=600`) and comes back on the old version, which is exactly how the button "did nothing" before 2026-11-27). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
 
 ## Readiness, body patterns and habits vs sleep (2026-11-27)
 
@@ -387,7 +387,7 @@ and last.
   30 days (60+ days).
 - Tested: `wrappedStats` with a synthetic year in Node (rows from the previous year are excluded), the card
   layout in Chromium at 390 px in light and dark. **Not tested:** loading real rows, or the screen inside
-  the app. `sw.js` `VERSION` is `v15`, `BUILD` `2026-11-27e`. The card strip is `.wstrip`, **not** `.wrap`: `.top .wrap` is the header's container and the menu dropdown is positioned inside it, so a global `.wrap` rule with `overflow-x: auto` clipped the menu (fixed 2026-11-27).
+  the app. `sw.js` `VERSION` is `v16`, `BUILD` `2026-11-27f`. The card strip is `.wstrip`, **not** `.wrap`: `.top .wrap` is the header's container and the menu dropdown is positioned inside it, so a global `.wrap` rule with `overflow-x: auto` clipped the menu (fixed 2026-11-27).
 
 ## Menu (2026-11-21)
 
