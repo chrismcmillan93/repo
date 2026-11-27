@@ -53,6 +53,7 @@ export const quitReasons = table('quit_reasons');
 export const niggles = table('niggles');
 export const moods = table('daily_mood');
 export const progressPics = table('progress_pics');
+export const books = table('books');
 export const reviews = table('reviews');
 export const reviewGoals = table('review_goals');
 export const notes = table('notes');

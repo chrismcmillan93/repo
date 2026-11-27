@@ -6,13 +6,19 @@ import { todayStr, startOfWeek, formatDateShort } from '../fit/utils.js';
 import { db } from '../fit/db.js';
 import { loadWeek } from '../fit/week.js';
 import { buildShoppingList } from '../fit/weekLists.js';
+import { mountBooks } from './booksTab.js';
 
-const TABS = [['shopping', 'Shopping'], ['packing', 'Packing'], ['wishlist', 'Wishlist']];
+const TABS = [['shopping', 'Shopping'], ['packing', 'Packing'], ['wishlist', 'Wishlist'], ['books', 'Books']];
 const NEXT = { idea: 'planned', planned: 'booked', booked: 'done', done: 'idea' };
 
 export async function render(root, params){
   const tab = TABS.some((t) => t[0] === params[0]) ? params[0] : 'shopping';
   const weekStart = startOfWeek(todayStr());
+  // Books has its own state and handlers (booksTab.js); give it a host under the same tab bar.
+  if (tab === 'books') {
+    root.innerHTML = `<div class="seg">${TABS.map(([k, label]) => `<a class="${tab === k ? 'on' : ''}" href="#/lists/${k}">${label}</a>`).join('')}</div><div id="booksHost"></div>`;
+    return mountBooks(root.querySelector('#booksHost'));
+  }
   let items = [], gen = [], ticks = {}, group = null;
 
   async function load(){
