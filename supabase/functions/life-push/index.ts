@@ -11,6 +11,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { generateVapid, sendPush } from './webpush.js';
 import { goalActionLines, goalActionsOpenTonight } from './goalbrief.js';
+import { readiness } from './readiness.js';
+import { readinessLine } from './readinessline.js';
 
 const SUBJECT = 'https://app.chris-mcmillan.co.uk/life/';
 const TZ = 'Europe/London';
@@ -71,7 +73,9 @@ function awayNow(data: Record<string, unknown> | null, date: string): boolean {
 
 async function morningBrief(userId: string, today: string, dow: string){
   const tomorrow = addDays(today, 1);
-  const [tasks, plan, picks, events, races, night, gday, goalTasks, goals] = await Promise.all([
+  // Readiness compares last night with the 28 days before it, never reaching back before the start.
+  const since = addDays(today, -29) < LIFE_START ? LIFE_START : addDays(today, -29);
+  const [tasks, plan, picks, events, races, night, gday, goalTasks, goals, sleepRange, daysRange] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
     fitness().from('plan_days').select('session, type').eq('plan_version', 'v2').eq('date', today),
     fitness().from('pick_sessions').select('kind, session').eq('user_id', userId).eq('log_date', today),
@@ -82,7 +86,9 @@ async function morningBrief(userId: string, today: string, dow: string){
     fitness().from('garmin_days').select('resting_hr').eq('user_id', userId).eq('day', today).maybeSingle(),
     // One-off actions on goals that are overdue, due today or due tomorrow (named below), and the active goals they belong to.
     life().from('tasks').select('title, due_date, goal_id, status').eq('user_id', userId).eq('status', 'open').not('goal_id', 'is', null).lte('due_date', tomorrow),
-    life().from('goals').select('id, title').eq('user_id', userId).eq('status', 'active')
+    life().from('goals').select('id, title').eq('user_id', userId).eq('status', 'active'),
+    fitness().from('garmin_sleep').select('day, sleep_s, hrv_last_night').eq('user_id', userId).gte('day', since).lte('day', today),
+    fitness().from('garmin_days').select('day, resting_hr, avg_stress').eq('user_id', userId).gte('day', since).lte('day', today)
   ]);
   const t = tasks.data || [];
   const top = t.filter((x) => x.top_date === today).map((x) => x.title);
@@ -94,6 +100,9 @@ async function morningBrief(userId: string, today: string, dow: string){
     const mins = Math.round(n.sleep_s / 60);
     lines.push([`Slept ${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m${n.score != null ? ` (score ${n.score})` : ''}`, n.hrv_last_night != null ? `HRV ${n.hrv_last_night}` : '', rhr != null ? `resting HR ${rhr}` : ''].filter(Boolean).join(' · '));
   }
+  // Readiness only once last night has synced (a score without sleep would mislead), and only when there is enough history.
+  const ready = n && n.sleep_s ? readinessLine(readiness(today, sleepRange.data || [], daysRange.data || []), !!session) : null;
+  if (ready) lines.push(ready);
   if (top.length) lines.push(`Top three: ${top.join(', ')}`);
   lines.push(t.length ? `${t.length} task${t.length === 1 ? '' : 's'} due today` : 'Nothing due yet. Pick your top three.');
   lines.push(...goalActionLines(goalTasks.data || [], goals.data || [], today, tomorrow));

@@ -498,7 +498,14 @@ A goal's page (`views/goals.js`) now has two clearly separate things to do towar
   `goalActionsOpenTonight()`), **inside the existing "day isn't closed yet" condition**, so a closed day (which moves unfinished tasks to tomorrow)
   stays quiet. Redeployed as v10 (files: `index.ts`, `goalbrief.js`, `webpush.js`); the "Send test" button in Settings sends a real *morning* brief,
   which is the quickest live check (the evening one has no test button).
-  `sw.js` `VERSION` is `v22`, `BUILD` `2026-11-27l`.
+- **Readiness in the morning brief:** after the sleep line, e.g. "Readiness 31, Easy. Weakest: HRV 41 ms against 62 usual. Go easy on today's
+  session, or swap it." (Push: "Readiness 82, Push. Good day to hit it."; Normal: just "Readiness 56, Normal."). Only when last night has synced
+  (a score without sleep would mislead) and there is enough history (7+ baseline days since 30 Nov, so it first appears about a week in). The
+  function reads the same Garmin rows as the app, floored to the start. **`supabase/functions/life-push/readiness.js` is an exact copy of
+  `life/js/readiness.js`** (a function bundle cannot import from the app folder); `life/tests/readinessline.test.mjs` fails if they differ, so
+  change the app file, `cp` it over the function's copy, and redeploy. The line is built by `readinessline.js` (pure, tested). Redeployed as v11
+  (files: `index.ts`, `goalbrief.js`, `readiness.js`, `readinessline.js`, `webpush.js`).
+  `sw.js` `VERSION` is `v23`, `BUILD` `2026-11-27m`.
 
 ## Not built yet
 
