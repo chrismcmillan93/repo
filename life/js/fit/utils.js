@@ -1,3 +1,4 @@
+import { LIFE_START } from '../start.js';
 // Shared helpers: formatting, DOM shortcuts, toasts. No framework, no build step.
 
 export function qs(sel, root = document){ return root.querySelector(sel); }
@@ -28,8 +29,21 @@ export function toDateInputValue(date){
   return `${y}-${m}-${d}`;
 }
 
-export function todayStr(){
+// The calendar date on the device, whatever the plan says.
+export function realTodayStr(){
   return toDateInputValue(new Date());
+}
+
+// "Today" for the whole app. Before the fresh start (LIFE_START) it is the start day itself, so the app is open for
+// setup and shows the first week as the current one, and nothing earlier is ever created, read or shown.
+export function todayStr(){
+  const t = realTodayStr();
+  return t < LIFE_START ? LIFE_START : t;
+}
+
+// True while the real date is still before the start: the app is in setup mode.
+export function setupMode(){
+  return realTodayStr() < LIFE_START;
 }
 
 export function addDays(dateStr, n){

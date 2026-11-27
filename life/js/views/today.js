@@ -17,6 +17,7 @@ import { privateBlocked } from '../lock.js';
 import { loadTrips } from '../trip.js';
 import { niggleNudges } from '../niggle.js';
 import { loadSpike } from '../loadspike.js';
+import { picsStatus } from '../progressPics.js';
 import { LIFE_START } from '../start.js';
 import { raceCountdown, countdownText } from '../training.js';
 
@@ -55,7 +56,9 @@ export async function render(root){
     let mood = null, spike = null;
     try { mood = (await store.moods.list((q) => q.eq('mood_date', today)))[0] || null; } catch (_) { mood = null; }
     try { spike = loadSpike(await garmin.activities(addDays(today, -34), today), today, LIFE_START); } catch (_) { spike = null; }
-    d = { mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    let pics = [];
+    try { pics = await store.progressPics.list(); } catch (_) { pics = []; }
+    d = { pics, mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -100,6 +103,8 @@ export async function render(root){
     if (d.spike && d.spike.level) out.unshift(`<div class="nudge ${d.spike.level === 'high' ? 'warn' : ''}"><p><b>Running load.</b> ${esc(d.spike.text)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`);
     // Aches that have lasted or got worse: first in line, because they cost the most.
     niggleNudges(d.niggles || [], today).reverse().forEach((t) => out.unshift(`<div class="nudge"><p>${esc(t)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`));
+    const ps = picsStatus(d.pics || [], today, LIFE_START);
+    if (ps.overdue) out.push(`<div class="nudge warn"><p>${esc(ps.nudge)}</p><div class="btns"><a class="btn sm" href="#/health/checkin">Check-in</a></div></div>`);
     return out.slice(0, 6).join('');
   }
 

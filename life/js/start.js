@@ -1,8 +1,9 @@
-// Life is a fresh plan that begins on 28 November 2026 (the Edale plan itself starts 30 Nov). Nothing before that date is shown,
-// counted or prompted for: history reads are floored to this day, nothing earlier can be
-// stepped back to, and until then the app shows a holding screen (see main.js) and sends no
-// reminders (the same date is in supabase/functions/life-push). Pure, so it can be tested alone.
-export const LIFE_START = '2026-11-28';
+// Life is a fresh plan that begins on Monday 30 November 2026 (the same day the Edale plan starts). Nothing before that
+// date is shown, counted or prompted for: history reads are floored to this day, nothing earlier can be stepped back to,
+// and no reminders go out before it (the same date is in supabase/functions/life-push). Before the date the app is open
+// for setup and behaves as if today were this day (`todayStr()` in fit/utils.js is clamped to it), with a banner saying so.
+// Pure, so it can be tested alone.
+export const LIFE_START = '2026-11-30';
 export const beforeStart = (today) => today < LIFE_START;
 export const floorDate = (d) => (d && d < LIFE_START ? LIFE_START : d);
 export const floorIso = (iso) => (iso && iso < `${LIFE_START}T00:00:00.000Z` ? `${LIFE_START}T00:00:00.000Z` : iso);

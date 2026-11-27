@@ -1,7 +1,7 @@
 // Health: one day (session picker, lift exercises, meals and foods), one week,
 // the full Edale 50km plan with jump-to-week, and lift progress from Hevy.
 import { floorDate, floorWeek, LIFE_START } from '../start.js';
-import { esc, pill, wire, empty, options, bar } from '../ui.js';
+import { esc, pill, wire, empty, options, bar, copyText } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateFull, formatDateShort, formatDayLabel, round1, toast } from '../fit/utils.js';
 import { db } from '../fit/db.js';
 import { mountDay } from '../fit/day.js';
@@ -9,7 +9,9 @@ import { loadWeek, planWeeks } from '../fit/week.js';
 import { buildExercises, findPrs, exerciseSummaries, weightLabel, monthSummary } from '../fit/analysis.js';
 import { ensureFonts, prStory, monthStory, carouselSlides, shareOrDownload } from '../fit/posters.js';
 import { dateRange, endOfWeek } from '../fit/utils.js';
-import { userId } from '../store.js';
+import { userId, progressPics, moods as moodStore } from '../store.js';
+import { picsStatus, takenInWeek } from '../progressPics.js';
+import { checkinText, garminWeek } from '../checkinText.js';
 import { raceCountdown, countdownText, weekRunMiles } from '../training.js';
 import { renderNiggles } from './niggles.js';
 import { habitSleepHtml, moodSleepHtml, readinessHistoryHtml } from '../insights.js';
@@ -186,6 +188,9 @@ export async function render(root, params){
     if (!wk) { body.innerHTML = `<section class="panel">${empty('The training plan is not loaded.')}</section>`; return; }
     const list = await db.planCheckins.list(userId(), 'v2');
     const ex = list.find((c) => c.week_number === wk.week_number) || {};
+    let pics = [];
+    try { pics = await progressPics.list((q) => q.order('taken_on', { ascending: false })); } catch (_) { pics = []; }
+    const ps = picsStatus(pics, today, LIFE_START), thisWeek = takenInWeek(pics, wk.start_date, wk.end_date);
     body.innerHTML = `<section class="panel"><h2>Week ${wk.week_number} check-in <small>${formatDateShort(wk.start_date)} · ${esc(wk.phase)}</small></h2>
         <div class="weeknav"><select class="field" data-act="ciweek" aria-label="Week">${options(weeks.map((w) => [w.start_date, `Week ${w.week_number} · ${formatDateShort(w.start_date)}`]), wk.start_date)}</select></div>
         ${wk.weight_target_kg_monday != null ? `<p class="hint">Monday target: ${Number(wk.weight_target_kg_monday).toFixed(1)} kg</p>` : ''}
@@ -193,12 +198,40 @@ export async function render(root, params){
           <label class="lab">Leaks this week<input class="field" type="number" min="0" step="1" name="leak_count" value="${ex.leak_count ?? ''}"></label></div>
           <label class="lab">One win<textarea class="field" rows="2" name="win">${esc(ex.win || '')}</textarea></label>
           <label class="lab">One thing that was hard<textarea class="field" rows="2" name="challenge">${esc(ex.challenge || '')}</textarea></label>
-          <div class="btns"><button class="btn pri">${ex.week_number ? 'Update check-in' : 'Save check-in'}</button></div></form></section>
+          <div class="btns"><button class="btn pri">${ex.week_number ? 'Update check-in' : 'Save check-in'}</button><button type="button" class="btn" data-act="cicopy">Copy for Claude</button></div>
+          <p class="hint">Copy puts this week's numbers on your clipboard as text (weight against target, leaks, win, hard thing, food and training days, Garmin, how you felt, pictures logged). Paste it into your Claude fitness project with your photos.</p></form></section>
+      <section class="panel"><h2>Progress pictures <small>${thisWeek ? 'Taken this week' : 'Not yet this week'} · ${esc(ps.line)}</small></h2>
+        <form class="add" data-act="picsadd"><label class="lab">Taken on<input class="field" type="date" name="taken_on" required min="${LIFE_START}" max="${today}" value="${today}"></label>
+          <label class="lab" style="flex:1 1 200px">Note (optional)<input class="field" name="note" maxlength="120" placeholder="front, side, back, same light"></label><button class="btn">Log a set</button></form>
+        ${pics.slice(0, 6).map((p) => `<div class="row"><span class="rt"><span class="rtitle">${formatDateShort(p.taken_on)}</span>${p.note ? `<span class="hint">${esc(p.note)}</span>` : ''}</span><button class="btn sm ghost" data-act="picsdel" data-id="${p.id}" aria-label="Delete this entry">×</button></div>`).join('')}
+        <p class="hint">Only the date and note are saved here. The pictures stay on your phone. Today reminds you after 14 days.</p></section>
       <section class="panel"><h2>Previous check-ins</h2>${list.length ? list.map((c) => `<div class="row"><span class="rt"><span class="rtitle">Week ${c.week_number}</span>
         <span class="rmeta"><span>${c.weight_kg != null ? `${c.weight_kg} kg` : 'no weight'}</span><span>${c.leak_count != null ? `${c.leak_count} leak${c.leak_count === 1 ? '' : 's'}` : ''}</span></span>
         ${c.win ? `<span>Win: ${esc(c.win)}</span>` : ''}${c.challenge ? `<span class="hint">Hard: ${esc(c.challenge)}</span>` : ''}</span></div>`).join('') : empty('No check-ins yet.')}</section>`;
     wire(body, {
       ciweek(n){ location.hash = `#/health/checkin/${n.value}`; },
+      async picsadd(f){
+        const v = new FormData(f), d = v.get('taken_on');
+        if (!d || d < LIFE_START || d > today) { toast('Pick a date from the start to today.'); return; }
+        await progressPics.add({ taken_on: d, note: String(v.get('note') || '').trim() });
+        toast('Logged');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      },
+      async picsdel(n){ await progressPics.del(n.dataset.id); toast('Removed'); window.dispatchEvent(new HashChangeEvent('hashchange')); },
+      async cicopy(n){
+        n.disabled = true;
+        try {
+          const f = new FormData(body.querySelector('form[data-act="checkin"]'));
+          const soft = (p, d) => p.catch(() => d);
+          const [logs, acts, sleep, days, mood] = await Promise.all([
+            soft(db.dailyLogs.listRange(userId(), wk.start_date, wk.end_date), []), soft(garmin.activities(wk.start_date, wk.end_date), []),
+            soft(garmin.sleep(wk.start_date, wk.end_date), []), soft(garmin.days(wk.start_date, wk.end_date), []),
+            soft(moodStore.list((q) => q.gte('mood_date', wk.start_date).lte('mood_date', wk.end_date)), [])]);
+          const text = checkinText({ week: { number: wk.week_number, phase: wk.phase, start: wk.start_date, end: wk.end_date, targetKg: wk.weight_target_kg_monday }, form: { weight: f.get('weight_kg'), leaks: f.get('leak_count'), win: f.get('win'), challenge: f.get('challenge') },
+            history: list, logs, garmin: garminWeek(acts, sleep, days), moods: mood, pics, today });
+          toast((await copyText(text)) ? 'Copied. Paste it into your Claude project with your photos.' : "Couldn't copy. Select and copy the text from a screenshot of this week instead.");
+        } finally { n.disabled = false; }
+      },
       async checkin(f){
         const v = new FormData(f);
         const num = (k) => (v.get(k) === '' ? null : Number(v.get(k)));

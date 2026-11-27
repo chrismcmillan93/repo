@@ -46,12 +46,12 @@ test('niggle advice escalates with severity and age', () => {
 });
 
 test('the fresh-start floor', () => {
-  assert.equal(LIFE_START, '2026-11-28');
+  assert.equal(LIFE_START, '2026-11-30');
   assert.equal(floorDate('2026-01-01'), LIFE_START);
   assert.equal(floorDate('2026-12-01'), '2026-12-01');
   assert.equal(floorDate(null), null);
-  assert.equal(beforeStart('2026-11-27'), true);
-  assert.equal(beforeStart('2026-11-28'), false);
-  assert.equal(FIRST_WEEK, '2026-11-23'); // the Monday of the start week
+  assert.equal(beforeStart('2026-11-29'), true);
+  assert.equal(beforeStart('2026-11-30'), false);
+  assert.equal(FIRST_WEEK, '2026-11-30'); // the start is a Monday, so the first week starts that day
   assert.equal(floorWeek('2026-10-05'), FIRST_WEEK);
 });

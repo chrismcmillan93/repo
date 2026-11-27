@@ -423,22 +423,25 @@ current section's name sits next to "Life" as `#here`). `MENU` in `main.js` defi
 routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. Tests must wait for
 `#tabs a` with `state: 'attached'` because the menu is hidden until opened.
 
-## Fresh start: Life begins 28 Nov 2026 (set 2026-11-27)
+## Fresh start: Life begins 30 Nov 2026 (set 2026-11-27)
 
-Life is a new plan that begins on **28 November 2026** (it was first set to 30 Nov and brought forward; the Edale plan itself still starts 30 Nov), with no reference to anything earlier.
+Life is a new plan that begins on **Monday 30 November 2026** (the same day the Edale plan starts; it was briefly 28 Nov and was moved back), with no reference to anything earlier.
 It also replaced the Goals and Fitness apps (retired the same day).
 
 - **One constant:** `LIFE_START` in `js/start.js` (and the same date in
   `supabase/functions/life-push`). Change both together.
-- **Before the start:** every screen except Settings shows a "Life starts on <date>"
-  holding screen with a day count; nothing is fetched or written, and `life-push` sends nothing
-  (the cron call returns `before the start date`).
+- **Before the start: setup mode (not a holding screen).** The app is open, but `todayStr()` in
+  `fit/utils.js` is clamped to `LIFE_START` (the real date is `realTodayStr()`; `setupMode()` is true
+  until the start), so everything behaves as if it were 30 Nov: Today and Week show the first week as
+  the current one, and ticks and logs made early are dated 30 Nov. A banner (`#setup`, `main.js`) says so.
+  Nothing earlier is created, read, shown or prompted. `life-push` still sends nothing before the start
+  (the cron call returns `before the start date`; redeployed 2026-11-27 as v8 with the new date). The old
+  holding-screen code in `main.js` is now unreachable (`beforeStart(todayStr())` is never true) and can go.
 - **After the start:** history reads are floored to the start (`floorDate` / `floorIso`) so
   nothing earlier is shown: weigh-ins and day checks (`fit/db.js`), Hevy sets and workouts,
   Garmin ranges (`fit/garmin.js`, `training.js`, the sleep comparison), weekly check-ins (by
   `created_at`), Health's Progress chart and day/week pages, and Week can't step back before the
-  week containing the start. `dueReviews()` and the Sunday evening push ignores any period starting before the start, so there is no
-  review prompt for the week before. Goal and Giving up start dates can't be earlier either.
+  week containing the start. `dueReviews()`, the Review screen's "in progress" buttons and its past-reviews list, and the Sunday evening push all ignore any period starting before the start, so there is no review or review prompt for November, Q4 or the week before. Repeating commitments never create a week before the first week, nor a part-month before the start (`createDue()` in `lib.js`); habit checks are floored too (`store.habitChecks.listSince`). Goal and Giving up start dates can't be earlier either.
 - **Existing data was archived, not deleted:** migration `20261127120000_life_fresh_start.sql`
   copied every user-data row into the private schema **`life_archive`** (RLS on, no policies, no
   grants, not exposed; readable only with the database owner's rights), then emptied the `life`
@@ -454,9 +457,26 @@ It also replaced the Goals and Fitness apps (retired the same day).
   git history before commit `1dd90dc`; its backend notes moved to `docs/fitness-backend.md`, its plan
   seed data and importers to `supabase/seed/fitness/`. "Import from Goals" and the "Other apps"
   panel are gone.
-- **Testing:** the suites run against a copy of `life/` whose `start.js` says 2000-01-01
-  (otherwise everything is a holding screen until the start); the gate and the floors are tested
-  separately against the real file, with a fixed clock for the "after" half.
+- **Testing:** browser suites that need a populated app can run against a copy of `life/` whose
+  `start.js` says 2000-01-01; setup mode and the floors are tested against the real file with a fixed clock
+  (Playwright `page.clock.install`, Supabase stubbed through the CDN script).
+
+## Setup mode, progress pictures, Copy for Claude (2026-11-27)
+
+- **Progress pictures** (`life.progress_pics`, migration `20261127130000_life_progress_pics.sql`, applied; own-row RLS): only a date and a
+  short note per set, **never the pictures** (they stay on the phone and go to Claude by hand). Health -> Check-in has a "Progress
+  pictures" panel (log a set, last six, delete, "Last taken N days ago"); Today nudges (`picsStatus()` in `progressPics.js`, pure) when a set
+  is 14 days old, or when none has been logged by the end of the first week. The old daily "Progress pictures taken" Yes/No on "How did
+  today go?" was removed so there is one source of truth (the `daily_logs.progress_pics` column stays in the database, unused).
+- **Copy for Claude** (button on Health -> Check-in, `checkinText.js`, pure): puts the week's check-in on the clipboard as plain text (weight against
+  the plan target, earlier weeks, leaks, win, hard thing, food and training day tallies, Garmin week via `garminWeek()`, average energy and mood,
+  pictures logged, and a closing ask for honest comparison feedback). It reads the form as it is now, so unsaved edits are included. Missing things
+  say "not recorded", never 0. `ui.js copyText()` falls back to a textarea for browsers without the async clipboard.
+  The feedback itself is deliberately done in Chris's Claude fitness project, not in this app (no photo storage, no API key, nothing sensitive
+  in the database).
+- Both tables are in the backup (`LIFE_TABLES`). `sw.js` `VERSION` is `v18`, `BUILD` `2026-11-27h`.
+- **Verified in a browser** (Chromium, Supabase stubbed, fake clock): on 27 Nov the app opens with the setup banner, the date reads Monday 30 November,
+  Review offers only the week of 30 Nov, Check-in shows the pictures panel, Copy writes the expected text; on 1 Dec the banner is gone.
 
 ## Not built yet
 

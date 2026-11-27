@@ -132,7 +132,6 @@ function reviewHtml(c){
   return `<details class="drop" data-k="review" ${log.nutrition_status || log.training_status ? '' : 'open'}><summary>How did today go?${log.nutrition_status || log.training_status ? ` <span class="hint">food ${log.nutrition_status || '-'}, training ${log.training_status || '-'}</span>` : ''}</summary>
     ${row('nutrition_status', 'Stuck to the food plan', STATUS, log.nutrition_status)}
     ${row('training_status', 'Did the training', STATUS, log.training_status)}
-    ${row('progress_pics', 'Progress pictures taken', [['yes', 'Yes'], ['no', 'No']], yn(log.progress_pics))}
     ${row('read_pages', 'Read 1 chapter / 10 pages', [['yes', 'Yes'], ['no', 'No']], yn(log.read_pages))}
     <label class="lab">Notes<textarea class="field" rows="2" data-act="lognotes" placeholder="Energy, cravings, how the session felt">${esc(log.notes || '')}</textarea></label></details>`;
 }
