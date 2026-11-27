@@ -18,7 +18,7 @@ export function registerSw(){
 }
 
 // Which build this page is (shown in Settings). Bump with sw.js VERSION on every release.
-export const BUILD = '2026-11-27a';
+export const BUILD = '2026-11-27c';
 
 // Force the newest version: drop the worker and its file caches, then reload. Data and sign-in stay.
 export async function refreshApp(){

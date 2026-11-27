@@ -3,7 +3,6 @@ import * as store from '../store.js';
 import { esc, pill, wire, formData, options } from '../ui.js';
 import { toast } from '../fit/utils.js';
 import { isStandalone, isIos, canPromptInstall, promptInstall, pushSupported, currentSubscription, enablePush, disablePush, sendTestPush, BUILD, refreshApp } from '../pwa.js';
-import { importFromGoalsApp, importSummary } from '../importer.js';
 import { garmin, garminPrefs, syncSummary, syncError } from '../fit/garmin.js';
 import { todayStr, addDays, formatDateShort } from '../fit/utils.js';
 import { breakList, addBreak, updateBreak, removeBreak } from '../away.js';
@@ -127,10 +126,6 @@ export async function render(root){
       ${backupPanel()}
       ${lockPanel()}
       ${breaksPanel()}
-      <section class="panel"><h2>Bring things over from the Goals app</h2><p class="hint">Copies your goals and milestones, wishlist, notes pages and Playbook progress. Anything already copied is skipped, so it's safe to run again. The Goals app itself isn't changed.</p>
-        <div class="btns"><button class="btn" data-act="import">Import from Goals</button></div></section>
-      <section class="panel"><h2>Other apps</h2><div class="btns"><a class="btn" href="../goals/">Goals</a><a class="btn" href="../fitness/">Fitness</a></div>
-        <p class="hint">Fitness stays in step with Life: ticks, session picks, weigh-ins and check-ins are shared.</p></section>
       <section class="panel"><h2>Account</h2><div class="btns"><button class="btn" data-act="signout">Sign out</button></div></section>
     </div></div>`;
   }
@@ -161,7 +156,6 @@ export async function render(root){
       toast('Garmin settings saved');
       await refresh();
     },
-    async import(b){ b.disabled = true; toast(importSummary(await importFromGoalsApp())); b.disabled = false; },
     async breaksave(f){
       const v = formData(f), input = { name: v.name, from: v.from, until: v.until, countdown: !!v.countdown };
       if (f.dataset.id) await updateBreak(f.dataset.id, input); else await addBreak(input);

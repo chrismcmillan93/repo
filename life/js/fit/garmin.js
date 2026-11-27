@@ -7,6 +7,7 @@
 // Used by Today (the recovery panel), Health > Day (what was actually done
 // against the plan), Health > Progress (trends), the weekly commitments feed
 // and Settings.
+import { floorDate } from '../start.js';
 import { supabase } from './supabaseClient.js';
 import { userId } from '../store.js';
 import { escapeHtml as esc, round1, addDays, todayStr, startOfWeek } from './utils.js';
@@ -20,7 +21,7 @@ const SLEEP = 'day, sleep_s, deep_s, light_s, rem_s, awake_s, score, score_label
 async function range(table, cols, col, from, to){
   const out = [];
   for (let at = 0; ; at += 1000) {
-    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, from).lte(col, to).order(col).range(at, at + 999);
+    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, floorDate(from)).lte(col, to).order(col).range(at, at + 999);
     if (error) throw new Error(error.message);
     out.push(...(data || []));
     if (!data || data.length < 1000) return out;

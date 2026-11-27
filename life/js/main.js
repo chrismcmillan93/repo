@@ -1,6 +1,8 @@
 // Boot: sign-in (shared with Goals and Fitness), theme, tabs and hash routing.
 // Routes look like #/health/week/2026-11-30; each view gets a fresh root element
 // and the path segments after its name.
+import { LIFE_START, beforeStart } from './start.js';
+import { diffDays } from './streaks.js';
 import { supabase } from './supabaseClient.js';
 import { requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChange, readAuthErrorFromUrl } from './auth.js';
 import { setUser } from './store.js';
@@ -49,6 +51,14 @@ async function route(){
   if (name === 'quit' && privateBlocked()) {
     root.innerHTML = `<section class="panel">${lockFormHtml('Giving up is locked.')}</section>`;
     bindLockForm(root, { onUnlock: route, onForgot: forgotPin });
+    return;
+  }
+  if (beforeStart(todayStr()) && name !== 'settings') {
+    const n = diffDays(todayStr(), LIFE_START);
+    root.innerHTML = `<section class="panel"><h2>Life starts on ${formatDateFull(LIFE_START)}</h2>
+      <p class="big">${n}</p><p class="hint">day${n === 1 ? '' : 's'} to go</p>
+      <p>A fresh plan, from day one. Until then nothing is tracked, nothing is due and no reminders are sent. Settings is open if you want to set the app up first.</p>
+      <div class="btns"><a class="btn" href="#/settings">Open Settings</a></div></section>`;
     return;
   }
   try {

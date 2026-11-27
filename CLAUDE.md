@@ -2,7 +2,7 @@
 
 `app.chris-mcmillan.co.uk` — a plain GitHub Pages site (see `CNAME`). `main` is served
 directly, with no build step. Each top-level directory is an independent app: `naples`,
-`thailand`, `goals`, `wainwrights`, `finance`, `fitness`, `usa`, `life`. They're hand-written
+`thailand`, `wainwrights`, `finance`, `usa`, `life` (`goals` and `fitness` remain only as redirect pages to `life`). They're hand-written
 HTML/CSS/JS that load `@supabase/supabase-js@2` from a CDN `<script>` tag and talk to
 Supabase straight from the browser with the anon key — there is no Next.js, no bundler,
 no package.json anywhere in this repo, and none should be added without discussing it
@@ -10,10 +10,11 @@ first (a static-hosting deploy and a framework build step are two different proj
 
 ## Life app (`/life`)
 
-The combined "one app" for goals, to-dos, lists, career, health and events, meant to
-replace `goals/` and `fitness/` over time (both are left running and untouched). Own
-schema **`life`**; it also reads and writes the `fitness` schema directly so the two apps
-always agree. Everything about it is in **`life/CLAUDE.md`** — read that before touching it. It also
+The one app for goals, to-dos, lists, career, health, giving things up and events. It replaced
+the old `goals/` and `fitness/` apps, which are now redirect pages to it. It is a fresh plan
+starting **28 Nov 2026** with no history before that date. Own schema **`life`**; it also reads
+and writes the `fitness` schema, which is now its backend (training plan, meals, Garmin, Hevy).
+Everything about it is in **`life/CLAUDE.md`** — read that before touching it. It also
 shows Garmin data (sleep, HRV, activities), mirrored into `fitness.garmin_*` by the
 `garmin-sync` Edge Function; that is documented there too.
 
@@ -22,7 +23,7 @@ shows Garmin data (sleep, HRV, activities), mirrored into `fitness.garmin_*` by 
 A single-traveller trip planner for a 14-night USA trip in May 2027, replacing a
 spreadsheet. Lives entirely under `usa/`, served at `app.chris-mcmillan.co.uk/usa`.
 
-**Stack:** vanilla HTML/CSS/JS (ES modules), same architecture as `goals/` and
+**Stack:** vanilla HTML/CSS/JS (ES modules), same architecture as `life/` and
 `naples/` — no build step, no framework, no TypeScript. `supabase-js` loaded via CDN.
 
 **Supabase:** project `dashboards-new`, ref `bcrmbuiuekklpocpllpw`, region eu-west-1.
@@ -38,7 +39,7 @@ reads and one-off data checks. Run `get_advisors` (security) after any DDL chang
 this schema and fix anything it flags — in particular, every table needs RLS enabled.
 
 **Auth: magic-link, multi-tenant, one trip per account.** Real accounts landed —
-email magic link / 6-digit code via Supabase Auth, same pattern as `goals/js/auth.js`
+email magic link / 6-digit code via Supabase Auth, same pattern as `life/js/auth.js`
 (ported into `usa/js/auth.js`, don't fork a third copy of this — fix bugs in both if
 found). Each account has at most one trip; there's no trip-switcher UI and none is
 planned. A signed-in account with no trip yet gets a "create your trip" form instead

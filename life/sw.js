@@ -8,13 +8,13 @@
 //     Cached data is wiped on sign-out (main.js posts 'clear-data').
 //  3. Show push notifications from the life-push Edge Function.
 // Bump VERSION to clear old caches after adding or removing shell files.
-const VERSION = 'v12';
+const VERSION = 'v13';
 const SHELL = `life-shell-${VERSION}`;
 const DATA = 'life-data';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
-  'js/main.js', 'js/auth.js', 'js/config.js', 'js/supabaseClient.js', 'js/store.js', 'js/ui.js', 'js/lib.js', 'js/theme.js', 'js/pwa.js', 'js/away.js', 'js/importer.js', 'js/playbookContent.js',
+  'js/main.js', 'js/auth.js', 'js/config.js', 'js/supabaseClient.js', 'js/store.js', 'js/ui.js', 'js/lib.js', 'js/theme.js', 'js/pwa.js', 'js/away.js', 'js/playbookContent.js',
   'js/fit/analysis.js', 'js/fit/day.js', 'js/fit/daySwap.js', 'js/fit/db.js', 'js/fit/feed.js', 'js/fit/garmin.js', 'js/fit/nutrition.js', 'js/fit/posters.js', 'js/fit/sessionChoices.js',
   'js/fit/state.js', 'js/fit/supabaseClient.js', 'js/fit/utils.js', 'js/fit/week.js', 'js/fit/weekLists.js',
   'js/views/career.js', 'js/views/events.js', 'js/views/goals.js', 'js/views/health.js', 'js/views/journal.js', 'js/views/lists.js', 'js/views/playbook.js', 'js/views/quit.js', 'js/streaks.js', 'js/views/niggles.js', 'js/verdict.js', 'js/lock.js', 'js/trip.js', 'js/tripmatch.js', 'js/niggle.js', 'js/training.js', 'js/backup.js', 'js/readiness.js', 'js/insights.js',

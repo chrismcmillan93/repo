@@ -1,11 +1,11 @@
 // Goals: the list with pace bars, and one goal's breakdown from long term down
 // to this week's commitments and today's actions.
+import { floorDate, LIFE_START } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
 import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct, weekCommitments, quietDays } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
-import { importFromGoalsApp, importSummary } from '../importer.js';
 import { commitRow, commitFormHtml, commitActs } from './shared.js';
 
 const AREAS = ['Health', 'Career', 'Money', 'Learning', 'Relationships', 'Home', 'Personal'];
@@ -28,12 +28,12 @@ export async function render(root, params){
   }
 
   function formHtml(g){
-    const v = g || { area: 'Personal', measure: 'steps', start_date: today, unit: '' };
+    const v = g || { area: 'Personal', measure: 'steps', start_date: floorDate(today), unit: '' };
     return `<section class="panel"><h2>${g ? 'Edit goal' : 'New goal'}</h2><form data-act="save" class="stack">
       <label class="lab">Goal<input class="field" name="title" required value="${esc(v.title || '')}" placeholder="e.g. Build a £12,000 emergency fund"></label>
       <label class="lab">Why it matters<input class="field" name="why" value="${esc(v.why || '')}"></label>
       <div class="wrapf"><label class="lab">Area<select class="field" name="area">${options(AREAS.map((a) => [a, a]), v.area)}</select></label>
-        <label class="lab">Start<input class="field" type="date" name="start_date" required value="${v.start_date}"></label>
+        <label class="lab">Start<input class="field" type="date" name="start_date" required min="${LIFE_START}" value="${floorDate(v.start_date)}"></label>
         <label class="lab">Target date<input class="field" type="date" name="target_date" value="${v.target_date || ''}"></label></div>
       <div class="wrapf"><label class="lab">Measured by<select class="field" name="measure">${options([['steps', 'Steps ticked off'], ['numeric', 'A number']], v.measure)}</select></label>
         <label class="lab">Start value<input class="field" type="number" step="any" name="start_value" value="${v.start_value ?? ''}"></label>
@@ -81,7 +81,7 @@ export async function render(root, params){
         ${bar(pct, exp, STATE[st][1])}<span class="rmeta"><span>${esc(x.area)}</span>${x.target_date ? `<span>Due ${formatDateShort(x.target_date)}</span>` : ''}<span>${pct}% done${exp != null ? `, ${exp}% expected` : ''}</span></span></button>`; }).join('');
     root.innerHTML = `<div class="cols g"><section class="panel"><h2>Goals <small>The line marks where you should be today</small></h2>
       ${list || empty('No goals yet. Add one, or bring your goals over from the Goals app.')}
-      <div class="btns"><button class="btn pri" data-act="new">New goal</button><button class="btn" data-act="import">Import from the Goals app</button></div></section>
+      <div class="btns"><button class="btn pri" data-act="new">New goal</button></div></section>
       <div class="stack">${mode === 'new' ? formHtml(null) : mode === 'edit' && g ? formHtml(g) : g ? detailHtml(g) : ''}</div></div>`;
   }
 
@@ -108,11 +108,7 @@ export async function render(root, params){
     async delstep(n){ await store.steps.del(n.dataset.id); await refresh(); },
     async task(n){ await setTaskDone(d.tasks.find((t) => t.id === n.dataset.id), n.checked); await refresh(); },
     async addtask(f){ await store.tasks.add({ title: formData(f).title.trim(), status: 'open', due_date: today, goal_id: sel }); await refresh(); },
-    async status(n){ await store.goals.set(sel, { status: n.dataset.v }); toast(n.dataset.v === 'stopped' ? 'Goal dropped' : 'Saved'); await refresh(); },
-    async import(){
-      toast(importSummary(await importFromGoalsApp()));
-      await refresh();
-    }
+    async status(n){ await store.goals.set(sel, { status: n.dataset.v }); toast(n.dataset.v === 'stopped' ? 'Goal dropped' : 'Saved'); await refresh(); }
   });
   await refresh();
 }

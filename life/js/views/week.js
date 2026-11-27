@@ -1,6 +1,7 @@
 // Week: this week's commitments for each goal (daily, weekly and monthly, including the
 // repeating ones and those fed from Health), what repeats, the scorecard and trend,
 // and goals that need a decision.
+import { FIRST_WEEK } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, empty } from '../ui.js';
 import { todayStr, addDays, startOfWeek, formatDateShort, toast, isoDow } from '../fit/utils.js';
@@ -64,7 +65,7 @@ export async function render(root){
       return `<div class="row"><span class="rt"><span class="rtitle">${esc(r.title)}</span><span class="rmeta">${g ? pill(g.title, 'goal') : ''}<span>Every ${r.cadence === 'daily' ? 'day' : r.cadence === 'weekly' ? 'week' : 'month'}</span></span></span>
         <span class="step"><input class="field" style="width:4.2em" type="number" min="1" max="99" data-act="rulecount" data-id="${r.id}" value="${r.per_period}" aria-label="How many ${CADENCE_UNIT[r.cadence]}"><span class="hint">${CADENCE_UNIT[r.cadence]}</span><button class="btn sm ghost" data-act="stoprepeat" data-id="${r.id}">Stop</button></span></div>`; };
 
-    root.innerHTML = `<div class="weeknav"><button class="btn sm" data-act="prev" aria-label="Previous week">‹</button><b>Week of ${formatDateShort(week)}${week === thisWeek ? ' (this week)' : ''}</b><button class="btn sm" data-act="next" ${week >= thisWeek ? 'disabled' : ''} aria-label="Next week">›</button></div>
+    root.innerHTML = `<div class="weeknav"><button class="btn sm" data-act="prev" ${week <= FIRST_WEEK ? 'disabled' : ''} aria-label="Previous week">‹</button><b>Week of ${formatDateShort(week)}${week === thisWeek ? ' (this week)' : ''}</b><button class="btn sm" data-act="next" ${week >= thisWeek ? 'disabled' : ''} aria-label="Next week">›</button></div>
       ${verdictHtml}
       <div class="cols"><div class="stack"><section class="panel"><h2>Commitments <small>Daily, weekly or monthly</small></h2>
         ${groups}${loose.length ? `<p class="sub">Not tied to a goal</p>${loose.map((c) => commitRow(c)).join('')}` : ''}${!d.commits.length && !d.goals.length ? empty('Add a goal first, then commit to what you will do for it.') : ''}
@@ -81,7 +82,7 @@ export async function render(root){
 
   const refresh = async () => { await load(); draw(); };
   wire(root, {
-    prev(){ week = addDays(week, -7); return refresh(); },
+    prev(){ if (week <= FIRST_WEEK) return; week = addDays(week, -7); return refresh(); },
     next(){ week = addDays(week, 7); return refresh(); },
     ...commitActs({ find: (id) => d.commits.find((c) => c.id === id), refresh, weekStart: () => week }),
     async rulecount(n){ await setRuleCount(d.rules.find((r) => r.id === n.dataset.id), n.value); toast('Saved. It applies from this period.'); await refresh(); },
