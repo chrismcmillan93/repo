@@ -1,4 +1,4 @@
-// Settings: install, notifications, theme, bringing data over from Goals, sign out.
+// Settings: install, notifications, Garmin, breaks and trips, app lock, backup, theme, sign out.
 import * as store from '../store.js';
 import { esc, pill, wire, formData, options } from '../ui.js';
 import { toast } from '../fit/utils.js';

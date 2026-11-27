@@ -264,7 +264,7 @@ export async function render(root, params){
       ${postPanel()}</div></div>`;
     drawPost();
   }
-  // Instagram posts (@cmfitnesslog), drawn on canvas by the Fitness app's own poster code.
+  // Instagram posts (@cmfitnesslog), drawn on canvas by this app's poster code (fit/posters.js).
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const post = { kind: 'pr', pr: 0, month: null, goal: '' };
   function months(){
@@ -337,7 +337,7 @@ export async function render(root, params){
     } catch (err) { body.innerHTML = `<section class="panel">${empty(`Couldn't load lifts: ${err.message}`)}</section>`; }
   }
   await lifts();
-  // Same rule as the Fitness app: refresh quietly when the last sync is over 6 hours old.
+  // Refresh quietly when the last Hevy sync is over 6 hours old.
   if (L && (!L.sync || !L.sync.last_run_at || Date.now() - new Date(L.sync.last_run_at).getTime() > 6 * 36e5)) {
     db.hevy.runSync().then((res) => { if (res && (res.upserted || res.deleted)) lifts(); }).catch(() => {});
   }

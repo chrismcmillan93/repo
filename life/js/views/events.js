@@ -1,5 +1,5 @@
 // Trips, events, renewals and birthdays with countdowns. Races come straight from
-// the Fitness app's plan (read-only here), so a race never has to be typed twice.
+// the training plan (read-only here), so a race never has to be typed twice.
 import * as store from '../store.js';
 import { esc, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, daysUntil, formatDateShort, parseLocalDate, toDateInputValue } from '../fit/utils.js';

@@ -1,5 +1,5 @@
 // Data access for the `life` schema. Every read and write is scoped by user_id
-// explicitly as well as by RLS (belt and suspenders, same rule as the other apps).
+// explicitly as well as by RLS (belt and suspenders).
 import { supabase } from './supabaseClient.js';
 import { floorDate } from './start.js';
 

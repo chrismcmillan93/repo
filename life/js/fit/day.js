@@ -1,5 +1,5 @@
-// One day of training and food, read from and written to the Fitness app's own
-// tables, so both apps always agree: the session (planned or picked), the
+// One day of training and food, read from and written to the `fitness` schema's
+// tables (this app's training and food backend): the session (planned or picked), the
 // Weights / Cardio / Both picker that also decides the day's meals and calories,
 // each lift's exercises, each meal's foods, ticks, and the morning weigh-in.
 // Used by Today (compact) and Health > Day (full). Both offer the day swap.

@@ -1,7 +1,6 @@
-// Magic-link / email-OTP authentication -- same battle-tested pattern as
-// usa/js/auth.js and goals/js/auth.js elsewhere in this repo (each app
-// keeps its own copy; they're independent static sites with no shared
-// build step to import across).
+// Magic-link / email-OTP authentication -- the same pattern as usa/js/auth.js
+// elsewhere in this repo (each app keeps its own copy; they're independent
+// static sites with no shared build step to import across).
 //
 // Two ways to complete sign-in:
 //   1. Click the magic link in the email (handled automatically by

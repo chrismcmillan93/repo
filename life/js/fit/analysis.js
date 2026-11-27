@@ -1,7 +1,7 @@
 // Pure number-crunching for the Lifting tab — no DOM, no network, so it
 // can be tested on its own with fixture sets.
 //
-// Conventions (see fitness/CLAUDE.md, "Lifting tab"):
+// Conventions (see docs/fitness-backend.md, "Lifting tab"):
 // - Weights are exactly what Hevy stores. Dumbbell lifts are logged as the
 //   TOTAL of both dumbbells, so 100 kg = the gym's 2 x 50 kg maximum.
 // - Warm-up sets never count. Neither do sets with no weight or no reps.

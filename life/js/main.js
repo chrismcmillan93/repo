@@ -1,4 +1,4 @@
-// Boot: sign-in (shared with Goals and Fitness), theme, tabs and hash routing.
+// Boot: sign-in, theme, tabs and hash routing.
 // Routes look like #/health/week/2026-11-30; each view gets a fresh root element
 // and the path segments after its name.
 import { LIFE_START, beforeStart } from './start.js';

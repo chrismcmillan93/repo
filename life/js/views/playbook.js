@@ -1,4 +1,4 @@
-// Playbook: the 6 pillars and 24 books from the Goals app, each directive with a
+// Playbook: the 6 pillars and 24 books, each directive with a
 // status (not started, working on it, adopted) and a note. A habit-type directive
 // can become a daily habit on Today in one tap.
 import * as store from '../store.js';
