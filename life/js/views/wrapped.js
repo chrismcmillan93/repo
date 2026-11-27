@@ -64,13 +64,13 @@ export async function render(root, params){
     const list = cards.length ? [intro, ...cards, outro] : [];
     root.innerHTML = `<section class="panel"><h2>Wrapped <small>${year}</small></h2>
         <div class="seg sm">${[thisYear - 1, thisYear].map((y) => `<a class="${y === year ? 'on' : ''}" href="#/wrapped/${y}">${y}</a>`).join('')}</div>
-        ${list.length ? `<div class="wrap" tabindex="0" aria-label="Your ${year} in numbers, swipe sideways">${list.map((c, i) => `<article class="wcard c${i % 5}" id="w-${c.id}" aria-label="${esc(c.kicker)} ${esc(c.big)} ${esc(c.unit)}">
+        ${list.length ? `<div class="wstrip" tabindex="0" aria-label="Your ${year} in numbers, swipe sideways">${list.map((c, i) => `<article class="wcard c${i % 5}" id="w-${c.id}" aria-label="${esc(c.kicker)} ${esc(c.big)} ${esc(c.unit)}">
             <p class="wk">${esc(c.kicker)}</p><p class="wb">${esc(c.big)}</p><p class="wu">${esc(c.unit)}</p>${c.line ? `<p class="wl">${esc(c.line)}</p>` : ''}</article>`).join('')}</div>
           <div class="wdots" aria-hidden="true">${list.map((_, i) => `<i data-i="${i}"${i === 0 ? ' class="on"' : ''}></i>`).join('')}</div>`
         : empty(`No Garmin or Hevy data for ${year} yet.`)}
         <div class="wfoot"><label class="check"><input type="checkbox" data-act="wquit" ${withQuit ? 'checked' : ''}> Include one anonymous card from Giving up</label>
         <p class="hint">Off by default. It shows only a number of days, never what it is. Garmin and Hevy are read straight from 1 January, so this one screen looks back before the fresh start. Everything else in the app does not.</p></div></section>`;
-    const strip = root.querySelector('.wrap');
+    const strip = root.querySelector('.wstrip');
     if (strip) {
       const dots = Array.from(root.querySelectorAll('.wdots i'));
       strip.addEventListener('scroll', () => {

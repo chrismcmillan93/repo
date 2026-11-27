@@ -387,7 +387,7 @@ and last.
   30 days (60+ days).
 - Tested: `wrappedStats` with a synthetic year in Node (rows from the previous year are excluded), the card
   layout in Chromium at 390 px in light and dark. **Not tested:** loading real rows, or the screen inside
-  the app. `sw.js` `VERSION` is `v14`, `BUILD` `2026-11-27d`.
+  the app. `sw.js` `VERSION` is `v15`, `BUILD` `2026-11-27e`. The card strip is `.wstrip`, **not** `.wrap`: `.top .wrap` is the header's container and the menu dropdown is positioned inside it, so a global `.wrap` rule with `overflow-x: auto` clipped the menu (fixed 2026-11-27).
 
 ## Menu (2026-11-21)
 
