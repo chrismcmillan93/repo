@@ -297,7 +297,7 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .row.dim { opacity: .65 }
 
 /* Wrapped: swipeable year-in-review cards */
-.wrap { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 2px 10px; margin: 8px 0 }
+.wstrip { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 4px 2px 10px; margin: 8px 0 }
 .wcard { flex: 0 0 100%; scroll-snap-align: center; min-height: 320px; border-radius: 18px; padding: 26px 22px; display: flex; flex-direction: column; justify-content: center; gap: 6px; background: var(--accent-soft); border: 1px solid var(--line) }
 .wcard.c1 { background: var(--good-soft) } .wcard.c2 { background: var(--warn-soft) } .wcard.c3 { background: var(--sunk) } .wcard.c4 { background: var(--bad-soft) }
 .wk { margin: 0; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: .8rem }
