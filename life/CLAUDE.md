@@ -390,8 +390,8 @@ and last.
 - **Running-load warning** (`js/loadspike.js`, pure): the last 7 days of running km against the average of up
   to four earlier 7-day blocks. +30% warns, +50% is the amber "high" nudge on Today (under the niggle
   nudges). A block counts only if all of it is on or after the fresh-start floor (`since` = `LIFE_START`), it
-  needs 2+ full blocks and a baseline of 8+ km a week, so it stays silent for the first couple of weeks
-  and never reads pre-start data. Runs only. It is a nudge: the text says the plan may have asked for it.
+  needs 2+ full blocks and a baseline of 8+ km a week. It **does** use runs from before the fresh start for its baseline
+  (an explicit exception, see "Fresh start"), so it works from day one when there is older running history. Runs only. It is a nudge: the text says the plan may have asked for it.
 - **Readiness history** (`readinessHistory()` in `readiness.js`, panel from `insights.js`, Health -> Progress): the
   score for every day in the span, computed on the fly from Garmin (**nothing is stored**), as a dot chart with a
   7-day line, Push / Normal / Easy counts, and how often you trained on each kind of day. It needs 7+ scored days.
@@ -448,11 +448,15 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
   moved to 30 Nov, target dates in the past cleared (later ones kept) and last-progress dates cleared. The achieved
   goal and the one step completed before the start stay in the archive. Everything else (commitments, lists, notes)
   stays archived.
-- **Two deliberate exceptions to the floor, both opt-in per call:** the **Wrapped** screen (its own queries, full year) and the **Lifts**
-  tab (`db.hevy.listSets/listWorkouts(..., { allHistory: true })`, read back to 2020 so PRs, estimated 1RMs and progression use your whole
-  Hevy history; chosen by Chris on 2026-11-27 after the tab came up empty, since the last lift was 21 Nov and none exist after 30 Nov). The
-  default of those helpers is still floored, so nothing else sees older data; Garmin activities and Health's day pages stay floored. Don't
-  add `allHistory` anywhere else without asking.
+- **Deliberate exceptions to the floor, each opt-in per call (the default is still floored):**
+  1. the **Wrapped** screen (its own queries, full year);
+  2. the **Lifts** tab (`db.hevy.listSets/listWorkouts(..., { allHistory: true })`, back to 2020 so PRs, estimated 1RMs and progression use your whole
+     Hevy history; chosen by Chris on 2026-11-27 after the tab came up empty, since the last lift was 21 Nov and none exist after 30 Nov);
+  3. **Garmin activities** (`garmin.activities(from, to, { allHistory: true })`) in exactly two places, on request the same day: the **running-load
+     warning's baseline** on Today (so it works from day one; running load is a physical fact, not a plan) and the **Progress running / training-load
+     charts** (`loadTrends`). Sleep, HRV, resting HR, steps and Body Battery stay floored (so readiness builds its baseline from 30 Nov), as do Health's
+     day pages, the check-in text and the readiness history's "trained" flags.
+  Don't add `allHistory` anywhere else without asking.
 - **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
   never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
 - **Old apps:** `/goals/` and `/fitness/` are only redirect pages to Life (the second also keeps a
@@ -525,7 +529,7 @@ authenticated only, **no grant to service_role** (checked), cascades with the qu
   `backup.js` includes it only under "Include Giving up" (`PRIVATE_TABLES`), it is not in notifications, and `life-push` cannot read it.
   Today still shows only the alias/name and a day count, never a reason.
 - Verified in Chromium with Supabase stubbed: the card pick, the panel list, saving a quote (with author) and a reason (author dropped), and the
-  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v25`, `BUILD` `2026-11-27o`.
+  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v26`, `BUILD` `2026-11-27p`.
 
 ## Not built yet
 

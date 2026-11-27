@@ -17,11 +17,12 @@ const ACT = 'activity_id, name, type_key, local_date, start_local, distance_m, d
 const DAY = 'day, steps, step_goal, resting_hr, avg_stress, bb_high, bb_low, bb_charged, bb_drained, moderate_min, vigorous_min, total_kcal';
 const SLEEP = 'day, sleep_s, deep_s, light_s, rem_s, awake_s, score, score_label, avg_hr, need_min, hrv_last_night, hrv_weekly_avg, hrv_status, hrv_low, hrv_high';
 
-// PostgREST caps a response at 1,000 rows, so page until a short page.
-async function range(table, cols, col, from, to){
+// PostgREST caps a response at 1,000 rows, so page until a short page. Floored to the fresh start unless `allHistory`
+// (opt-in per call: only activities for the load-spike baseline and the Progress running/load charts use it).
+async function range(table, cols, col, from, to, allHistory = false){
   const out = [];
   for (let at = 0; ; at += 1000) {
-    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, floorDate(from)).lte(col, to).order(col).range(at, at + 999);
+    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, allHistory ? from : floorDate(from)).lte(col, to).order(col).range(at, at + 999);
     if (error) throw new Error(error.message);
     out.push(...(data || []));
     if (!data || data.length < 1000) return out;
@@ -29,7 +30,7 @@ async function range(table, cols, col, from, to){
 }
 
 export const garmin = {
-  activities: (from, to) => range('garmin_activities', ACT, 'local_date', from, to),
+  activities: (from, to, { allHistory = false } = {}) => range('garmin_activities', ACT, 'local_date', from, to, allHistory),
   days: (from, to) => range('garmin_days', DAY, 'day', from, to),
   sleep: (from, to) => range('garmin_sleep', SLEEP, 'day', from, to),
   autoticks: (from, to) => range('garmin_autoticks', 'log_date, activity_id', 'log_date', from, to),
@@ -228,7 +229,7 @@ export function weekBars(weeks, values, { unit = '', label = '', targets = null,
 export async function loadTrends(span, planWeeks = []){
   const end = todayStr(), start = addDays(end, -(span - 1));
   const firstWeek = startOfWeek(start);
-  const [sleep, days, acts, state] = await Promise.all([garmin.sleep(start, end), garmin.days(start, end), garmin.activities(firstWeek, end), garmin.state()]);
+  const [sleep, days, acts, state] = await Promise.all([garmin.sleep(start, end), garmin.days(start, end), garmin.activities(firstWeek, end, { allHistory: true }), garmin.state()]);
   const dates = [];
   for (let d = start; d <= end; d = addDays(d, 1)) dates.push(d);
   const by = (rows) => Object.fromEntries(rows.map((r) => [r.day, r]));
