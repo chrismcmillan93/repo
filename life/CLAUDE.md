@@ -443,6 +443,11 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
   tables. Settings keep Garmin and device prefs; `breaks`, `away`, `backup_started` and
   `last_backup` were removed. To look at the old rows: `select * from life_archive.goals` in
   the SQL editor. To delete them for good, drop the schema (ask first; it is irreversible).
+- **Goals restored (2026-11-27, on request):** the 7 goals that were still active were copied back from
+  `life_archive.goals` (migration `20261127140000_life_restore_active_goals.sql`, same ids), with start dates
+  moved to 30 Nov, target dates in the past cleared (later ones kept) and last-progress dates cleared. The achieved
+  goal and the one step completed before the start stay in the archive. Everything else (commitments, lists, notes)
+  stays archived.
 - **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
   never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
 - **Old apps:** `/goals/` and `/fitness/` are only redirect pages to Life (the second also keeps a
