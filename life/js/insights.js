@@ -38,7 +38,7 @@ export async function moodSleepHtml(){
 }
 
 // Readiness over time: the score each day (computed from Garmin, nothing stored), and how often you
-// trained on the days it said Easy. Garmin reads are floored to the fresh start, so it fills in from there.
+// trained on the days it said Easy. Garmin is never floored, so it covers the whole span as soon as there is a 28-day baseline.
 export async function readinessHistoryHtml(span = 84){
   const end = todayStr(), start = addDays(end, -(span - 1));
   const [sleep, days, acts] = await Promise.all([garmin.sleep(addDays(start, -28), end), garmin.days(addDays(start, -28), end), garmin.activities(start, end)]);

@@ -123,30 +123,33 @@ export async function render(root, params){
 
   // ---- Progress: weight, streaks, day by day, adherence by week ----
   if (tab === 'progress') {
-    const start = floorDate(weeks.length ? (today < weeks[0].start_date ? addDays(today, -83) : addDays(weeks[0].start_date, -21)) : addDays(today, -83));
+    const rawStart = weeks.length ? (today < weeks[0].start_date ? addDays(today, -83) : addDays(weeks[0].start_date, -21)) : addDays(today, -83);
+    const start = floorDate(rawStart);
     const end = today;
-    const logs = await db.dailyLogs.listRange(userId(), start, end);
+    const logs = await db.dailyLogs.listRange(userId(), start, end); // food and training records: from the fresh start
+    const wlogs = await db.dailyLogs.listRange(userId(), rawStart, end, { allHistory: true }); // weigh-ins: all of them
     const byDate = Object.fromEntries(logs.map((l) => [l.log_date, l]));
     const dates = dateRange(start, end);
-    const pts = dates.map((d) => (byDate[d] && byDate[d].weight_kg != null ? Number(byDate[d].weight_kg) : null));
+    const wdates = dateRange(rawStart, end), wby = Object.fromEntries(wlogs.map((l) => [l.log_date, l]));
+    const pts = wdates.map((d) => (wby[d] && wby[d].weight_kg != null ? Number(wby[d].weight_kg) : null));
     const avg = pts.map((_, i) => { const w = pts.slice(Math.max(0, i - 6), i + 1).filter((v) => v != null); return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null; });
-    const tgts = weeks.filter((w) => w.weight_target_kg_monday != null && w.start_date >= start && w.start_date <= end).map((w) => ({ i: dates.indexOf(w.start_date), v: Number(w.weight_target_kg_monday) })).filter((t) => t.i >= 0);
+    const tgts = weeks.filter((w) => w.weight_target_kg_monday != null && w.start_date >= rawStart && w.start_date <= end).map((w) => ({ i: wdates.indexOf(w.start_date), v: Number(w.weight_target_kg_monday) })).filter((t) => t.i >= 0);
     const vals = pts.concat(avg).concat(tgts.map((t) => t.v)).filter((v) => v != null);
     let chart = empty('No weigh-ins yet. Log one on Today or Health → Day.');
     if (vals.length) {
       const W = 640, H = 210, L = 38, R = 10, T = 12, Bm = 24;
       const lo = Math.floor(Math.min(...vals) - 0.5), hi = Math.ceil(Math.max(...vals) + 0.5);
-      const x = (i) => L + i * (W - L - R) / Math.max(1, dates.length - 1), y = (v) => T + (hi - v) / (hi - lo || 1) * (H - T - Bm);
+      const x = (i) => L + i * (W - L - R) / Math.max(1, wdates.length - 1), y = (v) => T + (hi - v) / (hi - lo || 1) * (H - T - Bm);
       const ticks = []; for (let v = lo; v <= hi; v += Math.max(1, Math.round((hi - lo) / 4))) ticks.push(v);
       const line = (arr) => arr.map((v, i) => (v == null ? null : `${round1(x(i))},${round1(y(v))}`)).filter(Boolean).join(' ');
       const lastI = avg.map((v, i) => (v == null ? -1 : i)).reduce((a, b) => Math.max(a, b), -1);
-      chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight over the last ${dates.length} days with a 7-day average">
+      chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight over the last ${wdates.length} days with a 7-day average">
         ${ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
         ${pts.map((v, i) => (v == null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="2.2" fill="var(--muted)"/>`)).join('')}
         ${tgts.map((t) => `<rect x="${x(t.i) - 4}" y="${y(t.v) - 4}" width="8" height="8" transform="rotate(45 ${x(t.i)} ${y(t.v)})" fill="var(--warn)"><title>Plan target ${t.v.toFixed(1)} kg</title></rect>`).join('')}
         <polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="${line(avg)}"/>
         ${lastI >= 0 ? `<circle cx="${x(lastI)}" cy="${y(avg[lastI])}" r="4" fill="var(--accent)"/><text x="${Math.min(x(lastI), W - R - 4)}" y="${y(avg[lastI]) - 9}" text-anchor="end" class="strong">${round1(avg[lastI])} kg</text>` : ''}
-        <text x="${L}" y="${H - 6}">${shortDate(start)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Today</text></svg>`;
+        <text x="${L}" y="${H - 6}">${shortDate(rawStart)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Today</text></svg>`;
     }
     const streak = (key) => { let n = 0; for (let d = byDate[today] && byDate[today][key] ? today : addDays(today, -1); byDate[d] && byDate[d][key] === 'yes'; d = addDays(d, -1)) n += 1; return n; };
     const logged = dates.filter((d) => byDate[d] && (byDate[d].nutrition_status || byDate[d].training_status)).length;
@@ -327,11 +330,10 @@ export async function render(root, params){
   });
 
   async function lifts(){
-    // The whole Hevy history, deliberately not floored to the fresh start: PRs, 1RMs and progression need it (an explicit
-    // exception for this tab only, see "Fresh start" in CLAUDE.md).
-    const since = new Date('2020-01-01T00:00:00Z').toISOString(), all = { allHistory: true };
+    // The whole Hevy history: it is device data, so the fresh start never hides it (PRs, 1RMs and progression need it).
+    const since = new Date('2020-01-01T00:00:00Z').toISOString();
     try {
-      const [sync, sets, workouts] = await Promise.all([db.hevy.syncState(userId()).catch(() => null), db.hevy.listSets(userId(), since, all), db.hevy.listWorkouts(userId(), since, all)]);
+      const [sync, sets, workouts] = await Promise.all([db.hevy.syncState(userId()).catch(() => null), db.hevy.listSets(userId(), since), db.hevy.listWorkouts(userId(), since)]);
       const templates = await db.hevy.listTemplates(Array.from(new Set(sets.map((s) => s.exercise_template_id)))).catch(() => []);
       const exercises = buildExercises(sets, Object.fromEntries(templates.map((t) => [t.id, t])));
       L = { sync, workouts, exercises, prs: findPrs(exercises), summaries: exerciseSummaries(exercises) };

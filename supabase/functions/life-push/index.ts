@@ -73,8 +73,8 @@ function awayNow(data: Record<string, unknown> | null, date: string): boolean {
 
 async function morningBrief(userId: string, today: string, dow: string){
   const tomorrow = addDays(today, 1);
-  // Readiness compares last night with the 28 days before it, never reaching back before the start.
-  const since = addDays(today, -29) < LIFE_START ? LIFE_START : addDays(today, -29);
+  // Readiness compares last night with the 28 days before it. Garmin is device data, so the fresh start does not limit it.
+  const since = addDays(today, -29);
   const [tasks, plan, picks, events, races, night, gday, goalTasks, goals, sleepRange, daysRange] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
     fitness().from('plan_days').select('session, type').eq('plan_version', 'v2').eq('date', today),

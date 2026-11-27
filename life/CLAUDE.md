@@ -368,11 +368,10 @@ tokens). `js/wrappedStats.js` is pure (rows in, cards out; a card only exists wh
 say, so a thin year is a short Wrapped), `js/views/wrapped.js` loads and draws. Year switcher: this year
 and last.
 
-- **Deliberately looks back before the fresh start (Chris chose this).** It reads `garmin_activities`,
-  `garmin_days`, `garmin_sleep`, `hevy_workouts` and `hevy_sets` straight from 1 January through its own
-  paged queries, *not* the floored helpers in `fit/garmin.js` / `fit/db.js` (those floor to `LIFE_START`
-  and would give an almost empty year). **This is the only screen that does that**: do not move the
-  bypass into the shared helpers.
+- **Looks back over the whole year.** It reads `garmin_activities`, `garmin_days`, `garmin_sleep`, `hevy_workouts` and
+  `hevy_sets` from 1 January through its own paged queries. It was written before device data stopped being floored (see
+  "Fresh start": the floor is for plans, reviews and old plan logs, never Garmin or Hevy), so it could now use the shared
+  helpers; it still works as it is.
 - **Only device mirrors.** No tasks, goals, habits, journal or Giving up, with one exception: an opt-in
   checkbox on the screen (off by default, remembered in `localStorage` `life-wrapped-quit`) adds a single
   anonymous card, the longest current run in days across live quits, never a name. It is skipped while the
@@ -390,8 +389,8 @@ and last.
 - **Running-load warning** (`js/loadspike.js`, pure): the last 7 days of running km against the average of up
   to four earlier 7-day blocks. +30% warns, +50% is the amber "high" nudge on Today (under the niggle
   nudges). A block counts only if all of it is on or after the fresh-start floor (`since` = `LIFE_START`), it
-  needs 2+ full blocks and a baseline of 8+ km a week. It **does** use runs from before the fresh start for its baseline
-  (an explicit exception, see "Fresh start"), so it works from day one when there is older running history. Runs only. It is a nudge: the text says the plan may have asked for it.
+  needs 2+ full blocks and a baseline of 8+ km a week. It uses your full running history for the baseline (device data is never floored), so it
+  works from day one. Runs only. It is a nudge: the text says the plan may have asked for it.
 - **Readiness history** (`readinessHistory()` in `readiness.js`, panel from `insights.js`, Health -> Progress): the
   score for every day in the span, computed on the fly from Garmin (**nothing is stored**), as a dot chart with a
   7-day line, Push / Normal / Easy counts, and how often you trained on each kind of day. It needs 7+ scored days.
@@ -432,11 +431,18 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
   Nothing earlier is created, read, shown or prompted. `life-push` still sends nothing before the start
   (the cron call returns `before the start date`; redeployed 2026-11-27 as v8 with the new date). The old
   holding-screen code in `main.js` is now unreachable (`beforeStart(todayStr())` is never true) and can go.
-- **After the start:** history reads are floored to the start (`floorDate` / `floorIso`) so
-  nothing earlier is shown: weigh-ins and day checks (`fit/db.js`), Hevy sets and workouts,
-  Garmin ranges (`fit/garmin.js`, `training.js`, the sleep comparison), weekly check-ins (by
-  `created_at`), Health's Progress chart and day/week pages, and Week can't step back before the
-  week containing the start. `dueReviews()`, the Review screen's "in progress" buttons and its past-reviews list, and the Sunday evening push all ignore any period starting before the start, so there is no review or review prompt for November, Q4 or the week before. Repeating commitments never create a week before the first week, nor a part-month before the start (`createDue()` in `lib.js`); habit checks are floored too (`store.habitChecks.listSince`). Goal and Giving up start dates can't be earlier either.
+- **What the floor applies to (Chris, 2026-11-27: "the clean slate was about reviews and old plans, not my data").** The floor is for
+  **plans, reviews and the old plan's logs**, never for device data:
+  - **Floored** (`floorDate`, `FIRST_WEEK`, `LIFE_START` filters): goals, tasks, commitments and their repeats, habit checks, journal and reviews
+    (`dueReviews()`, the Review screen's "in progress" buttons and past-reviews list, and the Sunday evening push ignore any period starting before
+    the start, so there is no November, Q4 or pre-start-week review or prompt), the old plan's day-by-day food and training records
+    (`fitness.daily_logs` statuses and `daily_checks`, so Progress's day-by-day grid and streaks start on 30 Nov), weekly check-ins (by `created_at`),
+    Health's day/week pages and Week (can't step back before the week containing the start), and goal and Giving up start dates.
+  - **Never floored** (the whole history is readable): **Garmin** (`fit/garmin.js`: activities, days, sleep, weigh-ins; so sleep, HRV, resting HR,
+    steps, runs, the Progress charts, readiness, the load-spike baseline, and the notification function's readiness baseline all use everything
+    synced), **Hevy** (`db.hevy.*`: the Lifts tab, PRs, 1RMs and progression), the **Progress weight chart** (weigh-ins come from Garmin and your
+    own entries: `db.dailyLogs.listRange(..., { allHistory: true })`, while the same screen's food/training grid stays floored), and the
+    **Wrapped** screen.
 - **Existing data was archived, not deleted:** migration `20261127120000_life_fresh_start.sql`
   copied every user-data row into the private schema **`life_archive`** (RLS on, no policies, no
   grants, not exposed; readable only with the database owner's rights), then emptied the `life`
@@ -448,17 +454,8 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
   moved to 30 Nov, target dates in the past cleared (later ones kept) and last-progress dates cleared. The achieved
   goal and the one step completed before the start stay in the archive. Everything else (commitments, lists, notes)
   stays archived.
-- **Deliberate exceptions to the floor, each opt-in per call (the default is still floored):**
-  1. the **Wrapped** screen (its own queries, full year);
-  2. the **Lifts** tab (`db.hevy.listSets/listWorkouts(..., { allHistory: true })`, back to 2020 so PRs, estimated 1RMs and progression use your whole
-     Hevy history; chosen by Chris on 2026-11-27 after the tab came up empty, since the last lift was 21 Nov and none exist after 30 Nov);
-  3. **Garmin activities** (`garmin.activities(from, to, { allHistory: true })`) in exactly two places, on request the same day: the **running-load
-     warning's baseline** on Today (so it works from day one; running load is a physical fact, not a plan) and the **Progress running / training-load
-     charts** (`loadTrends`). Sleep, HRV, resting HR, steps and Body Battery stay floored (so readiness builds its baseline from 30 Nov), as do Health's
-     day pages, the check-in text and the readiness history's "trained" flags.
-  Don't add `allHistory` anywhere else without asking.
-- **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
-  never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
+- **Old plan logs before the start** (food and training day statuses) are still in `fitness.*`, just
+  never shown (Garmin and Hevy data are shown in full, see above). The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
 - **Old apps:** `/goals/` and `/fitness/` are only redirect pages to Life (the second also keeps a
   manifest, icons and a worker that unregisters itself, so an installed home-screen icon lands in Life).
   Nothing in Life reads or writes the old `goals` schema; leave it alone. The `fitness` schema, the
@@ -509,8 +506,8 @@ A goal's page (`views/goals.js`) now has two clearly separate things to do towar
   which is the quickest live check (the evening one has no test button).
 - **Readiness in the morning brief:** after the sleep line, e.g. "Readiness 31, Easy. Weakest: HRV 41 ms against 62 usual. Go easy on today's
   session, or swap it." (Push: "Readiness 82, Push. Good day to hit it."; Normal: just "Readiness 56, Normal."). Only when last night has synced
-  (a score without sleep would mislead) and there is enough history (7+ baseline days since 30 Nov, so it first appears about a week in). The
-  function reads the same Garmin rows as the app, floored to the start. **`supabase/functions/life-push/readiness.js` is an exact copy of
+  (a score without sleep would mislead) and there is enough history (7+ baseline days, which your synced Garmin history already provides, so it works from day one). The
+  function reads the same Garmin rows as the app (28 days, no floor). **`supabase/functions/life-push/readiness.js` is an exact copy of
   `life/js/readiness.js`** (a function bundle cannot import from the app folder); `life/tests/readinessline.test.mjs` fails if they differ, so
   change the app file, `cp` it over the function's copy, and redeploy. The line is built by `readinessline.js` (pure, tested). Redeployed as v11
   (files: `index.ts`, `goalbrief.js`, `readiness.js`, `readinessline.js`, `webpush.js`).
@@ -529,7 +526,7 @@ authenticated only, **no grant to service_role** (checked), cascades with the qu
   `backup.js` includes it only under "Include Giving up" (`PRIVATE_TABLES`), it is not in notifications, and `life-push` cannot read it.
   Today still shows only the alias/name and a day count, never a reason.
 - Verified in Chromium with Supabase stubbed: the card pick, the panel list, saving a quote (with author) and a reason (author dropped), and the
-  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v26`, `BUILD` `2026-11-27p`.
+  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v27`, `BUILD` `2026-11-27q`.
 
 ## Not built yet
 

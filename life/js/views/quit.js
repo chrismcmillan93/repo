@@ -2,7 +2,7 @@
 // A slip restarts the current count but never erases the run before it (see streaks.js).
 // Private by design: nothing here is in notifications, a name can be shown on Today as
 // something else (or not at all), and the offline copy is not kept (sw.js).
-import { floorDate, LIFE_START } from '../start.js';
+import { LIFE_START } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, formatDateShort, toast } from '../fit/utils.js';
@@ -54,8 +54,8 @@ export async function render(root, params){
     sleepRows = []; dayRows = [];
     const first = quits.filter((q) => !q.archived).map((q) => q.started_on).sort()[0];
     if (first) {
-      try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', floorDate(first)).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
-      try { const { data, error } = await fitSb.from('garmin_days').select('day,avg_stress,resting_hr').eq('user_id', store.userId()).gte('day', addDaysIso(floorDate(first), -1)).limit(2000); if (!error && data) dayRows = data; } catch (_) { /* no Garmin, no body comparison */ }
+      try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', first).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
+      try { const { data, error } = await fitSb.from('garmin_days').select('day,avg_stress,resting_hr').eq('user_id', store.userId()).gte('day', addDaysIso(first, -1)).limit(2000); if (!error && data) dayRows = data; } catch (_) { /* no Garmin, no body comparison */ }
     }
     if (!quits.length) adding = true;
   }

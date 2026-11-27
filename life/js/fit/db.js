@@ -2,7 +2,7 @@
 // on error (with the Supabase error message attached) so callers can toast
 // it or feed it into the offline queue.
 import { supabase } from './supabaseClient.js';
-import { floorDate, floorIso, LIFE_START } from '../start.js';
+import { floorDate, LIFE_START } from '../start.js';
 
 function checkError(error){
   if (error) throw new Error(error.message || 'Database error');
@@ -28,12 +28,14 @@ export const db = {
       checkError(error);
       return data;
     },
-    async listRange(userId, startDate, endDate){
+    // Floored to the fresh start (the day-by-day food and training records belong to the old plan) unless
+    // `allHistory`, which the Progress weight chart uses: weigh-ins are your body, and Garmin fills them in.
+    async listRange(userId, startDate, endDate, { allHistory = false } = {}){
       const { data, error } = await supabase
         .from('daily_logs')
         .select('*')
         .eq('user_id', userId)
-        .gte('log_date', floorDate(startDate))
+        .gte('log_date', allHistory ? startDate : floorDate(startDate))
         .lte('log_date', endDate)
         .order('log_date');
       checkError(error);
@@ -479,9 +481,8 @@ export const db = {
     },
     // Every set since `sinceIso`, oldest first. PostgREST caps a response
     // at 1,000 rows, so page through with range() until a short page.
-    // Reads are floored to the fresh start (start.js) unless the caller passes `allHistory: true`; only the Lifts
-    // tab does, because PRs, 1RMs and progression need your whole training history.
-    async listSets(userId, sinceIso, { allHistory = false } = {}){
+    // Hevy is device data, not a plan, so it is never floored to the fresh start: PRs, 1RMs and progression need it all.
+    async listSets(userId, sinceIso){
       const pageSize = 1000;
       const out = [];
       for (let from = 0; ; from += pageSize) {
@@ -489,7 +490,7 @@ export const db = {
           .from('hevy_sets')
           .select('hevy_workout_id, exercise_index, set_index, exercise_template_id, exercise_title, set_type, weight_kg, reps, distance_m, duration_s, performed_at')
           .eq('user_id', userId)
-          .gte('performed_at', allHistory ? sinceIso : floorIso(sinceIso))
+          .gte('performed_at', sinceIso)
           .order('performed_at')
           .order('exercise_index')
           .order('set_index')
@@ -500,12 +501,12 @@ export const db = {
       }
       return out;
     },
-    async listWorkouts(userId, sinceIso, { allHistory = false } = {}){
+    async listWorkouts(userId, sinceIso){
       const { data, error } = await supabase
         .from('hevy_workouts')
         .select('hevy_id, title, start_time, end_time')
         .eq('user_id', userId)
-        .gte('start_time', allHistory ? sinceIso : floorIso(sinceIso))
+        .gte('start_time', sinceIso)
         .order('start_time');
       checkError(error);
       return data || [];
