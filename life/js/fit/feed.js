@@ -1,4 +1,4 @@
-// Feeds the Fitness app's own records into the Life app's weekly commitments and
+// Feeds the training, food and weigh-in records (the `fitness` schema) into the weekly commitments and
 // goals, so nothing has to be ticked twice:
 //   - "Training sessions done"       planned (or picked) days vs days with a session ticked
 //   - "Days with every meal eaten"   days where every meal of that day's type is ticked

@@ -34,7 +34,7 @@ export async function render(root, params){
       body = `<div class="cols"><section class="panel"><h2>This week's food <small>Week of ${formatDateShort(weekStart)}, from your meal plan</small></h2>
         ${gen.length ? gen.map((g) => `<p class="sub">${esc(g.category)}</p>${g.items.map((i) => `<label class="row ${ticks[i.key] ? 'done' : ''}"><input type="checkbox" data-act="gentick" data-id="${esc(i.key)}" ${ticks[i.key] ? 'checked' : ''}>
           <span class="rt"><span class="rtitle">${esc(i.name)}</span>${i.note ? `<span class="rmeta">${esc(i.note)}</span>` : ''}</span><span class="right">${esc(i.qty)}</span></label>`).join('')}`).join('') : empty('No meal plan covers this week.')}
-        <p class="hint">Quantities follow your weight and this week's sessions. Ticks are shared with the Fitness app.</p></section>
+        <p class="hint">Quantities follow your weight and this week's sessions.</p></section>
         <section class="panel"><h2>Your own items</h2>${items.length ? items.map((it) => itemRow(it)).join('') : empty('Nothing added.')}
         <form class="add" data-act="add"><input class="field" name="title" required placeholder="Add an item" aria-label="Add an item"><button class="btn">Add</button></form>
         ${items.some((i) => i.done) ? '<div class="btns"><button class="btn sm" data-act="clear">Remove ticked items</button></div>' : ''}</section></div>`;

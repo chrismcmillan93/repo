@@ -1,4 +1,4 @@
-// Settings: install, notifications, theme, bringing data over from Goals, sign out.
+// Settings: install, notifications, Garmin, breaks and trips, app lock, backup, theme, sign out.
 import * as store from '../store.js';
 import { esc, pill, wire, formData, options } from '../ui.js';
 import { toast } from '../fit/utils.js';
@@ -50,7 +50,7 @@ export async function render(root){
     const last = cfg.last_backup;
     const days = last ? daysBetween(last, todayStr()) : null;
     return `<section class="panel"><h2>Back up your data ${last ? pill(`${days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'} ago`}`, days > 30 ? 'warn' : 'good') : pill('Never', 'warn')}</h2>
-      <p class="hint">One file with your goals, tasks, commitments, journal, lists, career, events, notes, reviews, niggles and your own Fitness records. It is made on this device and goes nowhere until you save it. Hevy and Garmin data aren't included (they re-sync), and neither are your sign-in or notification keys. The file isn't encrypted, so keep it somewhere safe.</p>
+      <p class="hint">One file with your goals, tasks, commitments, journal, lists, career, events, notes, reviews, niggles and your own training and food logs. It is made on this device and goes nowhere until you save it. Hevy and Garmin data aren't included (they re-sync), and neither are your sign-in or notification keys. The file isn't encrypted, so keep it somewhere safe.</p>
       <label class="check"><input type="checkbox" id="backupPrivate"> Include Giving up (private; anyone with the file can read it)</label>
       <div class="btns"><button class="btn pri" data-act="backup">Download a backup</button></div></section>`;
   }

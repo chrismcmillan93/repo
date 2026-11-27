@@ -13,8 +13,8 @@ function normalizedRedirectPath(pathname){
 }
 export const REDIRECT_URL = window.location.origin + normalizedRedirectPath(window.location.pathname);
 
-// One sign-in shared with Goals and Fitness: same project, same account, same
-// storage key (see fitness/js/supabaseClient.js). Signing out of one signs out of all.
+// One sign-in for the whole app. The storage key `cm-apps-auth` is kept as it was so an existing
+// session survives (renaming it would sign everyone out).
 // Offline the app is read-only: the service worker serves the last copy of reads,
 // and every save is refused here with a clear message rather than failing vaguely
 // (or, worse, looking as if it worked). The day bundle RPC is a read, so it is let through.

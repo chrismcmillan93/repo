@@ -10,8 +10,7 @@ first (a static-hosting deploy and a framework build step are two different proj
 
 ## Life app (`/life`)
 
-The one app for goals, to-dos, lists, career, health, giving things up and events. It replaced
-the old `goals/` and `fitness/` apps, which are now redirect pages to it. It is a fresh plan
+The one app for goals, to-dos, lists, career, health, giving things up and events. It is a fresh plan
 starting **30 Nov 2026** with no history before that date. Own schema **`life`**; it also reads
 and writes the `fitness` schema, which is now its backend (training plan, meals, Garmin, Hevy).
 Everything about it is in **`life/CLAUDE.md`** — read that before touching it. It also
@@ -27,10 +26,10 @@ spreadsheet. Lives entirely under `usa/`, served at `app.chris-mcmillan.co.uk/us
 `naples/` — no build step, no framework, no TypeScript. `supabase-js` loaded via CDN.
 
 **Supabase:** project `dashboards-new`, ref `bcrmbuiuekklpocpllpw`, region eu-west-1.
-This project is shared with the `goals` app (and the legacy `checkbox_states`/
+This project is shared by several apps (and the legacy `checkbox_states`/
 `item_data` tables in `public`) — each app gets its own schema. This app's schema is
 **`usa`** (lowercase). Never touch `public` — it belongs to another app. Never touch
-`goals` — it belongs to the Goals & Progress app.
+`goals` — it is left over from a retired app and is not used by anything.
 
 **Migrations only.** All DDL for the `usa` schema goes through migration files in
 `supabase/migrations/`, applied with the Supabase MCP `apply_migration` tool (or the
@@ -103,8 +102,7 @@ filtering by `trip_id` (which still happens too — belt and suspenders).
 
 **One-time manual step (not doable via any MCP tool available to Claude):** the `usa`
 schema must be added to the project's exposed schemas — Dashboard → Project Settings →
-Data API → "Exposed schemas" (comma-separated list; `goals` is already in there for the
-Goals app). Without this, every PostgREST call scoped to `db: { schema: 'usa' }` 404s.
+Data API → "Exposed schemas" (comma-separated list; the other apps' schemas are already in there). Without this, every PostgREST call scoped to `db: { schema: 'usa' }` 404s.
 
 ## Currency rules
 

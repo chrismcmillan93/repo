@@ -1,5 +1,5 @@
 // Backup: one JSON file with everything of yours in the Life app, plus your own records in the
-// Fitness tables the app reads and writes. Built in the browser from your signed-in session,
+// training and food tables the app reads and writes. Built in the browser from your signed-in session,
 // nothing is uploaded anywhere. Left out on purpose: push subscriptions (device keys), the
 // Hevy and Garmin mirrors (they re-sync from the source), and your sign-in. The Giving up
 // tables are only included if you tick the box, because the file is readable by anyone who has it.

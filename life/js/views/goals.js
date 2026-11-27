@@ -80,7 +80,7 @@ export async function render(root, params){
       return `<button class="goalbtn ${x.id === sel ? 'on' : ''}" data-act="pick" data-id="${x.id}"><span class="gh"><b>${esc(x.title)}</b>${x.status === 'paused' ? pill('Paused') : pill(STATE[st][0], STATE[st][1])}</span>
         ${bar(pct, exp, STATE[st][1])}<span class="rmeta"><span>${esc(x.area)}</span>${x.target_date ? `<span>Due ${formatDateShort(x.target_date)}</span>` : ''}<span>${pct}% done${exp != null ? `, ${exp}% expected` : ''}</span></span></button>`; }).join('');
     root.innerHTML = `<div class="cols g"><section class="panel"><h2>Goals <small>The line marks where you should be today</small></h2>
-      ${list || empty('No goals yet. Add one, or bring your goals over from the Goals app.')}
+      ${list || empty('No goals yet. Add one to get started.')}
       <div class="btns"><button class="btn pri" data-act="new">New goal</button></div></section>
       <div class="stack">${mode === 'new' ? formHtml(null) : mode === 'edit' && g ? formHtml(g) : g ? detailHtml(g) : ''}</div></div>`;
   }

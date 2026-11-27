@@ -1,9 +1,7 @@
 # Life app (`/life`)
 
-One app for goals, to-dos, lists, career, health and events, served at
-`app.chris-mcmillan.co.uk/life/`. Built 2026-11-12/13 to replace `goals/` and `fitness/`
-over time; **both of those are untouched and still run**. Same architecture as the other
-apps here: plain HTML/CSS/JS ES modules, `@supabase/supabase-js@2` from a CDN `<script>`,
+One app for goals, to-dos, lists, career, health, giving things up and events, served at
+`app.chris-mcmillan.co.uk/life/`. Same architecture as the other apps here: plain HTML/CSS/JS ES modules, `@supabase/supabase-js@2` from a CDN `<script>`,
 no build step, no framework.
 
 ## Data: two schemas, one sign-in
@@ -17,27 +15,25 @@ no build step, no framework.
   Migrations only, same rules as the other schemas. The goal status for a dropped goal is
   `'stopped'`, not "dropped": the Supabase MCP hangs on SQL containing the word "drop".
 - **`fitness` schema, read and written directly.** Health, Today's training-and-food card,
-  the generated shopping list and the races in Events all use the Fitness app's own tables
+  the generated shopping list and the races in Events all use the `fitness` schema's tables (the training and food backend)
   (`daily_checks`, `daily_logs`, `pick_sessions`, `plan_days`, `plan_weeks`, nutrition
   tables, `week_list_ticks`, `hevy_*`, `races`) and its `get_day_bundle()` RPC, with the same
   tick ids (`session:lift|run|rest`, `pick:weights|cardio`, `meal:<day type>:<slot>`,
-  `shop:<food>`). A tick made in either app shows in the other. **Changing those ids or the
-  bundle shape in `fitness/` breaks this app too** (as it already would Goals' training card).
-- **`goals` schema: not used.** The old Goals app was retired (see Fresh start below); nothing here reads or writes it, and the importer is gone.
-- **Sign-in** is the shared `cm-apps-auth` session (the same one the other apps on this domain use).
+  `shop:<food>`). **Changing those ids or the bundle shape breaks this app.**
+- **Sign-in** is a magic-link / email-code session stored under the key `cm-apps-auth` (the name is
+  kept so existing sessions survive; renaming it would sign everyone out).
 
 **One-time manual steps (not doable via MCP):** add `life` to Project Settings → Data API
 → "Exposed schemas"; add `https://app.chris-mcmillan.co.uk/life/` to Authentication → URL
-Configuration → Redirect URLs (only needed to sign in *from* `/life`; an existing Goals or
-Fitness session already works). Until the first is done every screen shows the setup hint.
+Configuration → Redirect URLs (needed to sign in at `/life`). Until the first is done every screen
+shows the setup hint.
 
-## `js/fit/`: copies of the Fitness modules
+## `js/fit/`: the training, food and Garmin modules
 
 `db.js`, `utils.js`, `nutrition.js`, `state.js`, `sessionChoices.js`, `weekLists.js` and
-`analysis.js` (from `fitness/js/lifting/`) are **verbatim copies** of the Fitness app's
-files (apps here don't import across app folders). `fit/supabaseClient.js` is a shim that
-gives them a `fitness`-schema view of this app's single client. **If a bug is fixed or a
-rule changes in `fitness/js/`, copy the file across again** (nutrition scaling especially).
+`analysis.js` are this app's own modules for the `fitness` schema (nutrition scaling especially:
+change it here and test it). `fit/supabaseClient.js` is a shim that
+gives them a `fitness`-schema view of this app's single client.
 Written for this app: `fit/day.js` (one day: session, picker, lift exercises, meals and
 foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps applied),
 `fit/feed.js` (below).
@@ -82,7 +78,7 @@ foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps a
   applies decisions (pause → `paused`, complete → `achieved`, drop → `stopped`; adjust
   opens the goal) and journals the next focus as a `decision`. Today nudges for any
   finished week/month/quarter not yet reviewed (`dueReviews()`).
-- **Playbook** (`playbookContent.js` is a verbatim copy of `goals/js/playbookContent.js`;
+- **Playbook** (`playbookContent.js` holds the pillars and books;
   never change a book `key` or reorder directives, progress is keyed on them). Progress in
   `playbook_progress` (keyed by `directive_key`). A habit-type directive can be added to
   Today's habits (`habit_id` remembers it).
@@ -90,8 +86,8 @@ foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps a
 - **Health**: Progress (weight dots + 7-day average, day-by-day food/training grid,
   streaks, adherence by week), Check-in (`fitness.plan_checkins`, one per plan week),
   "How did today go?" on every day (`fitness.daily_logs` statuses, pics, reading, notes;
-  the streaks read these), swap-days (`fit/daySwap.js`, verbatim copy), and the
-  @cmfitnesslog post maker in Lifts (`fit/posters.js`, verbatim copy; its fonts are
+  the streaks read these), swap-days (`fit/daySwap.js`), and the
+  @cmfitnesslog post maker in Lifts (`fit/posters.js`; its fonts are
   loaded only when the post panel opens).
 - **Install + offline** (`manifest.webmanifest`, `icons/`, `sw.js`, `js/pwa.js`). The
   service worker is network-first for the app's own files **and for Supabase reads**
@@ -426,7 +422,6 @@ routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. T
 ## Fresh start: Life begins 30 Nov 2026 (set 2026-11-27)
 
 Life is a new plan that begins on **Monday 30 November 2026** (the same day the Edale plan starts; it was briefly 28 Nov and was moved back), with no reference to anything earlier.
-It also replaced the Goals and Fitness apps (retired the same day).
 
 - **One constant:** `LIFE_START` in `js/start.js` (and the same date in
   `supabase/functions/life-push`). Change both together.
@@ -448,15 +443,18 @@ It also replaced the Goals and Fitness apps (retired the same day).
   tables. Settings keep Garmin and device prefs; `breaks`, `away`, `backup_started` and
   `last_backup` were removed. To look at the old rows: `select * from life_archive.goals` in
   the SQL editor. To delete them for good, drop the schema (ask first; it is irreversible).
+- **Goals restored (2026-11-27, on request):** the 7 goals that were still active were copied back from
+  `life_archive.goals` (migration `20261127140000_life_restore_active_goals.sql`, same ids), with start dates
+  moved to 30 Nov, target dates in the past cleared (later ones kept) and last-progress dates cleared. The achieved
+  goal and the one step completed before the start stay in the archive. Everything else (commitments, lists, notes)
+  stays archived.
 - **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
   never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
-- **Retired apps:** `/goals/` and `/fitness/` are now redirect pages to Life (the Fitness one
-  also keeps its manifest and icons and ships a service worker that clears its old caches and
-  unregisters itself, so an installed home-screen icon lands in Life). The `fitness` schema, the
-  Garmin/Hevy Edge Functions and their cron stay: they are Life's backend. The old app code is in
-  git history before commit `1dd90dc`; its backend notes moved to `docs/fitness-backend.md`, its plan
-  seed data and importers to `supabase/seed/fitness/`. "Import from Goals" and the "Other apps"
-  panel are gone.
+- **Old apps:** `/goals/` and `/fitness/` are only redirect pages to Life (the second also keeps a
+  manifest, icons and a worker that unregisters itself, so an installed home-screen icon lands in Life).
+  Nothing in Life reads or writes the old `goals` schema; leave it alone. The `fitness` schema, the
+  Garmin/Hevy Edge Functions and their cron stay: they are Life's backend (notes in
+  `docs/fitness-backend.md`, plan seed data in `supabase/seed/fitness/`).
 - **Testing:** browser suites that need a populated app can run against a copy of `life/` whose
   `start.js` says 2000-01-01; setup mode and the floors are tested against the real file with a fixed clock
   (Playwright `page.clock.install`, Supabase stubbed through the CDN script).
@@ -474,7 +472,7 @@ It also replaced the Goals and Fitness apps (retired the same day).
   say "not recorded", never 0. `ui.js copyText()` falls back to a textarea for browsers without the async clipboard.
   The feedback itself is deliberately done in Chris's Claude fitness project, not in this app (no photo storage, no API key, nothing sensitive
   in the database).
-- Both tables are in the backup (`LIFE_TABLES`). `sw.js` `VERSION` is `v18`, `BUILD` `2026-11-27h`.
+- Both tables are in the backup (`LIFE_TABLES`). `sw.js` `VERSION` is `v19`, `BUILD` `2026-11-27i`.
 - **Verified in a browser** (Chromium, Supabase stubbed, fake clock): on 27 Nov the app opens with the setup banner, the date reads Monday 30 November,
   Review offers only the week of 30 Nov, Check-in shows the pictures panel, Copy writes the expected text; on 1 Dec the banner is gone.
 
@@ -482,15 +480,14 @@ It also replaced the Goals and Fitness apps (retired the same day).
 
 (The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)
 
-Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old
-Goals reviews archive (new reviews start fresh here), and offline *writing* (offline is read-only by design).
+A search over goals, and offline *writing* (offline is read-only by design).
 
 ## Testing
 
 Pure logic has checked-in unit tests (`life/tests`, see above). For screens, no browser test files are checked in. Approach used: serve the repo with `python3 -m http.server`,
 drive Chromium with Playwright, seed `localStorage` `cm-apps-auth` with a fake session,
 and answer `*.supabase.co` requests from an in-memory PostgREST stand-in built from
-`fitness/data/*.json` (the CDN script is served from a local `npm` copy). Offline: register the service worker on localhost, set
+`supabase/seed/fitness/data/*.json` (the CDN script is served from a local `npm` copy). Offline: register the service worker on localhost, set
 `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (or the worker's own fetches bypass the
 mock), visit screens, then `context.setOffline(true)` and reload. Headless Chromium always
 reports `Notification.permission` as `denied`; override it in an init script to test the
