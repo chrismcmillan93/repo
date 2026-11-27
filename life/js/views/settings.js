@@ -178,7 +178,7 @@ export async function render(root){
     locknow(){ lockNow(); },
     async bioon(b){ b.disabled = true; try { await enableBiometric(); toast('Face ID / fingerprint added'); } catch (err) { toast(err.message); } draw(); },
     biooff(){ disableBiometric(); toast('Removed. The PIN still works.'); draw(); },
-    refreshapp(b){ b.disabled = true; b.textContent = 'Refreshing…'; refreshApp(); },
+    async refreshapp(b){ b.disabled = true; const reloaded = await refreshApp((t) => { b.textContent = t; }); if (!reloaded) setTimeout(() => { b.disabled = false; b.textContent = 'Get the latest version'; }, 4000); },
     async backup(b){
       b.disabled = true; b.textContent = 'Collecting everything…';
       try {

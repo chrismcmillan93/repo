@@ -18,17 +18,35 @@ export function registerSw(){
 }
 
 // Which build this page is (shown in Settings). Bump with sw.js VERSION on every release.
-export const BUILD = '2026-11-27e';
+export const BUILD = '2026-11-27f';
 
-// Force the newest version: drop the worker and its file caches, then reload. Data and sign-in stay.
-export async function refreshApp(){
+// Force the newest version. The service worker is network-first and revalidates every file
+// (`cache: 'no-cache'`, see sw.js), so while it is running a reload always gets fresh files. The old
+// version of this button *unregistered* the worker and then reloaded: with no worker the page was
+// loaded from the browser's own HTTP/memory cache (GitHub Pages lets files be cached for ~10 min), so
+// it came straight back on the same version and the button seemed to do nothing. So: leave the worker
+// alone, check the build against the server, ask it to update, re-fetch every file through it (which
+// refreshes both its cache and the HTTP cache), then reload. Data and sign-in stay.
+// `say(text)` reports progress; resolves true if it reloaded, false if already latest or it failed.
+const fresh = (u) => fetch(u, { cache: 'reload' });
+export async function refreshApp(say = () => {}){
   try {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map((r) => r.unregister()));
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k.startsWith('life-shell-')).map((k) => caches.delete(k)));
-  } catch (_) {}
+    say('Checking…');
+    // The file list lives in sw.js (FILES); read it from there so it can never drift from what is cached.
+    const sw = await (await fresh('sw.js')).text();
+    const files = Array.from(new Set((sw.match(/'[\w./-]+\.(?:js|css|html|webmanifest|png)'/g) || []).map((x) => x.slice(1, -1)))).concat(['./', 'index.html']);
+    const latest = ((await (await fresh('js/pwa.js')).text()).match(/BUILD = '([^']+)'/) || [])[1];
+    if (latest && latest === BUILD) { say(`You are on the latest build (${BUILD}).`); return false; }
+    say(latest ? `Updating to ${latest}…` : 'Updating…');
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update().catch(() => {});
+    await Promise.all(files.map((f) => fresh(f).catch(() => {})));
+  } catch (err) {
+    say(`Couldn't check for updates (${err.message}). Check your connection and try again.`);
+    return false;
+  }
   location.reload();
+  return true;
 }
 
 // Wipe cached data (on sign-out), so the next person on this device never sees it offline.
