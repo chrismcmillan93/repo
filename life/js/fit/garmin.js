@@ -11,6 +11,7 @@ import { floorDate } from '../start.js';
 import { supabase } from './supabaseClient.js';
 import { userId } from '../store.js';
 import { escapeHtml as esc, round1, addDays, todayStr, startOfWeek } from './utils.js';
+import { readiness, readinessAdvice } from '../readiness.js';
 
 const ACT = 'activity_id, name, type_key, local_date, start_local, distance_m, duration_s, moving_s, elevation_gain_m, avg_speed_mps, avg_hr, max_hr, calories, aerobic_te, te_label, training_load';
 const DAY = 'day, steps, step_goal, resting_hr, avg_stress, bb_high, bb_low, bb_charged, bb_drained, moderate_min, vigorous_min, total_kcal';
@@ -128,14 +129,16 @@ export function dayHtml(acts, { plannedKm = null, plannedMiles = null, ticked = 
 // ---- Today: last night and this morning ----
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-export async function loadRecovery(date = todayStr()){
-  const from = addDays(date, -7);
+export async function loadRecovery(date = todayStr(), sessions = []){
+  // 28 days, so readiness has a baseline; the "7-day average" figures below still use only the last week.
+  const from = addDays(date, -28), week = addDays(date, -7);
   const [sleep, days, state] = await Promise.all([garmin.sleep(from, date), garmin.days(from, date), garmin.state()]);
   if (!state) return null;
   const night = sleep.find((s) => s.day === date) || null;
   const day = days.find((d) => d.day === date) || null;
-  const before = (rows, key) => mean(rows.filter((r) => r.day < date && r[key] != null).map((r) => Number(r[key])));
-  return { date, night, day, state, avgSleep: before(sleep, 'sleep_s'), avgRhr: before(days, 'resting_hr') };
+  const before = (rows, key) => mean(rows.filter((r) => r.day < date && r.day >= week && r[key] != null).map((r) => Number(r[key])));
+  const ready = readiness(date, sleep, days);
+  return { date, night, day, state, avgSleep: before(sleep, 'sleep_s'), avgRhr: before(days, 'resting_hr'), ready, advice: readinessAdvice(ready, sessions) };
 }
 
 const HRV = { BALANCED: ['Balanced', 'good'], UNBALANCED: ['Unbalanced', 'warn'], LOW: ['Low', 'bad'], POOR: ['Poor', 'bad'] };
@@ -167,7 +170,12 @@ export function recoveryHtml(r){
     if (diff != null && diff >= 4) flags.push(`<span class="pill warn">Resting heart rate ${diff} above normal</span>`);
   }
   if (d && d.bb_high != null) cells.push(stat(d.bb_high, 'Body Battery', "today's high"));
-  return `<h2>Recovery <small>${n ? 'Last night, from Garmin' : 'From Garmin'}</small></h2><div class="stats">${cells.join('')}</div>
+  const rd = r.ready, VERDICT = { push: ['Push', 'good'], normal: ['Normal', ''], easy: ['Easy', 'warn'] };
+  const readyHtml = rd ? `<div class="readiness"><div class="stats"><div><b class="big">${rd.score}</b><span>readiness</span></div><div><b class="big">${VERDICT[rd.verdict][0]}</b><span>today</span></div></div>
+      <p><b>${esc(r.advice)}</b></p>
+      <p class="rmeta">${rd.factors.map((f) => `<span class="pill ${f.z >= 0.5 ? 'good' : f.z <= -0.5 ? 'warn' : ''}" title="${esc(f.text)}">${esc(f.label)}: ${esc(f.text)}</span>`).join('')}</p>
+      <p class="hint">Your own numbers against your last 28 days. Our estimate, not Garmin's, and a nudge rather than an order.</p></div>` : '';
+  return `<h2>Recovery <small>${n ? 'Last night, from Garmin' : 'From Garmin'}</small></h2>${readyHtml}<div class="stats">${cells.join('')}</div>
     ${flags.length ? `<p class="rmeta">${flags.join('')}</p>` : ''}
     ${r.state.last_status === 'error' ? `<p class="hint">The last Garmin sync failed: ${esc(r.state.last_message || 'unknown error')}</p>` : ''}
     <div class="btns"><a class="btn sm" href="#/health/progress">Trends</a></div>`;

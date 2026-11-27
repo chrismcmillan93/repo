@@ -345,6 +345,26 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
   `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v11`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
 
+## Readiness, body patterns and habits vs sleep (2026-11-27)
+
+- **Readiness** (`js/readiness.js`, pure): Today's Recovery panel opens with a score (0-100) and a
+  verdict, Push / Normal / Easy. Last night's sleep, overnight HRV, resting heart rate and yesterday's
+  average stress are each compared with the 28 days before (z-score against your own mean, spread
+  floored so a steady baseline doesn't exaggerate; stress and resting HR count the other way). A metric
+  needs 7+ baseline days, the verdict needs 2+ metrics, otherwise nothing shows. Push is average z >= 0.5,
+  Easy <= -0.75. `loadRecovery(date, sessions)` now reads 28 days (the "7-day average" figures still use
+  the last week only). With a hard planned session (`isHardSession`: lift, run, race, hike_or_run, not
+  optional) on an Easy day the advice points at "Swap with another day" on Today. **Our own estimate,
+  not Garmin's** (its readiness isn't in the Personal API), the panel says so. Thresholds are untuned guesses
+  from synthetic data: tweak `readiness()` once there are real weeks to compare against.
+- **Slip patterns** (`streaks.js slipPatterns(..., days)`): alongside sleep/HRV it now compares stress
+  on the day before slips and resting HR on slip days with other days (`garmin_days`, read in
+  `views/quit.js`; same 3+ slip days / 7+ other days rule, small-sample warning).
+- **Habits and sleep** (`js/insights.js`, Health -> Progress): per habit, % done after a night at or above
+  your median vs below it. Needs 14+ nights of sleep and 6+ in each half. Describes, never explains.
+- Not tested against a real account, only synthetic data in Node; screens untested in a browser.
+  `sw.js` `VERSION` is `v13`, `BUILD` `2026-11-27c`.
+
 ## Menu (2026-11-21)
 
 Thirteen sections no longer fit a scrolling tab strip, so navigation is a **☰ menu** in the header
@@ -390,9 +410,10 @@ It also replaced the Goals and Fitness apps (retired the same day).
 
 ## Not built yet
 
+(The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)
+
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old
-Goals reviews archive (new reviews start fresh here), a day-swap control on Today (it's on
-Health → Day), and offline *writing* (offline is read-only by design).
+Goals reviews archive (new reviews start fresh here), and offline *writing* (offline is read-only by design).
 
 ## Testing
 

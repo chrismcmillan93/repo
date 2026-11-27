@@ -80,7 +80,7 @@ const standout = (counts, names) => { // the one clear winner with at least 2 hi
 // ended on `day`, i.e. the night before a slip on that date). Needs 3+ slips to say anything
 // about weekdays or times; sleep needs 3+ slip days and 7+ other days with data, and says so
 // when the sample is small. Describes, never explains: it is a pattern, not a cause.
-export function slipPatterns(slips, sleep, started, today){
+export function slipPatterns(slips, sleep, started, today, days = []){
   const valid = slips.filter((s) => s.slip_date >= started && s.slip_date <= today);
   const n = valid.length;
   const byDow = Array(7).fill(0);
@@ -93,7 +93,22 @@ export function slipPatterns(slips, sleep, started, today){
   const sleepInfo = a.length >= 3 && b.length >= 7
     ? { slipN: a.length, otherN: b.length, slipH: avg(a, (r) => r.sleep_s / 3600), otherH: avg(b, (r) => r.sleep_s / 3600), slipHrv: avg(a, (r) => r.hrv_last_night), otherHrv: avg(b, (r) => r.hrv_last_night), small: a.length < 6 }
     : null;
+  // Body on the day before a slip (stress) and the morning of it (resting heart rate), against all other days.
+  // Same thresholds as sleep. `days`: [{ day, avg_stress, resting_hr }].
+  const shift = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const byDay = Object.fromEntries((days || []).map((r) => [r.day, r]));
+  const drows = (days || []).filter((r) => r.day >= started && r.day <= today);
+  const dSlip = drows.filter((r) => slipDays.has(r.day)), dOther = drows.filter((r) => !slipDays.has(r.day));
+  // Stress on the day before each slip day, against days whose following day was not a slip.
+  const stressBefore = [...slipDays].map((d) => byDay[shift(d, -1)]).filter((r) => r && r.avg_stress != null);
+  const stressOther = drows.filter((r) => !slipDays.has(shift(r.day, 1)) && r.avg_stress != null);
+  const bodyInfo = (dSlip.length >= 3 && dOther.length >= 7) ? {
+    slipRhr: avg(dSlip, (r) => r.resting_hr), otherRhr: avg(dOther, (r) => r.resting_hr),
+    slipStress: stressBefore.length >= 3 ? avg(stressBefore, (r) => r.avg_stress) : null, otherStress: stressOther.length >= 7 ? avg(stressOther, (r) => r.avg_stress) : null,
+    small: dSlip.length < 6
+  } : null;
   return {
+    body: bodyInfo,
     n, byDow, dowNames: DOW, byPart, partNames: PARTS, partN,
     topDow: n >= 3 ? standout(byDow, DOW) : null,
     topPart: partN >= 3 ? standout(byPart, PARTS) : null,
