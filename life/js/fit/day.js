@@ -2,7 +2,7 @@
 // tables, so both apps always agree: the session (planned or picked), the
 // Weights / Cardio / Both picker that also decides the day's meals and calories,
 // each lift's exercises, each meal's foods, ticks, and the morning weigh-in.
-// Used by Today (compact) and Health > Day (full).
+// Used by Today (compact) and Health > Day (full). Both offer the day swap.
 import { db } from './db.js';
 import { loadNutrition, inNutritionPlan, buildDay, effectiveWeight, sessionFacts, pickDayKey, describeScaling, adjustEnabled } from './nutrition.js';
 import { sessionOptions } from './sessionChoices.js';
@@ -26,10 +26,10 @@ async function loadSwap(date){
   return { dates, swaps, planByDate: Object.fromEntries(planDays.map((p) => [p.date, p])) };
 }
 
-async function loadDay(date, full){
+async function loadDay(date){
   const uid = userId();
   // Garmin is extra: if it isn't connected (or the tables can't be read) the day still loads.
-  const [bundle, nut, tpls, swap, acts, ticks] = await Promise.all([db.getDayBundle(date), loadNutrition(), liftTemplates(), full ? loadSwap(date).catch(() => null) : null,
+  const [bundle, nut, tpls, swap, acts, ticks] = await Promise.all([db.getDayBundle(date), loadNutrition(), liftTemplates(), loadSwap(date).catch(() => null),
     garmin.activities(date, date).catch(() => []), garmin.autoticks(date, date).catch(() => [])]);
   let day = null, weightInfo = null;
   if (inNutritionPlan(nut, date)) {
@@ -167,7 +167,7 @@ function html(c, opts){
     ${garminHtml(c, sessions, opts.compact)}
     ${pickerHtml(c, hasPlanned)}
     ${mealsHtml(c, opts.compact)}
-    ${opts.compact ? '' : swapHtml(c, opts.date)}
+    ${swapHtml(c, opts.date)}
     <form class="add" data-act="weigh"><label class="lab" style="flex:1">Morning weigh-in (kg)<input class="field" name="kg" type="number" step="0.1" min="50" max="200" inputmode="decimal" value="${w != null ? Number(w) : ''}" placeholder="${c.weightInfo && c.weightInfo.weight ? c.weightInfo.weight : ''}"></label><button class="btn">Save</button></form>
     ${reviewHtml(c)}`;
 }
@@ -179,7 +179,7 @@ export async function mountDay(host, date, opts = {}){
   host.replaceChildren(el);
   let c;
   opts = { ...opts, date };
-  try { c = await loadDay(date, !opts.compact); } catch (err) {
+  try { c = await loadDay(date); } catch (err) {
     el.innerHTML = `<p class="hint">Couldn't load training and food: ${esc(err.message)}</p>`;
     return;
   }
@@ -188,7 +188,7 @@ export async function mountDay(host, date, opts = {}){
     el.innerHTML = html(c, opts);
     el.querySelectorAll('details').forEach((d) => { if (open.has(d.dataset.k)) d.open = true; });
   };
-  const reload = async () => { c = await loadDay(date, !opts.compact); draw(); if (opts.onChange) opts.onChange(); };
+  const reload = async () => { c = await loadDay(date); draw(); if (opts.onChange) opts.onChange(); };
   draw();
   wire(el, {
     async tick(n){

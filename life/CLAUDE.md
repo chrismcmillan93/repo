@@ -361,9 +361,10 @@ routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. T
 
 ## Not built yet
 
+(The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)
+
 Fitness's Block 2 history views (pre-Edale meal templates), Goals' search and the old
-Goals reviews archive (new reviews start fresh here), a day-swap control on Today (it's on
-Health → Day), and offline *writing* (offline is read-only by design).
+Goals reviews archive (new reviews start fresh here), and offline *writing* (offline is read-only by design).
 
 ## Testing
 
