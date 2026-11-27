@@ -12,7 +12,7 @@ first (a static-hosting deploy and a framework build step are two different proj
 
 The one app for goals, to-dos, lists, career, health, giving things up and events. It replaced
 the old `goals/` and `fitness/` apps, which are now redirect pages to it. It is a fresh plan
-starting **30 Nov 2026** with no history before that date. Own schema **`life`**; it also reads
+starting **28 Nov 2026** with no history before that date. Own schema **`life`**; it also reads
 and writes the `fitness` schema, which is now its backend (training plan, meals, Garmin, Hevy).
 Everything about it is in **`life/CLAUDE.md`** — read that before touching it. It also
 shows Garmin data (sleep, HRV, activities), mirrored into `fitness.garmin_*` by the
