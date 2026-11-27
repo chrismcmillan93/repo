@@ -3,7 +3,8 @@
 import { floorDate, LIFE_START } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
-import { todayStr, startOfWeek, formatDateShort, toast } from '../fit/utils.js';
+import { todayStr, startOfWeek, formatDateShort, toast, addDays } from '../fit/utils.js';
+import { goalActions, dueLabel } from '../goalactions.js';
 import { goalPct, goalExpected, goalState, STATE, needLine, daysBetween, setTaskDone, touchGoal, keptPct, weekCommitments, quietDays } from '../lib.js';
 import { syncFit } from '../fit/feed.js';
 import { commitRow, commitFormHtml, commitActs } from './shared.js';
@@ -21,7 +22,7 @@ export async function render(root, params){
     const [steps, commits, tasks] = await Promise.all([
       store.steps.list((q) => q.order('due_date', { nullsFirst: false }).order('sort_order')),
       weekCommitments(weekStart),
-      store.tasks.list((q) => q.not('goal_id', 'is', null).or(`status.eq.open,and(status.eq.done,done_on.eq.${today})`))
+      store.tasks.list((q) => q.not('goal_id', 'is', null).or(`status.eq.open,and(status.eq.done,done_on.gte.${addDays(today, -14)})`))
     ]);
     d = { goals, steps, commits, tasks };
     if (!sel || !goals.some((g) => g.id === sel)) sel = goals[0] ? goals[0].id : null;
@@ -47,7 +48,8 @@ export async function render(root, params){
     const pct = goalPct(g, d.steps), exp = goalExpected(g), st = goalState(g, pct, exp);
     const steps = d.steps.filter((s) => s.goal_id === g.id);
     const cs = d.commits.filter((c) => c.goal_id === g.id);
-    const ts = d.tasks.filter((t) => t.goal_id === g.id && (t.due_date === today || t.done_on === today));
+    const acts = goalActions(d.tasks, g.id, today);
+    const actRow = (t) => { const lab = dueLabel(t, today, formatDateShort); return `<span class="mini ${t.status === 'done' ? 'done' : ''}"><input type="checkbox" data-act="task" data-id="${t.id}" ${t.status === 'done' ? 'checked' : ''} aria-label="Done"><span style="flex:1;min-width:0">${esc(t.title)}${lab ? ` <span class="hint${lab === 'overdue' ? ' bad' : ''}">${lab}</span>` : ''}</span><button class="btn sm ghost" data-act="deltask" data-id="${t.id}" aria-label="Delete action">×</button></span>`; };
     const alerts = [];
     if (st === 'stalled') alerts.push(`No progress in ${quietDays(g, today)} days.`);
     const need = needLine(g); if (need) alerts.push(need);
@@ -64,11 +66,15 @@ export async function render(root, params){
         ${LEVELS.map(rung).join('')}
         <div class="rung"><div class="lv">Add a step</div><div class="body"><form class="add wrapf" data-act="addstep"><input class="field" name="title" required placeholder="What has to be true?" aria-label="Step">
           <select class="field" name="level" aria-label="Level">${options(LEVELS, 'month')}</select><input class="field" type="date" name="due_date" aria-label="Due date"><button class="btn">Add</button></form></div></div>
-        <div class="rung live"><div class="lv">Commit</div><div class="body">${cs.length ? cs.map((c) => commitRow(c)).join('') + bar(keptPct(cs))
-          : `<span>${pill('No commitment set', 'bad')} A goal with nothing to do this week does not move.</span>`}
-          <p class="sub">Add a commitment</p>${commitFormHtml({ goalId: g.id })}</div></div>
-        <div class="rung live"><div class="lv">Today</div><div class="body">${ts.length ? ts.map((t) => `<label class="mini ${t.status === 'done' ? 'done' : ''}"><input type="checkbox" data-act="task" data-id="${t.id}" ${t.status === 'done' ? 'checked' : ''}><span>${esc(t.title)}</span></label>`).join('') : '<span class="hint">Nothing planned for today.</span>'}
-          <form class="add" data-act="addtask"><input class="field" name="title" required placeholder="Add today's action" aria-label="Add today's action"><button class="btn">Add</button></form></div></div>
+        <div class="rung live"><div class="lv">Actions</div><div class="body">
+          ${acts.open.length ? acts.open.map(actRow).join('') : '<span class="hint">No one-off actions yet. Add a specific thing to do towards this goal.</span>'}
+          <form class="add wrapf" data-act="addtask"><input class="field" name="title" required placeholder="A one-off action, e.g. Book the hike" aria-label="One-off action">
+            <label class="lab">Due (optional)<input class="field" type="date" name="due" min="${LIFE_START}"></label><button class="btn">Add action</button></form>
+          ${acts.done.length ? `<details class="drop" data-k="actdone"><summary>Done (${acts.done.length})</summary>${acts.done.map(actRow).join('')}</details>` : ''}
+          <p class="hint">One-offs with a date show on Today when they're due. Undated ones wait here and in To-dos.</p></div></div>
+        <div class="rung live"><div class="lv">Repeating</div><div class="body">${cs.length ? cs.map((c) => commitRow(c)).join('') + bar(keptPct(cs))
+          : `<span>${pill('Nothing repeating', 'bad')} A goal with nothing to do this week does not move.</span>`}
+          <p class="sub">Add a repeating action</p>${commitFormHtml({ goalId: g.id })}</div></div>
       </div>
       <div class="btns"><button class="btn sm" data-act="edit">Edit</button><button class="btn sm" data-act="status" data-v="${g.status === 'paused' ? 'active' : 'paused'}">${g.status === 'paused' ? 'Resume' : 'Pause'}</button>
         <button class="btn sm" data-act="status" data-v="achieved">Mark achieved</button><button class="btn sm" data-act="status" data-v="stopped">Drop this goal</button></div></section>`;
@@ -107,7 +113,8 @@ export async function render(root, params){
     async step(n){ await store.steps.set(n.dataset.id, { done_on: n.checked ? today : null }); if (n.checked) await touchGoal(sel); await refresh(); },
     async delstep(n){ await store.steps.del(n.dataset.id); await refresh(); },
     async task(n){ await setTaskDone(d.tasks.find((t) => t.id === n.dataset.id), n.checked); await refresh(); },
-    async addtask(f){ await store.tasks.add({ title: formData(f).title.trim(), status: 'open', due_date: today, goal_id: sel }); await refresh(); },
+    async addtask(f){ const v = formData(f); await store.tasks.add({ title: v.title.trim(), status: 'open', due_date: v.due && v.due >= LIFE_START ? v.due : null, goal_id: sel }); toast('Action added'); await refresh(); },
+    async deltask(n){ await store.tasks.del(n.dataset.id); await refresh(); },
     async status(n){ await store.goals.set(sel, { status: n.dataset.v }); toast(n.dataset.v === 'stopped' ? 'Goal dropped' : 'Saved'); await refresh(); }
   });
   await refresh();

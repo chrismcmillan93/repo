@@ -313,3 +313,4 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .moodlab { min-width: 64px; font-weight: 600 }
 .moodrow .seg button { min-width: 44px; min-height: 40px; font-size: 15px }
 .nudge.setup { border-left-color: var(--accent); margin: 12px 0 }
+.hint.bad { color: var(--bad); font-weight: 600 }

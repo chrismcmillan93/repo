@@ -476,6 +476,20 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
 - **Verified in a browser** (Chromium, Supabase stubbed, fake clock): on 27 Nov the app opens with the setup banner, the date reads Monday 30 November,
   Review offers only the week of 30 Nov, Check-in shows the pictures panel, Copy writes the expected text; on 1 Dec the banner is gone.
 
+## Goal actions: one-offs and repeating (2026-11-27)
+
+A goal's page (`views/goals.js`) now has two clearly separate things to do towards it, below the year / quarter / month steps:
+- **Actions** (one-offs): a title and an optional due date, saved as a task linked to the goal (`life.tasks.goal_id`, no schema
+  change). Listed overdue first, then due today, then later by date, then undated (`goalActions()` in `goalactions.js`, pure,
+  tested); ticking one is the same `setTaskDone()` as anywhere, so it counts as progress on the goal; × deletes it; the five most
+  recent done ones sit under a collapsed "Done". Dated ones appear on Today when due (and are carried over like any task),
+  undated ones wait on the goal page and in To-dos. The page loads open tasks plus anything done in the last 14 days. The old
+  "Today" box only showed actions due today, so anything dated later vanished from the goal.
+- **Repeating**: the existing commitment form (how many, every day / week / month, "Repeat automatically"), unchanged underneath
+  (`commitments` + `commitment_rules`, see "Recurring commitments"); only its heading changed ("Repeating", "Add a repeating action").
+- Verified in Chromium with Supabase stubbed: the list order, the due labels, and the saved rows (`due_date` set or null, `goal_id`).
+  `sw.js` `VERSION` is `v20`, `BUILD` `2026-11-27j`.
+
 ## Not built yet
 
 (The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)
