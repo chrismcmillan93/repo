@@ -365,6 +365,30 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
 - Not tested against a real account, only synthetic data in Node; screens untested in a browser.
   `sw.js` `VERSION` is `v13`, `BUILD` `2026-11-27c`.
 
+## Wrapped (2026-11-27)
+
+`#/wrapped` (Life menu): the year as swipeable cards (CSS scroll-snap, dots, light/dark via the theme
+tokens). `js/wrappedStats.js` is pure (rows in, cards out; a card only exists when there is something to
+say, so a thin year is a short Wrapped), `js/views/wrapped.js` loads and draws. Year switcher: this year
+and last.
+
+- **Deliberately looks back before the fresh start (Chris chose this).** It reads `garmin_activities`,
+  `garmin_days`, `garmin_sleep`, `hevy_workouts` and `hevy_sets` straight from 1 January through its own
+  paged queries, *not* the floored helpers in `fit/garmin.js` / `fit/db.js` (those floor to `LIFE_START`
+  and would give an almost empty year). **This is the only screen that does that**: do not move the
+  bypass into the shared helpers.
+- **Only device mirrors.** No tasks, goals, habits, journal or Giving up, with one exception: an opt-in
+  checkbox on the screen (off by default, remembered in `localStorage` `life-wrapped-quit`) adds a single
+  anonymous card, the longest current run in days across live quits, never a name. It is skipped while the
+  private lock is on (`privateBlocked()`).
+- Cards: activities and hours, climbing (if 100 m+), busiest month/weekday and longest active streak,
+  miles run, longest run (and quickest 5 km+), Hevy sessions and favourite lift, tonnes lifted (1 t+) and
+  heaviest set, average sleep and best night (needs 14+ nights), steps (14+ days), resting HR first vs last
+  30 days (60+ days).
+- Tested: `wrappedStats` with a synthetic year in Node (rows from the previous year are excluded), the card
+  layout in Chromium at 390 px in light and dark. **Not tested:** loading real rows, or the screen inside
+  the app. `sw.js` `VERSION` is `v14`, `BUILD` `2026-11-27d`.
+
 ## Menu (2026-11-21)
 
 Thirteen sections no longer fit a scrolling tab strip, so navigation is a **☰ menu** in the header
