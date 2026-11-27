@@ -94,24 +94,3 @@ export const settings = {
     ok(await supabase.from('settings').upsert({ user_id: uid, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
   }
 };
-
-// Read-only view of the Goals app's data, for the one-off import.
-export const goalsApp = {
-  async load(){
-    const g = supabase.schema('goals');
-    const [areas, goalRows, milestones, updates] = await Promise.all([
-      g.from('life_areas').select('id, name').eq('user_id', uid),
-      g.from('goals').select('*').eq('user_id', uid).is('archived_at', null),
-      g.from('milestones').select('*').eq('user_id', uid).order('sort_order'),
-      g.from('goal_updates').select('goal_id, occurred_on, value').eq('user_id', uid).not('value', 'is', null).order('occurred_on')
-    ].map(async (p) => ok(await p) || []));
-    // Optional extras: a missing table or column shouldn't stop the goals import.
-    const soft = async (p) => { const r = await p; return r.error ? [] : r.data || []; };
-    const [wishlist, pages, playbook] = await Promise.all([
-      soft(g.from('wishlist_items').select('*').eq('user_id', uid).is('archived_at', null)),
-      soft(g.from('note_pages').select('*').eq('user_id', uid).is('archived_at', null)),
-      soft(g.from('playbook_progress').select('*').eq('user_id', uid))
-    ]);
-    return { areas, goals: goalRows, milestones, updates, wishlist, pages, playbook };
-  }
-};

@@ -1,85 +1,9 @@
-<!DOCTYPE html>
-<html lang="en-GB">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fitness log</title>
-<meta name="color-scheme" content="dark light">
-<!-- Apply a saved light/dark choice before first paint (no flash). With nothing saved, CSS follows the device. -->
-<script>try{var t=localStorage.getItem('fit-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
-<!-- PWA: installable. All paths are relative so this works on any domain. -->
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moved to Life</title>
+<meta http-equiv="refresh" content="0; url=../life/#/health">
+<meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#11151c">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Fitness">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
-
-<!-- Install bar: always the very first thing on the page (sign-in screen included). Hidden unless installable. -->
-<div id="installBar" class="install-bar" hidden>
-  <button type="button" id="installBtn" class="install-btn">⬇ Install app</button>
-  <span id="installHint" class="install-hint" hidden>Use your browser menu → Install app / Add to Home Screen.</span>
-  <button type="button" id="installClose" class="install-close" aria-label="Dismiss">×</button>
-</div>
-
-<!-- Sign-in screen. Shown until a session exists. -->
-<div id="authScreen" class="auth-screen">
-  <div class="auth-card">
-    <p class="auth-title">Fitness log</p>
-    <p class="auth-lede">Enter your email and we'll send a sign-in link — no password needed.</p>
-
-    <form id="authForm" class="auth-form">
-      <div class="field"><label for="authEmail">Email</label><input type="email" id="authEmail" name="email" autocomplete="email" required></div>
-      <button type="submit" class="btn btn-primary btn-block" id="authSubmit">Send sign-in link</button>
-      <p class="form-error" id="authError" hidden></p>
-    </form>
-
-    <div id="authSent" class="auth-sent" hidden>
-      <p class="auth-lede">Check your email for a sign-in link — or enter the 6-digit code from the same email below.</p>
-      <form id="codeForm" class="auth-form">
-        <div class="field"><label for="authCode">Code</label><input type="text" id="authCode" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
-        <button type="submit" class="btn btn-primary btn-block" id="codeSubmit">Verify code</button>
-        <p class="form-error" id="codeError" hidden></p>
-      </form>
-      <button type="button" id="authRetry" class="btn btn-quiet btn-block">Use a different email</button>
-    </div>
-  </div>
-</div>
-
-<div id="appShell" hidden>
-  <div class="utility-bar">
-    <a class="home-link" href="/goals/">‹ Goals</a>
-    <span class="signed-in-as" id="signedInAs"></span>
-    <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode">☀️</button>
-    <button type="button" class="signout-btn" id="signOutBtn">Sign out</button>
-  </div>
-
-  <main class="app-main" id="app-main">
-    <p class="section-note">Loading&hellip;</p>
-  </main>
-
-  <nav class="tab-bar">
-    <a href="#/today" data-route="today"><span class="tab-icon" aria-hidden="true">●</span>Today</a>
-    <a href="#/week" data-route="week"><span class="tab-icon" aria-hidden="true">▤</span>Week</a>
-    <a href="#/plan" data-route="plan"><span class="tab-icon" aria-hidden="true">▭</span>Plan</a>
-    <a href="#/races" data-route="races"><span class="tab-icon" aria-hidden="true">⚑</span>Races</a>
-    <a href="#/progress" data-route="progress"><span class="tab-icon" aria-hidden="true">▲</span>Progress</a>
-    <a href="#/lifting" data-route="lifting"><span class="tab-icon" aria-hidden="true">◆</span>Lifting</a>
-    <a href="#/checkin" data-route="checkin"><span class="tab-icon" aria-hidden="true">✓</span>Check-in</a>
-  </nav>
-</div>
-
-<div id="toast-host" aria-live="polite"></div>
-
-<script type="module" src="js/main.js"></script>
-</body>
-</html>
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f6f7f7;color:#1b2a2e}main{padding:24px;max-width:28em}a{color:#0b6b7a}</style>
+</head><body><main><h1>This app has moved</h1><p>Goals and fitness now live together in <a href="../life/#/health">Life</a>. Taking you there now.</p></main>
+<script>location.replace('../life/#/health');</script></body></html>

@@ -23,11 +23,8 @@ no build step, no framework.
   tick ids (`session:lift|run|rest`, `pick:weights|cardio`, `meal:<day type>:<slot>`,
   `shop:<food>`). A tick made in either app shows in the other. **Changing those ids or the
   bundle shape in `fitness/` breaks this app too** (as it already would Goals' training card).
-- **`goals` schema, read-only**, only for the "Import from the Goals app" button on Goals
-  (`store.goalsApp`): copies active goals and their milestones into `life.goals` /
-  `life.goal_steps`, skipping any already imported (`source_goal_id`). Run it again any time.
-- **Sign-in** is the shared `cm-apps-auth` session (same as Goals and Fitness): signed in
-  to one, signed in to all.
+- **`goals` schema: not used.** The old Goals app was retired (see Fresh start below); nothing here reads or writes it, and the importer is gone.
+- **Sign-in** is the shared `cm-apps-auth` session (the same one the other apps on this domain use).
 
 **One-time manual steps (not doable via MCP):** add `life` to Project Settings → Data API
 → "Exposed schemas"; add `https://app.chris-mcmillan.co.uk/life/` to Authentication → URL
@@ -90,9 +87,6 @@ foods, weigh-in; used by Today and Health), `fit/week.js` (one week, day swaps a
   `playbook_progress` (keyed by `directive_key`). A habit-type directive can be added to
   Today's habits (`habit_id` remembers it).
 - **Notes pages** (`notes`) under Journal → Notes pages.
-- **Importer** (`importer.js`, Settings and Goals tabs): goals + milestones, wishlist
-  (`list_items.source_id`), notes pages (`notes.source_id`) and Playbook progress from the
-  Goals app. Idempotent: skips anything already copied.
 - **Health**: Progress (weight dots + 7-day average, day-by-day food/training grid,
   streaks, adherence by week), Check-in (`fitness.plan_checkins`, one per plan week),
   "How did today go?" on every day (`fitness.daily_logs` statuses, pics, reading, notes;
@@ -349,7 +343,7 @@ panel on Today. Tables `life.quits` and `life.quit_slips` (migration `life_quit_
   (`settings.last_backup`, falling back to `backup_started`).
 - Migration `20261121150000_life_craving_niggles.sql`: `quits.plans`,
   `quit_slips.slip_part`, `quit_cravings`, `niggles`; own-row RLS, authenticated only.
-  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v10`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
+  `sw.js` never caches `quit_cravings` either. `sw.js` `VERSION` is `v11`. **Updates:** there is no "update bar" in this app (that is the Thailand app's). Files are network-first so each open fetches fresh; `pwa.js` reloads once on `controllerchange`, and Settings → App version shows `BUILD` with a "Get the latest version" button (`refreshApp()`: unregister worker, delete `life-shell-*`, reload). Bump `BUILD` in `pwa.js` and `VERSION` in `sw.js` together each release.
 
 ## Menu (2026-11-21)
 
@@ -358,6 +352,41 @@ Thirteen sections no longer fit a scrolling tab strip, so navigation is a **☰ 
 current section's name sits next to "Life" as `#here`). `MENU` in `main.js` defines the groups; the
 routing list `TABS` is unchanged. Closes on a choice, Escape or a tap outside. Tests must wait for
 `#tabs a` with `state: 'attached'` because the menu is hidden until opened.
+
+## Fresh start on 30 Nov 2026 (2026-11-27)
+
+Life is a new plan that begins on **30 November 2026**, with no reference to anything earlier.
+It also replaced the Goals and Fitness apps (retired the same day).
+
+- **One constant:** `LIFE_START` in `js/start.js` (and the same date in
+  `supabase/functions/life-push`). Change both together.
+- **Before the start:** every screen except Settings shows a "Life starts on Monday 30 November"
+  holding screen with a day count; nothing is fetched or written, and `life-push` sends nothing
+  (the cron call returns `before the start date`).
+- **After the start:** history reads are floored to the start (`floorDate` / `floorIso`) so
+  nothing earlier is shown: weigh-ins and day checks (`fit/db.js`), Hevy sets and workouts,
+  Garmin ranges (`fit/garmin.js`, `training.js`, the sleep comparison), weekly check-ins (by
+  `created_at`), Health's Progress chart and day/week pages, and Week can't step back before the
+  week of 30 Nov. `dueReviews()` ignores any period starting before the start, so there is no
+  review prompt for the week before. Goal and Giving up start dates can't be earlier either.
+- **Existing data was archived, not deleted:** migration `20261127120000_life_fresh_start.sql`
+  copied every user-data row into the private schema **`life_archive`** (RLS on, no policies, no
+  grants, not exposed; readable only with the database owner's rights), then emptied the `life`
+  tables. Settings keep Garmin and device prefs; `breaks`, `away`, `backup_started` and
+  `last_backup` were removed. To look at the old rows: `select * from life_archive.goals` in
+  the SQL editor. To delete them for good, drop the schema (ask first; it is irreversible).
+- **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
+  never shown. The Edale plan already starts on 30 Nov, so the plan itself is unchanged.
+- **Retired apps:** `/goals/` and `/fitness/` are now redirect pages to Life (the Fitness one
+  also keeps its manifest and icons and ships a service worker that clears its old caches and
+  unregisters itself, so an installed home-screen icon lands in Life). The `fitness` schema, the
+  Garmin/Hevy Edge Functions and their cron stay: they are Life's backend. The old app code is in
+  git history before commit `1dd90dc`; its backend notes moved to `docs/fitness-backend.md`, its plan
+  seed data and importers to `supabase/seed/fitness/`. "Import from Goals" and the "Other apps"
+  panel are gone.
+- **Testing:** the suites run against a copy of `life/` whose `start.js` says 2000-01-01
+  (otherwise everything is a holding screen until 30 Nov); the gate and the floors are tested
+  separately against the real file, with a fixed clock for the "after" half.
 
 ## Not built yet
 

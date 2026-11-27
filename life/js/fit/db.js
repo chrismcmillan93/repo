@@ -2,6 +2,7 @@
 // on error (with the Supabase error message attached) so callers can toast
 // it or feed it into the offline queue.
 import { supabase } from './supabaseClient.js';
+import { floorDate, floorIso, LIFE_START } from '../start.js';
 
 function checkError(error){
   if (error) throw new Error(error.message || 'Database error');
@@ -32,7 +33,7 @@ export const db = {
         .from('daily_logs')
         .select('*')
         .eq('user_id', userId)
-        .gte('log_date', startDate)
+        .gte('log_date', floorDate(startDate))
         .lte('log_date', endDate)
         .order('log_date');
       checkError(error);
@@ -58,7 +59,7 @@ export const db = {
         .from('daily_checks')
         .select('*')
         .eq('user_id', userId)
-        .gte('log_date', startDate)
+        .gte('log_date', floorDate(startDate))
         .lte('log_date', endDate);
       checkError(error);
       return data || [];
@@ -72,6 +73,7 @@ export const db = {
         .select('*')
         .eq('user_id', userId)
         .eq('block_id', blockId)
+        .gte('created_at', LIFE_START)
         .order('week_number', { ascending: false });
       checkError(error);
       return data || [];
@@ -485,7 +487,7 @@ export const db = {
           .from('hevy_sets')
           .select('hevy_workout_id, exercise_index, set_index, exercise_template_id, exercise_title, set_type, weight_kg, reps, distance_m, duration_s, performed_at')
           .eq('user_id', userId)
-          .gte('performed_at', sinceIso)
+          .gte('performed_at', floorIso(sinceIso))
           .order('performed_at')
           .order('exercise_index')
           .order('set_index')
@@ -501,7 +503,7 @@ export const db = {
         .from('hevy_workouts')
         .select('hevy_id, title, start_time, end_time')
         .eq('user_id', userId)
-        .gte('start_time', sinceIso)
+        .gte('start_time', floorIso(sinceIso))
         .order('start_time');
       checkError(error);
       return data || [];

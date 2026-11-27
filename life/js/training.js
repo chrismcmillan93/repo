@@ -1,4 +1,5 @@
 // Edale 50km extras: the countdown, and run miles this week against the plan (from Garmin).
+import { floorDate } from './start.js';
 import { db } from './fit/db.js';
 import { planWeeks } from './fit/week.js';
 import { supabase as fitSb } from './fit/supabaseClient.js';
@@ -28,7 +29,7 @@ export function countdownText(c){
 // Miles run in the week starting `ws`, from Garmin; null if Garmin isn't there.
 export async function weekRunMiles(ws){
   try {
-    const { data, error } = await fitSb.from('garmin_activities').select('type_key,local_date,distance_m').eq('user_id', userId()).gte('local_date', ws).lte('local_date', addDays(ws, 6));
+    const { data, error } = await fitSb.from('garmin_activities').select('type_key,local_date,distance_m').eq('user_id', userId()).gte('local_date', floorDate(ws)).lte('local_date', addDays(ws, 6));
     if (error) return null;
     const runs = (data || []).filter((a) => /run/i.test(a.type_key || ''));
     return { miles: Math.round(10 * runs.reduce((s, a) => s + Number(a.distance_m || 0), 0) / 1609.344) / 10, n: runs.length };
