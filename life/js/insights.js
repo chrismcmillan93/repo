@@ -7,6 +7,7 @@ import * as store from './store.js';
 import { garmin } from './fit/garmin.js';
 import { esc, empty } from './ui.js';
 import { todayStr, addDays } from './fit/utils.js';
+import { floorDate } from './start.js';
 import { habitSleep, moodLinks } from './insightsStats.js';
 import { readinessHistory } from './readiness.js';
 import { trendChart } from './fit/garmin.js';
@@ -26,7 +27,7 @@ export async function habitSleepHtml(){
 // Mood and energy against sleep, from the one-tap check-in on Today.
 export async function moodSleepHtml(){
   const today = todayStr(), from = addDays(today, -180);
-  const [moods, sleep] = await Promise.all([store.moods.list((q) => q.gte('mood_date', from).order('mood_date')), garmin.sleep(from, today)]);
+  const [moods, sleep] = await Promise.all([store.moods.list((q) => q.gte('mood_date', floorDate(from)).order('mood_date')), garmin.sleep(from, today)]);
   const r = moodLinks(moods, sleep);
   if (!r.taps) return '';
   const line = (label, x) => (x ? `<div class="row"><span class="rt"><span class="rtitle">${label}</span><span class="rmeta">${x.good} after a good night, ${x.poor} after a poor one${Math.abs(x.diff) >= 0.5 ? (x.diff > 0 ? ' · sleep shows' : ' · better after poor sleep, oddly') : ''}</span></span></div>` : '');
@@ -37,7 +38,7 @@ export async function moodSleepHtml(){
 }
 
 // Readiness over time: the score each day (computed from Garmin, nothing stored), and how often you
-// trained on the days it said Easy. Garmin reads are floored to the fresh start, so it fills in from there.
+// trained on the days it said Easy. Garmin is never floored, so it covers the whole span as soon as there is a 28-day baseline.
 export async function readinessHistoryHtml(span = 84){
   const end = todayStr(), start = addDays(end, -(span - 1));
   const [sleep, days, acts] = await Promise.all([garmin.sleep(addDays(start, -28), end), garmin.days(addDays(start, -28), end), garmin.activities(start, end)]);

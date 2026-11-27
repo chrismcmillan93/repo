@@ -7,7 +7,6 @@
 // Used by Today (the recovery panel), Health > Day (what was actually done
 // against the plan), Health > Progress (trends), the weekly commitments feed
 // and Settings.
-import { floorDate } from '../start.js';
 import { supabase } from './supabaseClient.js';
 import { userId } from '../store.js';
 import { escapeHtml as esc, round1, addDays, todayStr, startOfWeek } from './utils.js';
@@ -17,11 +16,12 @@ const ACT = 'activity_id, name, type_key, local_date, start_local, distance_m, d
 const DAY = 'day, steps, step_goal, resting_hr, avg_stress, bb_high, bb_low, bb_charged, bb_drained, moderate_min, vigorous_min, total_kcal';
 const SLEEP = 'day, sleep_s, deep_s, light_s, rem_s, awake_s, score, score_label, avg_hr, need_min, hrv_last_night, hrv_weekly_avg, hrv_status, hrv_low, hrv_high';
 
-// PostgREST caps a response at 1,000 rows, so page until a short page.
+// PostgREST caps a response at 1,000 rows, so page until a short page. Garmin is device data, not a plan, so it is
+// never floored to the fresh start: the whole history is readable (start.js only floors plans, reviews and logs).
 async function range(table, cols, col, from, to){
   const out = [];
   for (let at = 0; ; at += 1000) {
-    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, floorDate(from)).lte(col, to).order(col).range(at, at + 999);
+    const { data, error } = await supabase.from(table).select(cols).eq('user_id', userId()).gte(col, from).lte(col, to).order(col).range(at, at + 999);
     if (error) throw new Error(error.message);
     out.push(...(data || []));
     if (!data || data.length < 1000) return out;

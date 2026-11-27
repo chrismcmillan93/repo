@@ -55,7 +55,7 @@ export async function render(root){
     // Today's one-tap mood and energy, and the running-load check (7 days against your recent weeks). Neither can block Today.
     let mood = null, spike = null;
     try { mood = (await store.moods.list((q) => q.eq('mood_date', today)))[0] || null; } catch (_) { mood = null; }
-    try { spike = loadSpike(await garmin.activities(addDays(today, -34), today), today, LIFE_START); } catch (_) { spike = null; }
+    try { spike = loadSpike(await garmin.activities(addDays(today, -34), today), today); } catch (_) { spike = null; }
     let pics = [];
     try { pics = await store.progressPics.list(); } catch (_) { pics = []; }
     d = { pics, mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };

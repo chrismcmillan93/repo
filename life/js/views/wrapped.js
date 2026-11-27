@@ -1,6 +1,6 @@
 // Wrapped: your year from Garmin and Hevy as swipeable cards. Deliberately read-only and
 // separate from the fresh start: this screen reads the device mirrors (garmin_*, hevy_*) from
-// 1 January straight from the tables, not through the floored helpers, because a year in review
+// 1 January through its own paged queries (device data is never floored anyway), because a year in review
 // needs the whole year. Nothing from goals, tasks, habits, the journal or Giving up is
 // included, except one anonymous "days and counting" card if you switch it on (off by default).
 import * as store from '../store.js';
@@ -69,7 +69,7 @@ export async function render(root, params){
           <div class="wdots" aria-hidden="true">${list.map((_, i) => `<i data-i="${i}"${i === 0 ? ' class="on"' : ''}></i>`).join('')}</div>`
         : empty(`No Garmin or Hevy data for ${year} yet.`)}
         <div class="wfoot"><label class="check"><input type="checkbox" data-act="wquit" ${withQuit ? 'checked' : ''}> Include one anonymous card from Giving up</label>
-        <p class="hint">Off by default. It shows only a number of days, never what it is. Garmin and Hevy are read straight from 1 January, so this one screen looks back before the fresh start. Everything else in the app does not.</p></div></section>`;
+        <p class="hint">Off by default. It shows only a number of days, never what it is. Garmin and Hevy cover the whole year.</p></div></section>`;
     const strip = root.querySelector('.wstrip');
     if (strip) {
       const dots = Array.from(root.querySelectorAll('.wdots i'));

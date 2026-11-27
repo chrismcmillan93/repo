@@ -2,12 +2,13 @@
 // A slip restarts the current count but never erases the run before it (see streaks.js).
 // Private by design: nothing here is in notifications, a name can be shown on Today as
 // something else (or not at all), and the offline copy is not kept (sw.js).
-import { floorDate, LIFE_START } from '../start.js';
+import { LIFE_START } from '../start.js';
 import * as store from '../store.js';
 import { esc, bar, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, formatDateShort, toast } from '../fit/utils.js';
 import { streakInfo, topTrigger, milestoneLabel, pushLine, slipPatterns, PARTS } from '../streaks.js';
 import { supabase as fitSb } from '../fit/supabaseClient.js';
+import { readingList, pickToday, seedOf, format as formatReason, cleanReason, MAX_LEN, MAX_SOURCE } from '../quitReasons.js';
 
 const TRIGGERS = ['Stress', 'Boredom', 'Tired', 'Lonely', 'Social pressure', 'Celebrating', 'Craving', 'Other'];
 
@@ -36,7 +37,7 @@ function bodyLine(b){
 
 export async function render(root, params){
   const today = todayStr();
-  let quits = [], slipsBy = {}, cravBy = {}, sleepRows = [], dayRows = [], openSlip = params[0] || null, slipTrigger = '', editing = null, adding = false, confirmDelete = null, craving = readCraving(), timer = null;
+  let quits = [], slipsBy = {}, cravBy = {}, reasonsBy = {}, sleepRows = [], dayRows = [], openSlip = params[0] || null, slipTrigger = '', editing = null, adding = false, confirmDelete = null, craving = readCraving(), timer = null;
 
   async function load(){
     quits = await store.quits.list((q) => q.order('created_at'));
@@ -46,17 +47,34 @@ export async function render(root, params){
     const cravings = quits.length ? await store.quitCravings.list() : [];
     cravBy = {};
     cravings.forEach((c) => { (cravBy[c.quit_id] = cravBy[c.quit_id] || []).push(c); });
+    const reasons = quits.length ? await store.quitReasons.list((q) => q.order('created_at')) : [];
+    reasonsBy = {};
+    reasons.forEach((x) => { (reasonsBy[x.quit_id] = reasonsBy[x.quit_id] || []).push(x); });
     // Last nights from Garmin, only to compare slip days with other days (never leaves the device).
     sleepRows = []; dayRows = [];
     const first = quits.filter((q) => !q.archived).map((q) => q.started_on).sort()[0];
     if (first) {
-      try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', floorDate(first)).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
-      try { const { data, error } = await fitSb.from('garmin_days').select('day,avg_stress,resting_hr').eq('user_id', store.userId()).gte('day', addDaysIso(floorDate(first), -1)).limit(2000); if (!error && data) dayRows = data; } catch (_) { /* no Garmin, no body comparison */ }
+      try { const { data, error } = await fitSb.from('garmin_sleep').select('day,sleep_s,hrv_last_night').eq('user_id', store.userId()).gte('day', first).limit(2000); if (!error && data) sleepRows = data; } catch (_) { /* no Garmin, no sleep comparison */ }
+      try { const { data, error } = await fitSb.from('garmin_days').select('day,avg_stress,resting_hr').eq('user_id', store.userId()).gte('day', addDaysIso(first, -1)).limit(2000); if (!error && data) dayRows = data; } catch (_) { /* no Garmin, no body comparison */ }
     }
     if (!quits.length) adding = true;
   }
 
   const slipsOf = (q) => slipsBy[q.id] || [];
+
+  // Reasons and quotes: the original "why" plus any you add. The card shows one a day, the craving timer shows them all.
+  const readingOf = (q) => readingList(q.why, reasonsBy[q.id]);
+  const whyHtml = (q) => { const p = pickToday(readingOf(q), today, seedOf(q.id)); return p ? `<p class="why">${esc(formatReason(p))}</p>` : ''; };
+  const craveReasons = (q) => { const list = readingOf(q).slice(0, 6); return list.length ? `<ul class="whylist">${list.map((p) => `<li class="why">${esc(formatReason(p))}</li>`).join('')}</ul>` : ''; };
+  const reasonsPanel = (q) => { const list = readingOf(q);
+    return `<details class="drop" data-k="rs-${q.id}"><summary>Reasons and quotes (${list.length})</summary>
+      ${list.length ? list.map((p) => `<div class="row"><span class="rt"><span class="rtitle why">${esc(formatReason(p))}</span>${p.id ? '' : '<span class="hint">Your main reason. Change it in Edit.</span>'}</span>${p.id ? `<button class="btn sm ghost" data-act="reasondel" data-id="${p.id}" aria-label="Delete this reason">×</button>` : ''}</div>`).join('') : '<p class="hint">Nothing yet. Add why you are doing this, or a line that hits you.</p>'}
+      <form class="add wrapf" data-act="reasonadd" data-id="${q.id}">
+        <select class="field" name="kind" aria-label="Type"><option value="reason">Reason</option><option value="quote">Quote</option></select>
+        <input class="field" name="body" required maxlength="${MAX_LEN}" placeholder="Why you are doing this, or a line that hits you" aria-label="Reason or quote" style="flex:1 1 220px">
+        <input class="field" name="source" maxlength="${MAX_SOURCE}" placeholder="Who said it (quotes, optional)" aria-label="Who said it">
+        <button class="btn">Add</button></form>
+      <p class="hint">One shows on the card each day, and all of them appear when you start the craving timer.</p></details>`; };
 
   function cardHtml(q){
     const info = streakInfo(q, slipsOf(q), today);
@@ -85,7 +103,7 @@ export async function render(root, params){
     const cravePanel = live ? `<div class="craving" id="cravepanel"><p class="push">${esc(CRAVE_LINES[Math.floor(live.at / 60000) % CRAVE_LINES.length])}</p>
         <div class="countdown"><b id="cd">${clock(Math.max(0, CRAVE_MS - (Date.now() - live.at)))}</b><span id="cdmsg">Wait it out. It peaks, then it passes.</span></div>
         <div class="bar good"><span id="cdbar" style="width:${Math.min(100, 100 * (Date.now() - live.at) / CRAVE_MS)}%"></span></div>
-        ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
+        ${craveReasons(q)}
         <p class="sub">What is it about?</p>
         <div class="seg">${TRIGGERS.map((t) => `<button type="button" class="${live.trigger === t ? 'on' : ''}" data-act="cravtrig" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
         ${live.trigger ? (plans[live.trigger] ? `<p><b>Your plan:</b> ${esc(plans[live.trigger])}</p>` : '<p class="hint">No plan for this one yet. Make one after: Edit, then If-then plans.</p>')
@@ -107,9 +125,10 @@ export async function render(root, params){
       <h2>${esc(q.name)} <small>starts ${formatDateShort(q.started_on)}</small></h2>
       <div class="stats"><div><b class="big">${info.upcoming}</b><span>day${info.upcoming === 1 ? '' : 's'} until you start</span></div></div>
       <p class="push">Starts ${when}. Use the time: get it out of reach, tell someone, and write your if-then plans.</p>
-      ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
+      ${whyHtml(q)}
       <div class="btns"><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>
-      ${planRows.length ? `<details class="drop" data-k="pl-${q.id}"><summary>Your if-then plans (${planRows.length})</summary>${planRows.map(([t, p]) => `<div class="row"><span class="rt"><span class="rtitle">If ${esc(t.toLowerCase())}</span><span>then ${esc(p)}</span></span></div>`).join('')}</details>` : ''}</section>`;
+      ${planRows.length ? `<details class="drop" data-k="pl-${q.id}"><summary>Your if-then plans (${planRows.length})</summary>${planRows.map(([t, p]) => `<div class="row"><span class="rt"><span class="rtitle">If ${esc(t.toLowerCase())}</span><span>then ${esc(p)}</span></span></div>`).join('')}</details>` : ''}
+      ${reasonsPanel(q)}</section>`;
     return `<section class="panel quitcard" id="q-${q.id}">
       <h2>${esc(q.name)} <small>since ${formatDateShort(q.started_on)}${info.slipDays ? `, last slip ${formatDateShort(info.lastSlip)}` : ''}</small></h2>
       <div class="stats"><div><b class="big">${info.current}</b><span>${info.current === 1 ? 'day' : 'days'} since${info.current === 0 ? ' (day zero)' : ''}</span></div>
@@ -119,11 +138,11 @@ export async function render(root, params){
         ${cr.length ? `<div><b class="big">${beaten}<small>/${cr.length}</small></b><span>cravings beaten</span></div>` : ''}</div>
       ${bar(pct, null, 'good')}<p class="hint">${nextText}</p>
       <p class="push">${esc(pushLine(info.current, today))}</p>
-      ${q.why ? `<p class="why">“${esc(q.why)}”</p>` : ''}
+      ${whyHtml(q)}
       ${cravePanel}${form}
       ${openSlip === q.id || live ? '' : `<div class="btns"><button class="btn pri" data-act="cravstart" data-id="${q.id}">I have a craving</button><button class="btn" data-act="slipopen" data-id="${q.id}">I slipped</button><button class="btn ghost" data-act="edit" data-id="${q.id}">Edit</button><button class="btn ghost" data-act="archive" data-id="${q.id}">Stop tracking</button></div>`}
       ${planRows.length ? `<details class="drop" data-k="pl-${q.id}"><summary>Your if-then plans (${planRows.length})</summary>${planRows.map(([t, p]) => `<div class="row"><span class="rt"><span class="rtitle">If ${esc(t.toLowerCase())}</span><span>then ${esc(p)}</span></span></div>`).join('')}</details>` : ''}
-      ${patterns}${history}</section>`;
+      ${reasonsPanel(q)}${patterns}${history}</section>`;
   }
 
   function formHtml(q){
@@ -214,6 +233,14 @@ export async function render(root, params){
       openSlip = null; slipTrigger = '';
       await refresh();
     },
+    async reasonadd(f){
+      const row = cleanReason(formData(f));
+      if (!row) return;
+      await store.quitReasons.add({ quit_id: f.dataset.id, ...row });
+      toast('Added');
+      await refresh();
+    },
+    async reasondel(n){ await store.quitReasons.del(n.dataset.id); toast('Removed'); await refresh(); },
     async slipdel(n){ await store.quitSlips.del(n.dataset.id); toast('Removed'); await refresh(); },
     async archive(n){ await store.quits.set(n.dataset.id, { archived: true }); toast('Stopped tracking. You can restore it any time.'); await refresh(); },
     async restore(n){ await store.quits.set(n.dataset.id, { archived: false }); await refresh(); },
