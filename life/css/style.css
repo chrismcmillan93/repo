@@ -307,3 +307,8 @@ svg text.strong { fill: var(--ink); font-weight: 700; font-size: 12px }
 .wdots { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px }
 .wdots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line) } .wdots i.on { background: var(--accent) }
 .wfoot { margin-top: 10px }
+
+/* Today: mood and energy check-in */
+.moodrow { display: flex; align-items: center; gap: 12px; margin: 8px 0 }
+.moodlab { min-width: 64px; font-weight: 600 }
+.moodrow .seg button { min-width: 44px; min-height: 40px; font-size: 15px }

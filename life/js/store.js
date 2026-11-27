@@ -49,6 +49,7 @@ export const quits = table('quits');
 export const quitSlips = table('quit_slips');
 export const quitCravings = table('quit_cravings');
 export const niggles = table('niggles');
+export const moods = table('daily_mood');
 export const reviews = table('reviews');
 export const reviewGoals = table('review_goals');
 export const notes = table('notes');

@@ -389,6 +389,32 @@ and last.
   layout in Chromium at 390 px in light and dark. **Not tested:** loading real rows, or the screen inside
   the app. `sw.js` `VERSION` is `v16`, `BUILD` `2026-11-27f`. The card strip is `.wstrip`, **not** `.wrap`: `.top .wrap` is the header's container and the menu dropdown is positioned inside it, so a global `.wrap` rule with `overflow-x: auto` clipped the menu (fixed 2026-11-27).
 
+## Load spikes, readiness history, mood, tests (2026-11-27)
+
+- **Running-load warning** (`js/loadspike.js`, pure): the last 7 days of running km against the average of up
+  to four earlier 7-day blocks. +30% warns, +50% is the amber "high" nudge on Today (under the niggle
+  nudges). A block counts only if all of it is on or after the fresh-start floor (`since` = `LIFE_START`), it
+  needs 2+ full blocks and a baseline of 8+ km a week, so it stays silent for the first couple of weeks
+  and never reads pre-start data. Runs only. It is a nudge: the text says the plan may have asked for it.
+- **Readiness history** (`readinessHistory()` in `readiness.js`, panel from `insights.js`, Health -> Progress): the
+  score for every day in the span, computed on the fly from Garmin (**nothing is stored**), as a dot chart with a
+  7-day line, Push / Normal / Easy counts, and how often you trained on each kind of day. It needs 7+ scored days.
+- **Mood and energy** (`life.daily_mood`, migration `20261127120000_life_daily_mood.sql`, applied; one row per user
+  per day, own-row RLS, authenticated only): two 1-5 tap rows on Today, tap again to clear, saved with
+  `store.upsertOn('daily_mood', ..., 'user_id,mood_date')`. "Mood and sleep" on Progress compares them after
+  nights at or above your median vs below (`moodLinks()` in `insightsStats.js`; 14+ days, 6+ per half).
+  Included in the backup (`LIFE_TABLES`). Not private-by-design like Giving up: it is cached offline like the
+  rest.
+- **`insightsStats.js`** now holds the pure calculations for the habits-vs-sleep and mood-vs-sleep panels;
+  `insights.js` only loads rows and draws.
+- **Tests** (`life/tests/*.test.mjs`, Node's built-in runner, no package.json): `node --test "life/tests/*.test.mjs"`
+  from the repo root (quote the glob; Node 22 treats a bare directory as a file). They cover the pure modules only
+  (readiness, loadspike, insightsStats, streaks incl. slip patterns, wrappedStats, verdict, niggle, start).
+  Anything that imports Supabase or touches the DOM can't run there. **When you add logic, put it in a pure module and
+  add a test**; two bugs this month (a unit slip in the habits panel, a clashing CSS class) lived in untested code.
+  The tests were mutation-checked (breaking a threshold, a unit and a verdict boundary fails them).
+- `sw.js` `VERSION` is `v17`, `BUILD` `2026-11-27g`.
+
 ## Menu (2026-11-21)
 
 Thirteen sections no longer fit a scrolling tab strip, so navigation is a **☰ menu** in the header
@@ -441,7 +467,7 @@ Goals reviews archive (new reviews start fresh here), and offline *writing* (off
 
 ## Testing
 
-No test files are checked in. Approach used: serve the repo with `python3 -m http.server`,
+Pure logic has checked-in unit tests (`life/tests`, see above). For screens, no browser test files are checked in. Approach used: serve the repo with `python3 -m http.server`,
 drive Chromium with Playwright, seed `localStorage` `cm-apps-auth` with a fake session,
 and answer `*.supabase.co` requests from an in-memory PostgREST stand-in built from
 `fitness/data/*.json` (the CDN script is served from a local `npm` copy). Offline: register the service worker on localhost, set

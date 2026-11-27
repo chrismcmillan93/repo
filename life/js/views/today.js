@@ -16,6 +16,8 @@ import { streakInfo } from '../streaks.js';
 import { privateBlocked } from '../lock.js';
 import { loadTrips } from '../trip.js';
 import { niggleNudges } from '../niggle.js';
+import { loadSpike } from '../loadspike.js';
+import { LIFE_START } from '../start.js';
 import { raceCountdown, countdownText } from '../training.js';
 
 export async function render(root){
@@ -49,7 +51,11 @@ export async function render(root){
     if (cfg && !cfg.backup_started && !cfg.last_backup) { cfg.backup_started = today; store.settings.save({ ...cfg }).catch(() => {}); }
     let niggles = [];
     try { niggles = await store.niggles.list((q) => q.is('resolved_on', null)); } catch (_) { niggles = []; }
-    d = { niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    // Today's one-tap mood and energy, and the running-load check (7 days against your recent weeks). Neither can block Today.
+    let mood = null, spike = null;
+    try { mood = (await store.moods.list((q) => q.eq('mood_date', today)))[0] || null; } catch (_) { mood = null; }
+    try { spike = loadSpike(await garmin.activities(addDays(today, -34), today), today, LIFE_START); } catch (_) { spike = null; }
+    d = { mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -90,6 +96,8 @@ export async function render(root){
     // A backup nudge (up the list, so other nudges can't crowd it out): 30 days since the last one (or since the app first noticed there was none).
     const base = d.cfg && (d.cfg.last_backup || d.cfg.backup_started);
     if (base && daysBetween(base, today) >= 30) out.unshift(`<div class="nudge warn"><p>${d.cfg.last_backup ? `Your last backup was ${daysBetween(base, today)} days ago.` : `You have never backed this up (${daysBetween(base, today)} days of data).`} One tap in Settings.</p><div class="btns"><a class="btn sm" href="#/settings">Back up</a></div></div>`);
+    // Running volume jumped well past your recent weeks: just under the aches in importance.
+    if (d.spike && d.spike.level) out.unshift(`<div class="nudge ${d.spike.level === 'high' ? 'warn' : ''}"><p><b>Running load.</b> ${esc(d.spike.text)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`);
     // Aches that have lasted or got worse: first in line, because they cost the most.
     niggleNudges(d.niggles || [], today).reverse().forEach((t) => out.unshift(`<div class="nudge"><p>${esc(t)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`));
     return out.slice(0, 6).join('');
@@ -132,6 +140,9 @@ export async function render(root){
     const qEl = root.querySelector('#quits');
     qEl.hidden = !d.quits.length;
     qEl.innerHTML = d.quits.length ? `<h2>Giving up <small><a href="#/quit">Open</a></small></h2>${d.quits.map((q) => `<div class="row"><span class="rt"><span class="rtitle">${esc(q.label)}</span></span>${q.upcoming ? `<span class="right">Starts ${q.upcoming === 1 ? 'tomorrow' : `in ${q.upcoming} days`}</span>` : `<span class="right"><b class="big sm">${q.days}</b> day${q.days === 1 ? '' : 's'}</span><a class="btn sm ghost" href="#/quit/${q.id}">I slipped</a>`}</div>`).join('')}` : '';
+    const m = d.mood || {};
+    const scale = (k, label) => `<div class="moodrow"><span class="moodlab">${label}</span><div class="seg sm" role="group" aria-label="${label}, 1 low to 5 high">${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="${m[k] === v ? 'on' : ''}" data-act="mood" data-k="${k}" data-v="${v}" aria-pressed="${m[k] === v}">${v}</button>`).join('')}</div></div>`;
+    root.querySelector('#mood').innerHTML = `<h2>How are you feeling? <small>1 low, 5 high. Tap again to clear</small></h2>${scale('energy', 'Energy')}${scale('mood', 'Mood')}`;
     root.querySelector('#habits').innerHTML = `<h2>Habits</h2>${d.habits.length ? d.habits.map((h) => { const s = streak(h);
       return `<label class="row ${s.on ? 'done' : ''}"><input type="checkbox" data-act="habit" data-id="${h.id}" ${s.on ? 'checked' : ''}><span class="rt"><span class="rtitle">${esc(h.title)}</span></span><span class="right">${s.n ? `${s.n} day streak` : 'No streak'}</span></label>`; }).join('') : empty('No habits yet.')}
       <form class="add" data-act="addhabit"><input class="field" name="title" placeholder="Add a daily habit" aria-label="Add a daily habit" required><button class="btn">Add</button></form>`;
@@ -141,6 +152,7 @@ export async function render(root){
   root.innerHTML = `<div id="nudges" class="stack"></div><div class="cols"><div class="stack" id="left"></div><div class="stack">
     <div id="trips" class="stack"></div>
     <section class="panel" id="recovery" hidden></section>
+    <section class="panel" id="mood"></section>
     <section class="panel" id="weekcard"></section>
     <section class="panel" id="commits"></section>
     <section class="panel"><h2>Training and food <small><a href="#/health">Open Health</a></small></h2><p class="push" id="edale" hidden></p><div id="fit"></div></section>
@@ -160,6 +172,12 @@ export async function render(root){
       const v = formData(f);
       await store.tasks.add({ title: v.title.trim(), status: 'open', due_date: today, top_date: tops().length < 3 ? today : null, ...towardsFields(v.towards, d.commits) });
       await refresh();
+    },
+    async mood(n){
+      const k = n.dataset.k, v = Number(n.dataset.v), cur = d.mood || {};
+      const row = { mood_date: today, energy: cur.energy ?? null, mood: cur.mood ?? null, [k]: cur[k] === v ? null : v, updated_at: new Date().toISOString() };
+      d.mood = await store.upsertOn('daily_mood', row, 'user_id,mood_date');
+      draw();
     },
     async habit(n){ await store.habitChecks.set(n.dataset.id, today, n.checked); await refresh(); },
     async addhabit(f){ await store.habits.add({ title: formData(f).title.trim(), sort_order: d.habits.length }); await refresh(); },

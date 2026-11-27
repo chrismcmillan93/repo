@@ -66,3 +66,21 @@ export function readinessAdvice(r, sessions){
   if (r.verdict === 'push') return hard ? 'You are well recovered. Today is a good day to hit the session properly.' : none ? 'You are well recovered. A rest day is fine, or add something easy if you fancy it.' : 'You are well recovered. Make the most of it.';
   return hard ? 'Nothing unusual. Do the session as planned.' : 'Nothing unusual. Carry on as planned.';
 }
+
+// The score and verdict for every date in `dates`, plus how often you trained anyway. Computed on the
+// fly from the same Garmin rows (nothing is stored), each day against the 28 days before it.
+// acts: [{ local_date }] (any Garmin activity). Used by the Progress screen's readiness history.
+export function readinessHistory(dates, sleep, days, acts = []){
+  const trained = new Set((acts || []).map((a) => a.local_date));
+  const rows = dates.map((d) => ({ date: d, r: readiness(d, sleep, days), trained: trained.has(d) }));
+  const by = (v) => rows.filter((x) => x.r && x.r.verdict === v);
+  const count = (v) => by(v).length;
+  const trainedOn = (v) => by(v).filter((x) => x.trained).length;
+  return {
+    dates,
+    scores: rows.map((x) => (x.r ? x.r.score : null)),
+    scored: rows.filter((x) => x.r).length,
+    counts: { push: count('push'), normal: count('normal'), easy: count('easy') },
+    trainedOn: { push: trainedOn('push'), normal: trainedOn('normal'), easy: trainedOn('easy') }
+  };
+}
