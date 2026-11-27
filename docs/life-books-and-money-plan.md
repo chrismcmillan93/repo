@@ -1,6 +1,6 @@
 # Plan: a Books list and a Money section for the Life app
 
-Written 27 Nov 2026, revised the same day (audiobooks added; Money reduced to payments, savings goals and bill pots, with no expense tracking). Nothing here is built yet. The screenshots are **mock-ups made from the app's real styles, with example numbers**, to show the idea. The one real figure is your USA trip saving goal.
+Built 27 Nov 2026. Written 27 Nov 2026, revised the same day (audiobooks added; Money reduced to payments, savings goals and bill pots, with no expense tracking). The screenshots are **mock-ups made from the app's real styles, with example numbers**, to show the idea. The one real figure is your USA trip saving goal.
 
 ## Short answers
 
