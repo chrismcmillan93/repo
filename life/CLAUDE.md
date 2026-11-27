@@ -448,6 +448,11 @@ Life is a new plan that begins on **Monday 30 November 2026** (the same day the 
   moved to 30 Nov, target dates in the past cleared (later ones kept) and last-progress dates cleared. The achieved
   goal and the one step completed before the start stay in the archive. Everything else (commitments, lists, notes)
   stays archived.
+- **Two deliberate exceptions to the floor, both opt-in per call:** the **Wrapped** screen (its own queries, full year) and the **Lifts**
+  tab (`db.hevy.listSets/listWorkouts(..., { allHistory: true })`, read back to 2020 so PRs, estimated 1RMs and progression use your whole
+  Hevy history; chosen by Chris on 2026-11-27 after the tab came up empty, since the last lift was 21 Nov and none exist after 30 Nov). The
+  default of those helpers is still floored, so nothing else sees older data; Garmin activities and Health's day pages stay floored. Don't
+  add `allHistory` anywhere else without asking.
 - **Fitness rows before the start** (weigh-ins, Hevy, Garmin) are still in `fitness.*`, just
   never shown. The Edale plan starts on 30 Nov, so Health shows no plan days for the first two.
 - **Old apps:** `/goals/` and `/fitness/` are only redirect pages to Life (the second also keeps a
@@ -520,7 +525,7 @@ authenticated only, **no grant to service_role** (checked), cascades with the qu
   `backup.js` includes it only under "Include Giving up" (`PRIVATE_TABLES`), it is not in notifications, and `life-push` cannot read it.
   Today still shows only the alias/name and a day count, never a reason.
 - Verified in Chromium with Supabase stubbed: the card pick, the panel list, saving a quote (with author) and a reason (author dropped), and the
-  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v24`, `BUILD` `2026-11-27n`.
+  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v25`, `BUILD` `2026-11-27o`.
 
 ## Not built yet
 

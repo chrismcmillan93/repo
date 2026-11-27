@@ -479,7 +479,9 @@ export const db = {
     },
     // Every set since `sinceIso`, oldest first. PostgREST caps a response
     // at 1,000 rows, so page through with range() until a short page.
-    async listSets(userId, sinceIso){
+    // Reads are floored to the fresh start (start.js) unless the caller passes `allHistory: true`; only the Lifts
+    // tab does, because PRs, 1RMs and progression need your whole training history.
+    async listSets(userId, sinceIso, { allHistory = false } = {}){
       const pageSize = 1000;
       const out = [];
       for (let from = 0; ; from += pageSize) {
@@ -487,7 +489,7 @@ export const db = {
           .from('hevy_sets')
           .select('hevy_workout_id, exercise_index, set_index, exercise_template_id, exercise_title, set_type, weight_kg, reps, distance_m, duration_s, performed_at')
           .eq('user_id', userId)
-          .gte('performed_at', floorIso(sinceIso))
+          .gte('performed_at', allHistory ? sinceIso : floorIso(sinceIso))
           .order('performed_at')
           .order('exercise_index')
           .order('set_index')
@@ -498,12 +500,12 @@ export const db = {
       }
       return out;
     },
-    async listWorkouts(userId, sinceIso){
+    async listWorkouts(userId, sinceIso, { allHistory = false } = {}){
       const { data, error } = await supabase
         .from('hevy_workouts')
         .select('hevy_id, title, start_time, end_time')
         .eq('user_id', userId)
-        .gte('start_time', floorIso(sinceIso))
+        .gte('start_time', allHistory ? sinceIso : floorIso(sinceIso))
         .order('start_time');
       checkError(error);
       return data || [];

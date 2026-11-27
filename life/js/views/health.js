@@ -327,9 +327,11 @@ export async function render(root, params){
   });
 
   async function lifts(){
-    const since = new Date(Date.now() - 400 * 864e5).toISOString();
+    // The whole Hevy history, deliberately not floored to the fresh start: PRs, 1RMs and progression need it (an explicit
+    // exception for this tab only, see "Fresh start" in CLAUDE.md).
+    const since = new Date('2020-01-01T00:00:00Z').toISOString(), all = { allHistory: true };
     try {
-      const [sync, sets, workouts] = await Promise.all([db.hevy.syncState(userId()).catch(() => null), db.hevy.listSets(userId(), since), db.hevy.listWorkouts(userId(), since)]);
+      const [sync, sets, workouts] = await Promise.all([db.hevy.syncState(userId()).catch(() => null), db.hevy.listSets(userId(), since, all), db.hevy.listWorkouts(userId(), since, all)]);
       const templates = await db.hevy.listTemplates(Array.from(new Set(sets.map((s) => s.exercise_template_id)))).catch(() => []);
       const exercises = buildExercises(sets, Object.fromEntries(templates.map((t) => [t.id, t])));
       L = { sync, workouts, exercises, prs: findPrs(exercises), summaries: exerciseSummaries(exercises) };
