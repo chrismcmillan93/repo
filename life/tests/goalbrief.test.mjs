@@ -37,3 +37,20 @@ test('within a group the earliest date comes first', () => {
   const lines = goalActionLines([task('newer', '2026-12-09'), task('older', '2026-12-02')], goals, T, TOM);
   assert.match(lines[0], /^Overdue: older .*, newer /);
 });
+
+import { goalActionsOpenTonight } from '../../supabase/functions/life-push/goalbrief.js';
+
+test('evening: names open actions that are overdue or due today, overdue first', () => {
+  const lines = goalActionsOpenTonight([task('Book the hike', T), task('Pack', '2026-12-08'), task('Tomorrow job', TOM)], goals, T);
+  assert.deepEqual(lines, ['Goal actions still open: Pack (Hike 1x per month), Book the hike (Hike 1x per month)']);
+});
+
+test('evening: nothing open means no line; done, undated, unlinked and inactive-goal actions are ignored', () => {
+  assert.deepEqual(goalActionsOpenTonight([], goals, T), []);
+  assert.deepEqual(goalActionsOpenTonight([task('Done', T, 'g1', 'done'), task('No date', null), task('Orphan', T, 'gone'), task('Unlinked', T, null), task('Future', TOM)], goals, T), []);
+});
+
+test('evening: capped at three names then "+N more"', () => {
+  const many = ['a', 'b', 'c', 'd'].map((x) => task(x, T));
+  assert.equal(goalActionsOpenTonight(many, goals, T)[0], 'Goal actions still open: a (Hike 1x per month), b (Hike 1x per month), c (Hike 1x per month), +1 more');
+});

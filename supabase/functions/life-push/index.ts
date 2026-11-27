@@ -10,7 +10,7 @@
 // generated on first use and stored in life.push_config, so no secret is ever typed in.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { generateVapid, sendPush } from './webpush.js';
-import { goalActionLines } from './goalbrief.js';
+import { goalActionLines, goalActionsOpenTonight } from './goalbrief.js';
 
 const SUBJECT = 'https://app.chris-mcmillan.co.uk/life/';
 const TZ = 'Europe/London';
@@ -107,15 +107,19 @@ async function morningBrief(userId: string, today: string, dow: string){
 }
 
 async function eveningReminder(userId: string, today: string, dow: string){
-  const [closed, due] = await Promise.all([
+  const [closed, due, goalTasks, goals] = await Promise.all([
     life().from('journal').select('id').eq('user_id', userId).eq('entry_date', today).eq('kind', 'close').limit(1),
-    life().from('tasks').select('status, done_on').eq('user_id', userId).or(`due_date.eq.${today},top_date.eq.${today},done_on.eq.${today}`)
+    life().from('tasks').select('status, done_on').eq('user_id', userId).or(`due_date.eq.${today},top_date.eq.${today},done_on.eq.${today}`),
+    // Open one-off goal actions that are overdue or due today, and the active goals they belong to.
+    life().from('tasks').select('title, due_date, goal_id, status').eq('user_id', userId).eq('status', 'open').not('goal_id', 'is', null).lte('due_date', today),
+    life().from('goals').select('id, title').eq('user_id', userId).eq('status', 'active')
   ]);
   const lines: string[] = [];
   if (!(closed.data || []).length) {
     const all = due.data || [];
     const done = all.filter((x) => x.status === 'done').length;
     lines.push(all.length ? `${done} of ${all.length} tasks done. Close the day and give a reason for anything missed.` : 'Close the day before bed.');
+    lines.push(...goalActionsOpenTonight(goalTasks.data || [], goals.data || [], today));
   }
   if (dow === 'Sun' && mondayOf(today) >= LIFE_START) { // no review prompt for a week that began before the start
     const { data } = await life().from('reviews').select('status').eq('user_id', userId).eq('period_type', 'week').eq('period_start', mondayOf(today)).eq('status', 'complete').limit(1);

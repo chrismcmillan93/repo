@@ -23,3 +23,15 @@ export function goalActionLines(tasks, goals, today, tomorrow, perLine = 3){
     line('Tomorrow', mine.filter((t) => t.due_date === tomorrow).sort(byDate))
   ].filter(Boolean);
 }
+
+// The evening line: goal actions still open that are overdue or due today ("Goal actions still open: ..."),
+// overdue ones first. Same naming and caps as the morning lines. Nothing due means no line.
+export function goalActionsOpenTonight(tasks, goals, today, perLine = 3){
+  const name = Object.fromEntries((goals || []).map((g) => [g.id, g.title]));
+  const mine = (tasks || []).filter((t) => t.goal_id && name[t.goal_id] != null && t.due_date && t.due_date <= today && t.status !== 'done')
+    .sort((a, b) => a.due_date.localeCompare(b.due_date) || a.title.localeCompare(b.title));
+  if (!mine.length) return [];
+  const show = (t) => `${clip(t.title, 40)} (${clip(name[t.goal_id], 24)})`;
+  const more = mine.length > perLine ? `, +${mine.length - perLine} more` : '';
+  return [`Goal actions still open: ${mine.slice(0, perLine).map(show).join(', ')}${more}`];
+}

@@ -493,9 +493,12 @@ A goal's page (`views/goals.js`) now has two clearly separate things to do towar
   can test it): e.g. "Overdue: Pack the rucksack (Hike 1x per month)", "Goal actions today: ...", "Tomorrow: ...", three lines at most, three names
   per line then "+N more". Only open actions on **active** goals count (paused or dropped goals are silent). It is part of the existing morning
   brief, so it follows the same switch and time in Settings, stays silent before 30 Nov and on breaks, and the "N tasks due today" count is
-  unchanged. There is no separate push for a due date: dates have no time of day, so the brief is the right moment. Redeployed as v9 (files:
-  `index.ts`, `goalbrief.js`, `webpush.js`); the "Send test" button in Settings sends a real brief, which is the quickest live check.
-  `sw.js` `VERSION` is `v21`, `BUILD` `2026-11-27k`.
+  unchanged. There is no separate push at the moment a date arrives: dates have no time of day, so the brief is the right moment.
+- **Evening line:** the evening reminder adds "Goal actions still open: ..." (overdue and due today, overdue first, same naming and caps,
+  `goalActionsOpenTonight()`), **inside the existing "day isn't closed yet" condition**, so a closed day (which moves unfinished tasks to tomorrow)
+  stays quiet. Redeployed as v10 (files: `index.ts`, `goalbrief.js`, `webpush.js`); the "Send test" button in Settings sends a real *morning* brief,
+  which is the quickest live check (the evening one has no test button).
+  `sw.js` `VERSION` is `v22`, `BUILD` `2026-11-27l`.
 
 ## Not built yet
 
