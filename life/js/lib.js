@@ -3,6 +3,7 @@ import * as store from './store.js';
 import { isAway, periodOver, quietDays } from './away.js';
 export { quietDays };
 import { todayStr, addDays, parseLocalDate, formatDateShort, startOfWeek, isoDow } from './fit/utils.js';
+import { FIRST_WEEK, LIFE_START } from './start.js';
 
 const DAY = 86400000;
 export function daysBetween(a, b){
@@ -113,12 +114,14 @@ async function createDue(){
   const rules = await store.rules.list();
   if (!rules.length) return;
   const today = todayStr(), thisWeek = startOfWeek(today);
-  const floorWeek = addDays(thisWeek, -56), floorMonth = monthStart(addDays(thisWeek, -150));
   const later = (a, b) => (a > b ? a : b);
+  // Never before the first week of the fresh start (a repeat must not create a week before it).
+  const floorWeek = later(addDays(thisWeek, -56), FIRST_WEEK), floorMonth = monthStart(addDays(thisWeek, -150));
   const want = [];
   for (const r of rules) {
     const base = { rule_id: r.id, goal_id: r.goal_id, title: r.title, cadence: r.cadence, target_count: targetFor(r.cadence, r.per_period) };
-    if (r.cadence === 'monthly') for (let m = later(monthStart(r.start_date), floorMonth); m <= monthStart(today); m = nextMonth(m)) want.push({ ...base, week_start: m });
+    // Generated months start from the first month that begins on or after the fresh start (a part-month before it is never made).
+    if (r.cadence === 'monthly') for (let m = later(monthStart(r.start_date), floorMonth); m <= monthStart(today); m = nextMonth(m)) { if (m >= LIFE_START) want.push({ ...base, week_start: m }); }
     else for (let w = later(startOfWeek(r.start_date), floorWeek); w <= thisWeek; w = addDays(w, 7)) want.push({ ...base, week_start: w });
   }
   const have = await store.commitments.list((q) => q.in('rule_id', rules.map((r) => r.id)).gte('week_start', floorMonth));

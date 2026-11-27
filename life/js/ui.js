@@ -13,6 +13,19 @@ export function pill(text, cls){
   return `<span class="pill ${cls || ''}">${esc(text)}</span>`;
 }
 
+// Copy text to the clipboard; falls back to a hidden textarea where the async API is unavailable (some PWAs, older iOS).
+export async function copyText(text){
+  try { await navigator.clipboard.writeText(text); return true; } catch (_) { /* try the fallback */ }
+  try {
+    const t = document.createElement('textarea');
+    t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    t.remove();
+    return ok;
+  } catch (_) { return false; }
+}
+
 export function empty(text){
   return `<p class="hint">${esc(text)}</p>`;
 }

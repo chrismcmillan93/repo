@@ -7,7 +7,7 @@ import { supabase } from './supabaseClient.js';
 import { userId } from './store.js';
 import { todayStr } from './fit/utils.js';
 
-export const LIFE_TABLES = ['goals', 'goal_steps', 'commitments', 'commitment_rules', 'tasks', 'habits', 'habit_checks', 'journal', 'list_items', 'career_items', 'events', 'settings', 'reviews', 'review_goals', 'notes', 'playbook_progress', 'niggles'];
+export const LIFE_TABLES = ['goals', 'goal_steps', 'commitments', 'commitment_rules', 'tasks', 'habits', 'habit_checks', 'journal', 'list_items', 'career_items', 'events', 'settings', 'reviews', 'review_goals', 'notes', 'playbook_progress', 'niggles', 'daily_mood', 'progress_pics'];
 export const PRIVATE_TABLES = ['quits', 'quit_slips', 'quit_cravings'];
 export const FITNESS_TABLES = ['daily_logs', 'daily_checks', 'pick_sessions', 'day_swaps', 'plan_checkins', 'weekly_checkins', 'race_results', 'race_booked', 'week_list_ticks', 'races'];
 // A stable order per table, so paging through a big one never skips or repeats a row.

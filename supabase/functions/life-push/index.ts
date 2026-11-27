@@ -55,8 +55,8 @@ function prefsOf(data: Record<string, unknown> | null): Prefs {
   };
 }
 
-// Life is a fresh plan that starts on 28 Nov 2026: nothing is sent before then (same date as life/js/start.js).
-const LIFE_START = '2026-11-28';
+// Life is a fresh plan that starts on 30 Nov 2026: nothing is sent before then (same date as life/js/start.js).
+const LIFE_START = '2026-11-30';
 
 // On a break or trip (settings.data.breaks, set in the app; the old single settings.data.away
 // is still honoured until the app migrates it): `from` is the first day away (null = already

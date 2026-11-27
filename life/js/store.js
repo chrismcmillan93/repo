@@ -1,6 +1,7 @@
 // Data access for the `life` schema. Every read and write is scoped by user_id
 // explicitly as well as by RLS (belt and suspenders, same rule as the other apps).
 import { supabase } from './supabaseClient.js';
+import { floorDate } from './start.js';
 
 let uid = null;
 export function setUser(id){ uid = id; }
@@ -49,6 +50,8 @@ export const quits = table('quits');
 export const quitSlips = table('quit_slips');
 export const quitCravings = table('quit_cravings');
 export const niggles = table('niggles');
+export const moods = table('daily_mood');
+export const progressPics = table('progress_pics');
 export const reviews = table('reviews');
 export const reviewGoals = table('review_goals');
 export const notes = table('notes');
@@ -77,7 +80,7 @@ export async function upsertOn(name, row, onConflict){
 
 export const habitChecks = {
   async listSince(date){
-    return ok(await supabase.from('habit_checks').select('*').eq('user_id', uid).gte('check_date', date)) || [];
+    return ok(await supabase.from('habit_checks').select('*').eq('user_id', uid).gte('check_date', floorDate(date))) || [];
   },
   async set(habitId, date, on){
     if (on) ok(await supabase.from('habit_checks').upsert({ habit_id: habitId, check_date: date, user_id: uid }, { onConflict: 'habit_id,check_date' }));

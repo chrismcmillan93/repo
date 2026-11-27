@@ -51,9 +51,9 @@ export async function render(root, params){
   root.innerHTML = `<section class="panel"><h2>Start a review</h2>
       ${isAway() ? `<p class="hint">Away until ${formatDateShort(awayUntil())}: reviews for weeks and months that end while you're away are skipped. You can still start one below.</p>` : ''}
       ${due.length ? `<p class="sub">Ready now</p><div class="btns">${due.map((p) => pick(p.type, p, '')).join('')}</div>` : '<p class="hint">Every finished week, month and quarter has been reviewed.</p>'}
-      <p class="sub">Or the one in progress</p><div class="btns">${TYPES.map(([t]) => pick(t, periods(t)[1], 'so far')).join('')}</div>
+      <p class="sub">Or the one in progress</p><div class="btns">${TYPES.filter(([t]) => periods(t)[1].start >= LIFE_START).map(([t]) => pick(t, periods(t)[1], 'so far')).join('')}</div>
       <p class="hint">Sunday: review the week and set next week's commitments. First of the month: review the month.</p></section>
-    <section class="panel"><h2>Past reviews</h2>${list.length ? list.map((r) => `<a class="row" href="#/review/${r.id}"><span class="rt"><span class="rtitle">${esc(periodLabel(r.period_type, r.period_start))}</span>
+    <section class="panel"><h2>Past reviews</h2>${list.filter((r) => r.period_start >= LIFE_START).length ? list.filter((r) => r.period_start >= LIFE_START).map((r) => `<a class="row" href="#/review/${r.id}"><span class="rt"><span class="rtitle">${esc(periodLabel(r.period_type, r.period_start))}</span>
       <span class="rmeta">${pill(r.status === 'complete' ? 'Complete' : 'Draft', r.status === 'complete' ? 'good' : 'warn')}${r.rating ? `<span>${r.rating}/5</span>` : ''}${r.focus_next ? `<span>Next: ${esc(r.focus_next)}</span>` : ''}</span></span></a>`).join('') : empty('No reviews yet.')}</section>`;
   wire(root, {
     async start(n){

@@ -8,7 +8,7 @@ import { requestSignIn, verifyCode, signOut, getCurrentSession, onAuthStateChang
 import { setUser } from './store.js';
 import { initTheme } from './theme.js';
 import { state as fitState } from './fit/state.js';
-import { escapeHtml, formatDateFull, todayStr, toast } from './fit/utils.js';
+import { escapeHtml, formatDateFull, todayStr, toast, setupMode } from './fit/utils.js';
 import { registerSw, clearOfflineData } from './pwa.js';
 import { loadAway } from './away.js';
 import { initLock, appBlocked, privateBlocked, lockFormHtml, bindLockForm, clearLock } from './lock.js';
@@ -87,6 +87,8 @@ async function showApp(session){
   setUser(session.user.id);
   fitState.session = session;
   $('#date').textContent = formatDateFull(todayStr());
+  const setup = $('#setup');
+  if (setupMode()) { setup.hidden = false; setup.innerHTML = `<p><b>Setup mode.</b> Life starts on ${formatDateFull(LIFE_START)}. Until then the app behaves as if it is already that day: ticks and logs you make now count as ${formatDateFull(LIFE_START)}, and nothing earlier is shown or prompted. Set up your goals, habits and commitments now.</p>`; } else setup.hidden = true;
   try { await loadAway(); } catch (err) { console.warn('Away mode not loaded:', err.message); }
   initLock(route);
   route();
