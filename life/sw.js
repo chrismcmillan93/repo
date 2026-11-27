@@ -8,7 +8,7 @@
 //     Cached data is wiped on sign-out (main.js posts 'clear-data').
 //  3. Show push notifications from the life-push Edge Function.
 // Bump VERSION to clear old caches after adding or removing shell files.
-const VERSION = 'v19';
+const VERSION = 'v21';
 const SHELL = `life-shell-${VERSION}`;
 const DATA = 'life-data';
 const FILES = [
@@ -17,7 +17,7 @@ const FILES = [
   'js/main.js', 'js/auth.js', 'js/config.js', 'js/supabaseClient.js', 'js/store.js', 'js/ui.js', 'js/lib.js', 'js/theme.js', 'js/pwa.js', 'js/away.js', 'js/playbookContent.js',
   'js/fit/analysis.js', 'js/fit/day.js', 'js/fit/daySwap.js', 'js/fit/db.js', 'js/fit/feed.js', 'js/fit/garmin.js', 'js/fit/nutrition.js', 'js/fit/posters.js', 'js/fit/sessionChoices.js',
   'js/fit/state.js', 'js/fit/supabaseClient.js', 'js/fit/utils.js', 'js/fit/week.js', 'js/fit/weekLists.js',
-  'js/views/career.js', 'js/views/events.js', 'js/views/goals.js', 'js/views/health.js', 'js/views/journal.js', 'js/views/lists.js', 'js/views/playbook.js', 'js/views/quit.js', 'js/streaks.js', 'js/views/niggles.js', 'js/verdict.js', 'js/lock.js', 'js/trip.js', 'js/tripmatch.js', 'js/niggle.js', 'js/training.js', 'js/backup.js', 'js/readiness.js', 'js/insights.js', 'js/wrappedStats.js', 'js/loadspike.js', 'js/insightsStats.js', 'js/progressPics.js', 'js/checkinText.js', 'js/views/wrapped.js',
+  'js/views/career.js', 'js/views/events.js', 'js/views/goals.js', 'js/views/health.js', 'js/views/journal.js', 'js/views/lists.js', 'js/views/playbook.js', 'js/views/quit.js', 'js/streaks.js', 'js/views/niggles.js', 'js/verdict.js', 'js/lock.js', 'js/trip.js', 'js/tripmatch.js', 'js/niggle.js', 'js/training.js', 'js/backup.js', 'js/readiness.js', 'js/insights.js', 'js/wrappedStats.js', 'js/loadspike.js', 'js/insightsStats.js', 'js/progressPics.js', 'js/checkinText.js', 'js/goalactions.js', 'js/views/wrapped.js',
   'js/views/review.js', 'js/views/settings.js', 'js/views/shared.js', 'js/views/tasks.js', 'js/views/today.js', 'js/views/week.js'
 ];
 const CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';

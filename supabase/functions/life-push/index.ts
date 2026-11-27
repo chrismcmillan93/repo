@@ -10,6 +10,7 @@
 // generated on first use and stored in life.push_config, so no secret is ever typed in.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { generateVapid, sendPush } from './webpush.js';
+import { goalActionLines } from './goalbrief.js';
 
 const SUBJECT = 'https://app.chris-mcmillan.co.uk/life/';
 const TZ = 'Europe/London';
@@ -69,7 +70,8 @@ function awayNow(data: Record<string, unknown> | null, date: string): boolean {
 }
 
 async function morningBrief(userId: string, today: string, dow: string){
-  const [tasks, plan, picks, events, races, night, gday] = await Promise.all([
+  const tomorrow = addDays(today, 1);
+  const [tasks, plan, picks, events, races, night, gday, goalTasks, goals] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
     fitness().from('plan_days').select('session, type').eq('plan_version', 'v2').eq('date', today),
     fitness().from('pick_sessions').select('kind, session').eq('user_id', userId).eq('log_date', today),
@@ -77,7 +79,10 @@ async function morningBrief(userId: string, today: string, dow: string){
     fitness().from('races').select('name, race_date').gte('race_date', today).order('race_date').limit(1),
     // Last night from Garmin, when the watch has synced by now (garmin-sync runs every half hour).
     fitness().from('garmin_sleep').select('sleep_s, score, hrv_last_night').eq('user_id', userId).eq('day', today).maybeSingle(),
-    fitness().from('garmin_days').select('resting_hr').eq('user_id', userId).eq('day', today).maybeSingle()
+    fitness().from('garmin_days').select('resting_hr').eq('user_id', userId).eq('day', today).maybeSingle(),
+    // One-off actions on goals that are overdue, due today or due tomorrow (named below), and the active goals they belong to.
+    life().from('tasks').select('title, due_date, goal_id, status').eq('user_id', userId).eq('status', 'open').not('goal_id', 'is', null).lte('due_date', tomorrow),
+    life().from('goals').select('id, title').eq('user_id', userId).eq('status', 'active')
   ]);
   const t = tasks.data || [];
   const top = t.filter((x) => x.top_date === today).map((x) => x.title);
@@ -91,6 +96,7 @@ async function morningBrief(userId: string, today: string, dow: string){
   }
   if (top.length) lines.push(`Top three: ${top.join(', ')}`);
   lines.push(t.length ? `${t.length} task${t.length === 1 ? '' : 's'} due today` : 'Nothing due yet. Pick your top three.');
+  lines.push(...goalActionLines(goalTasks.data || [], goals.data || [], today, tomorrow));
   const next = [...(events.data || []).map((e) => ({ t: e.title, d: e.start_date })), ...(races.data || []).map((r) => ({ t: r.name, d: r.race_date }))].sort((a, b) => (a.d < b.d ? -1 : 1))[0];
   if (next) {
     const days = Math.round((Date.parse(next.d) - Date.parse(today)) / 864e5);
