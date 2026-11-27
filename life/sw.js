@@ -8,7 +8,7 @@
 //     Cached data is wiped on sign-out (main.js posts 'clear-data').
 //  3. Show push notifications from the life-push Edge Function.
 // Bump VERSION to clear old caches after adding or removing shell files.
-const VERSION = 'v23';
+const VERSION = 'v24';
 const SHELL = `life-shell-${VERSION}`;
 const DATA = 'life-data';
 const FILES = [
@@ -17,7 +17,7 @@ const FILES = [
   'js/main.js', 'js/auth.js', 'js/config.js', 'js/supabaseClient.js', 'js/store.js', 'js/ui.js', 'js/lib.js', 'js/theme.js', 'js/pwa.js', 'js/away.js', 'js/playbookContent.js',
   'js/fit/analysis.js', 'js/fit/day.js', 'js/fit/daySwap.js', 'js/fit/db.js', 'js/fit/feed.js', 'js/fit/garmin.js', 'js/fit/nutrition.js', 'js/fit/posters.js', 'js/fit/sessionChoices.js',
   'js/fit/state.js', 'js/fit/supabaseClient.js', 'js/fit/utils.js', 'js/fit/week.js', 'js/fit/weekLists.js',
-  'js/views/career.js', 'js/views/events.js', 'js/views/goals.js', 'js/views/health.js', 'js/views/journal.js', 'js/views/lists.js', 'js/views/playbook.js', 'js/views/quit.js', 'js/streaks.js', 'js/views/niggles.js', 'js/verdict.js', 'js/lock.js', 'js/trip.js', 'js/tripmatch.js', 'js/niggle.js', 'js/training.js', 'js/backup.js', 'js/readiness.js', 'js/insights.js', 'js/wrappedStats.js', 'js/loadspike.js', 'js/insightsStats.js', 'js/progressPics.js', 'js/checkinText.js', 'js/goalactions.js', 'js/views/wrapped.js',
+  'js/views/career.js', 'js/views/events.js', 'js/views/goals.js', 'js/views/health.js', 'js/views/journal.js', 'js/views/lists.js', 'js/views/playbook.js', 'js/views/quit.js', 'js/streaks.js', 'js/views/niggles.js', 'js/verdict.js', 'js/lock.js', 'js/trip.js', 'js/tripmatch.js', 'js/niggle.js', 'js/training.js', 'js/backup.js', 'js/readiness.js', 'js/insights.js', 'js/wrappedStats.js', 'js/loadspike.js', 'js/insightsStats.js', 'js/progressPics.js', 'js/checkinText.js', 'js/goalactions.js', 'js/quitReasons.js', 'js/views/wrapped.js',
   'js/views/review.js', 'js/views/settings.js', 'js/views/shared.js', 'js/views/tasks.js', 'js/views/today.js', 'js/views/week.js'
 ];
 const CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -76,7 +76,7 @@ self.addEventListener('fetch', (e) => {
   if (req.url.startsWith(CDN)) { e.respondWith(networkFirst(req, SHELL)); return; }
   if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/')) {
     // The Giving up tables are deliberately never kept in the offline cache: nothing about them is stored on the device.
-    if (/\/rest\/v1\/quit(s|_slips|_cravings)$/.test(url.pathname)) return;
+    if (/\/rest\/v1\/quit(s|_slips|_cravings|_reasons)$/.test(url.pathname)) return;
     if (req.method === 'GET') { e.respondWith(networkFirst(req, DATA, req.url)); return; }
     if (req.method === 'POST' && url.pathname.endsWith('/rpc/get_day_bundle')) {
       e.respondWith((async () => {

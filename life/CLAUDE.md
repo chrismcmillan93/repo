@@ -507,6 +507,21 @@ A goal's page (`views/goals.js`) now has two clearly separate things to do towar
   (files: `index.ts`, `goalbrief.js`, `readiness.js`, `readinessline.js`, `webpush.js`).
   `sw.js` `VERSION` is `v23`, `BUILD` `2026-11-27m`.
 
+## Giving up: reasons and quotes (2026-11-27)
+
+Each thing you give up can have any number of **reasons** (your own words) and **quotes** (with an optional "who said it"), in the new panel
+"Reasons and quotes" on its card (also on a card whose start date is still in the future, so you can prepare). The original single "Why it
+matters to you" from the Edit form stays and counts as the first, undeletable item ("change it in Edit"). Table `life.quit_reasons`
+(migration `20261127150000_life_quit_reasons.sql`, applied): `kind` reason|quote, `body` 1-280 characters, `source` up to 80, own-row RLS,
+authenticated only, **no grant to service_role** (checked), cascades with the quit.
+- **Where they show:** the card shows **one a day** (`pickToday()` in `quitReasons.js`: steady within a day, moves on the next, offset per quit so two
+  things are not in lockstep); the **craving timer shows up to six at once**. `cleanReason()` trims, caps, and drops the author on a plain reason.
+- **Privacy, same as the rest of Giving up:** `sw.js` never caches `quit_reasons` (the no-cache regex is `quit(s|_slips|_cravings|_reasons)`),
+  `backup.js` includes it only under "Include Giving up" (`PRIVATE_TABLES`), it is not in notifications, and `life-push` cannot read it.
+  Today still shows only the alias/name and a day count, never a reason.
+- Verified in Chromium with Supabase stubbed: the card pick, the panel list, saving a quote (with author) and a reason (author dropped), and the
+  craving panel listing all of them. 6 new unit tests (`quitreasons.test.mjs`). `sw.js` `VERSION` is `v24`, `BUILD` `2026-11-27n`.
+
 ## Not built yet
 
 (The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)
