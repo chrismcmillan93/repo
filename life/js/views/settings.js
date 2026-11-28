@@ -51,7 +51,7 @@ export async function render(root){
     const days = last ? daysBetween(last, todayStr()) : null;
     return `<section class="panel"><h2>Back up your data ${last ? pill(`${days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'} ago`}`, days > 30 ? 'warn' : 'good') : pill('Never', 'warn')}</h2>
       <p class="hint">One file with your goals, tasks, commitments, journal, lists, career, events, notes, reviews, niggles and your own training and food logs. It is made on this device and goes nowhere until you save it. Hevy and Garmin data aren't included (they re-sync), and neither are your sign-in or notification keys. The file isn't encrypted, so keep it somewhere safe.</p>
-      <label class="check"><input type="checkbox" id="backupPrivate"> Include Giving up (private; anyone with the file can read it)</label>
+      <label class="check"><input type="checkbox" id="backupPrivate"> Include Giving up and Money (private; anyone with the file can read it)</label>
       <div class="btns"><button class="btn pri" data-act="backup">Download a backup</button></div></section>`;
   }
 
@@ -60,15 +60,15 @@ export async function render(root){
   function lockPanel(){
     const cfg = lockConfig();
     if (cfg) return `<section class="panel"><h2>App lock ${pill('On', 'good')}</h2>
-      <p class="hint">A PIN on this device. It covers ${cfg.scope === 'app' ? 'the whole app' : 'only Giving up'} ${cfg.minutes ? `once you've been away for ${cfg.minutes} minute${cfg.minutes === 1 ? '' : 's'}` : 'as soon as you leave it'}. It stops casual glances at an unlocked phone. It is not encryption.</p>
+      <p class="hint">A PIN on this device. It covers ${cfg.scope === 'app' ? 'the whole app' : 'only Giving up and Money'} ${cfg.minutes ? `once you've been away for ${cfg.minutes} minute${cfg.minutes === 1 ? '' : 's'}` : 'as soon as you leave it'}. It stops casual glances at an unlocked phone. It is not encryption.</p>
       <div class="btns"><button class="btn" data-act="locknow">Lock now</button>${bioOk ? (biometricOn() ? '<button class="btn" data-act="biooff">Remove Face ID / fingerprint</button>' : '<button class="btn" data-act="bioon">Add Face ID / fingerprint</button>') : ''}</div>
       ${biometricOn() ? '<p class="hint">Face ID / fingerprint unlock is on for this device. Your PIN always still works.</p>' : bioOk ? '<p class="hint">You can also unlock with Face ID or your fingerprint. The PIN stays as the backup.</p>' : ''}
       <form class="add wrapf" data-act="lockoff"><label class="lab">Your PIN, to turn it off<input class="field" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" required></label><button class="btn">Turn off</button></form></section>`;
     return `<section class="panel"><h2>App lock</h2>
-      <p class="hint">Put a PIN on this device so nobody can browse the app (or just Giving up) on your unlocked phone. It is per device: set it on each one. If you forget it, signing out clears it.</p>
+      <p class="hint">Put a PIN on this device so nobody can browse the app (or just Giving up and Money) on your unlocked phone. It is per device: set it on each one. If you forget it, signing out clears it.</p>
       <form class="stack" data-act="lockon"><div class="wrapf"><label class="lab">PIN (4 to 8 digits)<input class="field" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required></label>
         <label class="lab">Again<input class="field" name="pin2" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required></label></div>
-        <div class="wrapf"><label class="lab">Covers<select class="field" name="scope">${options([['app', 'The whole app'], ['private', 'Only Giving up']], 'app')}</select></label>
+        <div class="wrapf"><label class="lab">Covers<select class="field" name="scope">${options([['app', 'The whole app'], ['private', 'Only Giving up and Money']], 'app')}</select></label>
           <label class="lab">Locks<select class="field" name="minutes">${options([['0', 'As soon as I leave'], ['1', 'After 1 minute away'], ['5', 'After 5 minutes away'], ['15', 'After 15 minutes away']], '1')}</select></label></div>
         <div class="btns"><button class="btn pri">Turn on</button></div></form></section>`;
   }

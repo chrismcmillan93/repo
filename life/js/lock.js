@@ -41,8 +41,8 @@ function cover(on){
     el.innerHTML = '<b>Life</b>'; document.body.appendChild(el);
   }
   const cfg = lockConfig();
-  // A blank cover for the app switcher: always for the whole-app lock, only on the Giving up tab for the private one.
-  el.hidden = !(on && cfg && (cfg.scope === 'app' || /^#\/quit/.test(location.hash)));
+  // A blank cover for the app switcher: always for the whole-app lock, only on the Giving up and Money tabs for the private one.
+  el.hidden = !(on && cfg && (cfg.scope === 'app' || /^#\/(quit|money)/.test(location.hash)));
 }
 
 const stamp = () => { if (lockConfig()) { try { localStorage.setItem(HIDDEN, String(Date.now())); } catch (_) { /* ignore */ } } };

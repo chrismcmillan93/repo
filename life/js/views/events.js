@@ -7,6 +7,8 @@ import { esc, pill, wire, formData, empty, options } from '../ui.js';
 import { todayStr, daysUntil, formatDateShort, parseLocalDate, toDateInputValue, toast } from '../fit/utils.js';
 import { db } from '../fit/db.js';
 import { cleanRace, cleanResult, raceState, resultText, MAX_NAME, MAX_DISTANCE, MAX_NOTE, MAX_TIME, MAX_RESULT_NOTE } from '../races.js';
+import { rollDue } from '../money.js';
+import { privateBlocked } from '../lock.js';
 
 const KIND = { trip: 'Trip', event: 'Event', renewal: 'Renewal', birthday: 'Birthday', race: 'Race' };
 
@@ -28,10 +30,13 @@ async function loadRaceData(){
 export async function loadCountdowns(raceData){
   const today = todayStr();
   const [own, { races, bookedBy, resultBy }] = await Promise.all([store.events.list(), raceData || loadRaceData()]);
+  // Yearly and one-off payments (MOT, car tax, passport) count down here as renewals: title and date only, never the amount.
+  let pays = [];
+  try { if (!privateBlocked()) pays = (await store.moneyPayments.list((q) => q.eq('active', true))).filter((p) => p.cadence === 'yearly' || p.cadence === 'one_off'); } catch (_) { pays = []; }
   const rows = own.map((e) => {
     const date = e.repeats_yearly ? nextYearly(e.start_date, today) : e.start_date;
     return { id: e.id, own: true, title: e.title, kind: e.kind, date, end: e.repeats_yearly ? null : e.end_date, note: e.note, yearly: e.repeats_yearly };
-  }).concat(races.filter((r) => !resultBy[r.id]).map((r) => ({ id: r.id, own: false, mine: !!r.user_id, title: r.name, kind: 'race', date: r.race_date, end: null, note: r.distance_label || r.role || '', booked: raceState(r, bookedBy, resultBy, today).booked })));
+  }).concat(pays.map((p) => ({ id: p.id, own: false, title: p.title, kind: 'renewal', date: rollDue(p.next_due, p.cadence, today), end: null, note: 'Payment' }))).concat(races.filter((r) => !resultBy[r.id]).map((r) => ({ id: r.id, own: false, mine: !!r.user_id, title: r.name, kind: 'race', date: r.race_date, end: null, note: r.distance_label || r.role || '', booked: raceState(r, bookedBy, resultBy, today).booked })));
   return rows.filter((e) => (e.end || e.date) >= today).map((e) => ({ ...e, days: daysUntil(e.date) })).sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 

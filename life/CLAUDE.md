@@ -551,6 +551,39 @@ Events (`views/events.js`) has two tabs, **Upcoming** and **Race results** (`#/e
   null), adding a race as Booked (insert plus `race_booked`), toggling a plan race, and the Race results tab. 7 unit tests (`races.test.mjs`).
   `sw.js` `VERSION` is `v28`, `BUILD` `2026-11-27r`.
 
+## Books (read or listen) (2026-11-27)
+
+A **Books** tab inside Lists (`views/booksTab.js`, mounted by `views/lists.js`; pure logic in `js/books.js`, tests in `tests/books.test.mjs`).
+Table `life.books` (own-row RLS, authenticated only): title, author, `format` (`book`|`audio`), `status` (`to_read`|`reading`|`read`),
+rating 1-5, optional `goal_id`, `playbook_key`, started/finished dates. Labels follow the format: To read / Reading / Read for a book,
+To listen / Listening / Listened for an audiobook. Finishing asks for a rating, sets the finished date, ticks a linked goal via `touchGoal`
+and offers "Also mark the goal achieved". Playbook books not yet added get "+ Book" / "+ Audio". `backup.js` includes the table (`LIFE_TABLES`).
+
+## Money (2026-11-27)
+
+Menu item under Life (`views/money.js`; pure maths in `js/money.js`, tests in `tests/money.test.mjs`). **No expense tracking and no bank link**:
+it holds only regular payments, savings goals and bill pots. Tabs: Overview, Pots, Payments.
+
+- **Tables** (`life` schema, own-row RLS): `money_pots` (name, `kind` saving|bill, target, target_date, optional `monthly_amount`, optional `goal_id`),
+  `money_deposits` (pot_id, amount, negative = money out, deposited_on, note; a pot's balance is the sum), `money_payments` (title, amount,
+  `cadence` weekly|monthly|yearly|one_off, `next_due`, optional `pot_id`, `active`). Optional income and pay day (1-28, default 1st) live in
+  `settings.data.money = { income, payday }`.
+- **Privacy:** same rules as Giving up. Authenticated only; the service worker never caches the money tables; backup only with "Include Giving up and Money";
+  the private app lock covers `#/money`; Today and Events only fetch money when `!privateBlocked()`. **The one exception:** `service_role` has SELECT on
+  `life.money_payments` only, so `life-push` can name payments in the morning brief. Pots and deposits are unreadable by any function.
+- **Pot maths (`potPlan`):** `left` = pay days from today to the target date (today's counts), plus one when this month's pay day has passed and
+  nothing has been moved yet (the "owed this month" rule, so a late month doesn't raise later months' shares). A bill pot with no set monthly
+  amount is told what to put aside (needed / left, rounded up to the penny); a set amount is checked against the target and reports "short" by how much,
+  with the monthly figure that would fix it. **Moved £X** adds a deposit and syncs a linked goal (`current_value` for numeric goals, `last_progress_on`).
+- **Regular monthly** = monthly + weekly payments only; yearly and one-off payments are covered by pots (or flagged "Make a pot").
+- **USA trip pot** is seeded (migration `..._life_money_seed_usa_pot`): £4,500 by 30 Apr 2027, £500 a month, £1,500 opening deposit. At £500 it shows
+  "£500 short"; £600 a month reaches the target. The goal itself was deliberately not changed; that decision is the user's.
+- **Reminders:** Today nudges on pay day until transfers are ticked and for payments due in 3 days (`moneyNudges`); Events lists yearly/one-off payments
+  as renewals; the morning brief adds "Going out: ..." via `paymentLines`. **`supabase/functions/life-push/money.js` is an exact copy of `life/js/money.js`**
+  (a test fails if they differ; copy after every edit). Deploy `life-push` with index.ts, goalbrief.js, money.js, readiness.js, readinessline.js, webpush.js
+  (`verify_jwt` off); deployed as v13.
+- `sw.js` `VERSION` is `v30`, `BUILD` `2026-11-27t`.
+
 ## Not built yet
 
 (The day swap is on both Today and Health → Day: `fit/day.js` shows it in compact and full mode.)

@@ -18,6 +18,7 @@ import { loadTrips } from '../trip.js';
 import { niggleNudges } from '../niggle.js';
 import { loadSpike } from '../loadspike.js';
 import { picsStatus } from '../progressPics.js';
+import { loadMoneySummary, moneyNudges } from './money.js';
 import { LIFE_START } from '../start.js';
 import { raceCountdown, countdownText } from '../training.js';
 
@@ -58,7 +59,10 @@ export async function render(root){
     try { spike = loadSpike(await garmin.activities(addDays(today, -34), today), today); } catch (_) { spike = null; }
     let pics = [];
     try { pics = await store.progressPics.list(); } catch (_) { pics = []; }
-    d = { pics, mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
+    // Money (private): only fetched while the app lock is open, and never able to break Today.
+    let money = null;
+    try { if (!privateBlocked()) money = await loadMoneySummary(); } catch (_) { money = null; }
+    d = { money, pics, mood, spike, niggles, quits, cfg, goals, tasks, habits, checks, closed: closed.length > 0, coming, reviewsDue, commits, steps, byId: Object.fromEntries(goals.map((g) => [g.id, g])) };
   }
 
   const dueToday = () => d.tasks.filter((t) => t.due_date === today || t.top_date === today);
@@ -104,6 +108,7 @@ export async function render(root){
     // Aches that have lasted or got worse: first in line, because they cost the most.
     niggleNudges(d.niggles || [], today).reverse().forEach((t) => out.unshift(`<div class="nudge"><p>${esc(t)}</p><div class="btns"><a class="btn sm" href="#/health/niggles">Niggles</a></div></div>`));
     const ps = picsStatus(d.pics || [], today, LIFE_START);
+    if (d.money) moneyNudges(d.money, today).forEach((t) => out.push(`<div class="nudge warn"><p>${esc(t)}</p><div class="btns"><a class="btn sm" href="#/money">Money</a></div></div>`));
     if (ps.overdue) out.push(`<div class="nudge warn"><p>${esc(ps.nudge)}</p><div class="btns"><a class="btn sm" href="#/health/checkin">Check-in</a></div></div>`);
     return out.slice(0, 6).join('');
   }

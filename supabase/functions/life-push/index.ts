@@ -13,6 +13,7 @@ import { generateVapid, sendPush } from './webpush.js';
 import { goalActionLines, goalActionsOpenTonight } from './goalbrief.js';
 import { readiness } from './readiness.js';
 import { readinessLine } from './readinessline.js';
+import { paymentLines } from './money.js';
 
 const SUBJECT = 'https://app.chris-mcmillan.co.uk/life/';
 const TZ = 'Europe/London';
@@ -75,7 +76,7 @@ async function morningBrief(userId: string, today: string, dow: string){
   const tomorrow = addDays(today, 1);
   // Readiness compares last night with the 28 days before it. Garmin is device data, so the fresh start does not limit it.
   const since = addDays(today, -29);
-  const [tasks, plan, picks, events, races, night, gday, goalTasks, goals, sleepRange, daysRange] = await Promise.all([
+  const [tasks, plan, picks, events, races, night, gday, goalTasks, goals, sleepRange, daysRange, payRows] = await Promise.all([
     life().from('tasks').select('title, top_date, due_date').eq('user_id', userId).eq('status', 'open').or(`due_date.lte.${today},top_date.eq.${today}`),
     fitness().from('plan_days').select('session, type').eq('plan_version', 'v2').eq('date', today),
     fitness().from('pick_sessions').select('kind, session').eq('user_id', userId).eq('log_date', today),
@@ -88,7 +89,9 @@ async function morningBrief(userId: string, today: string, dow: string){
     life().from('tasks').select('title, due_date, goal_id, status').eq('user_id', userId).eq('status', 'open').not('goal_id', 'is', null).lte('due_date', tomorrow),
     life().from('goals').select('id, title').eq('user_id', userId).eq('status', 'active'),
     fitness().from('garmin_sleep').select('day, sleep_s, hrv_last_night').eq('user_id', userId).gte('day', since).lte('day', today),
-    fitness().from('garmin_days').select('day, resting_hr, avg_stress').eq('user_id', userId).gte('day', since).lte('day', today)
+    fitness().from('garmin_days').select('day, resting_hr, avg_stress').eq('user_id', userId).gte('day', since).lte('day', today),
+    // Regular payments (the only Money table this function may read): named below when something goes out in the next few days.
+    life().from('money_payments').select('title, amount, cadence, next_due').eq('user_id', userId).eq('active', true)
   ]);
   const t = tasks.data || [];
   const top = t.filter((x) => x.top_date === today).map((x) => x.title);
@@ -106,6 +109,7 @@ async function morningBrief(userId: string, today: string, dow: string){
   if (top.length) lines.push(`Top three: ${top.join(', ')}`);
   lines.push(t.length ? `${t.length} task${t.length === 1 ? '' : 's'} due today` : 'Nothing due yet. Pick your top three.');
   lines.push(...goalActionLines(goalTasks.data || [], goals.data || [], today, tomorrow));
+  lines.push(...paymentLines(payRows.data || [], today, 3));
   const next = [...(events.data || []).map((e) => ({ t: e.title, d: e.start_date })), ...(races.data || []).map((r) => ({ t: r.name, d: r.race_date }))].sort((a, b) => (a.d < b.d ? -1 : 1))[0];
   if (next) {
     const days = Math.round((Date.parse(next.d) - Date.parse(today)) / 864e5);
